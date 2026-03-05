@@ -1,0 +1,184 @@
+# Projects
+
+query listProjects($organization: ID!, $cursor: Cursor) {
+  projects(organization: $organization, cursor: $cursor) {
+    cursor {
+      next
+      previous
+    }
+    items {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+query getProject($organization: ID!, $id: ID!) {
+  project(organization: $organization, id: $id) {
+    id
+    name
+    description
+    createdAt
+    updatedAt
+    environments {
+      cursor {
+        next
+        previous
+      }
+      items {
+        id
+        name
+        description
+        createdAt
+        updatedAt
+      }
+    }
+  }
+}
+
+mutation createProject($organization: ID!, $input: CreateProjectInput!) {
+  createProject(organization: $organization, input: $input) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+mutation updateProject($organization: ID!, $id: ID!, $input: UpdateProjectInput!) {
+  updateProject(organization: $organization, id: $id, input: $input) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+mutation deleteProject($organization: ID!, $id: ID!) {
+  deleteProject(organization: $organization, id: $id) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      name
+    }
+  }
+}
+
+# Environments
+
+query listEnvironments($organization: ID!, $filter: EnvironmentsFilter, $cursor: Cursor) {
+  environments(organization: $organization, filter: $filter, cursor: $cursor) {
+    cursor {
+      next
+      previous
+    }
+    items {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+      project {
+        id
+        name
+        description
+        createdAt
+        updatedAt
+      }
+    }
+  }
+}
+
+query getEnvironment($organization: ID!, $id: ID!) {
+  environment(organization: $organization, id: $id) {
+    id
+    name
+    description
+    createdAt
+    updatedAt
+    project {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+mutation createEnvironment($organization: ID!, $project: ID!, $input: CreateEnvironmentInput!) {
+  createEnvironment(organization: $organization, project: $project, input: $input) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+mutation updateEnvironment($organization: ID!, $id: ID!, $input: UpdateEnvironmentInput!) {
+  updateEnvironment(organization: $organization, id: $id, input: $input) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+mutation deleteEnvironment($organization: ID!, $id: ID!) {
+  deleteEnvironment(organization: $organization, id: $id) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      name
+    }
+  }
+}

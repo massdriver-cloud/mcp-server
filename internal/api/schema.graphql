@@ -1,0 +1,341 @@
+schema {
+  mutation: RootMutationType
+  query: RootQueryType
+}
+
+type RootQueryType {
+  "List projects. Returns a paginated list sorted by name by default."
+  projects(organization: ID!, sort: ProjectsSort, cursor: Cursor): ProjectsPage
+
+  "Get a project by ID."
+  project(organization: ID!, id: ID!): Project
+
+  "List environments. Returns all environments visible to the user."
+  environments(organization: ID!, filter: EnvironmentsFilter, sort: EnvironmentsSort, cursor: Cursor): EnvironmentsPage
+
+  "Get an environment by ID (identifier)."
+  environment(
+    organization: ID!
+
+    "Environment identifier (e.g., 'myproj-staging')"
+    id: ID!
+  ): Environment
+}
+
+type RootMutationType {
+  "Create a new project."
+  createProject(organization: ID!, input: CreateProjectInput!): ProjectPayload
+
+  "Update a project's name or description."
+  updateProject(organization: ID!, id: ID!, input: UpdateProjectInput!): ProjectPayload
+
+  "Delete a project. All environments must be empty before deletion."
+  deleteProject(organization: ID!, id: ID!): ProjectPayload
+
+  "Create a new environment in a project."
+  createEnvironment(
+    organization: ID!
+
+    "Project ID"
+    project: ID!
+
+    input: CreateEnvironmentInput!
+  ): EnvironmentPayload
+
+  "Update an environment's name or description."
+  updateEnvironment(
+    organization: ID!
+
+    "Environment identifier"
+    id: ID!
+
+    input: UpdateEnvironmentInput!
+  ): EnvironmentPayload
+
+  "Delete an environment. All packages must be decommissioned before deletion."
+  deleteEnvironment(
+    organization: ID!
+
+    "Environment identifier"
+    id: ID!
+  ): EnvironmentPayload
+}
+
+enum EnvironmentsSortField {
+  "Alphabetical by environment name"
+  NAME
+
+  "By creation date"
+  CREATED_AT
+}
+
+input EnvironmentsSort {
+  field: EnvironmentsSortField!
+  order: SortOrder!
+}
+
+"Filter criteria for listing environments."
+input EnvironmentsFilter {
+  "Filter to environments in specific project(s)"
+  projectIds: [ID!]
+
+  "Filter by environment ID (the local identifier, e.g., 'staging'). Matches what was provided when creating the environment."
+  ids: [String!]
+}
+
+"Input for creating a new environment."
+input CreateEnvironmentInput {
+  "Unique identifier within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."
+  id: String!
+
+  "Human-readable name shown in the UI"
+  name: String!
+
+  "Optional details about this environment"
+  description: String
+}
+
+"Input for updating an environment."
+input UpdateEnvironmentInput {
+  "Human-readable name shown in the UI"
+  name: String
+
+  "Optional details about this environment"
+  description: String
+}
+
+"An environment within a project (leaf type, no has_many relations)."
+type EnvironmentLeaf {
+  id: ID!
+
+  "Human-readable name"
+  name: String!
+
+  description: String
+
+  createdAt: DateTime!
+
+  updatedAt: DateTime!
+
+  "The project this environment belongs to."
+  project: ProjectLeaf
+}
+
+"An environment within a project (full type with relations)."
+type Environment {
+  id: ID!
+
+  "Human-readable name"
+  name: String!
+
+  description: String
+
+  createdAt: DateTime!
+
+  updatedAt: DateTime!
+
+  "The project this environment belongs to."
+  project: Project
+}
+
+type EnvironmentsPage {
+  "Pagination cursors"
+  cursor: PaginationCursor!
+
+  "A list of type environment_leaf."
+  items: [EnvironmentLeaf]
+}
+
+type EnvironmentPayload {
+  "Indicates if the mutation completed successfully or not."
+  successful: Boolean!
+
+  "A list of failed validations. May be blank or null if mutation succeeded."
+  messages: [ValidationMessage]
+
+  "The object created\/updated\/deleted by the mutation. May be null if mutation failed."
+  result: Environment
+}
+
+enum SortOrder {
+  "Ascending (A-Z, oldest first)"
+  ASC
+
+  "Descending (Z-A, newest first)"
+  DESC
+}
+
+enum ProjectsSortField {
+  "Alphabetical by project name"
+  NAME
+
+  "By creation date"
+  CREATED_AT
+}
+
+input ProjectsSort {
+  field: ProjectsSortField!
+  order: SortOrder!
+}
+
+input CreateProjectInput {
+  "Unique identifier, max 12 lowercase alphanumeric characters. Cannot be changed after creation."
+  id: String!
+
+  "Human-readable name shown in the UI"
+  name: String!
+
+  "Optional details about what this project contains"
+  description: String
+}
+
+input UpdateProjectInput {
+  "Human-readable name shown in the UI"
+  name: String
+
+  "Optional details about what this project contains"
+  description: String
+}
+
+"A container for organizing environments and infrastructure (leaf type, no has_many relations)."
+type ProjectLeaf {
+  id: ID!
+
+  "Human-readable name"
+  name: String!
+
+  description: String
+
+  createdAt: DateTime!
+
+  updatedAt: DateTime!
+}
+
+"A container for organizing environments and infrastructure (full type with relations)."
+type Project {
+  id: ID!
+
+  "Human-readable name"
+  name: String!
+
+  description: String
+
+  createdAt: DateTime!
+
+  updatedAt: DateTime!
+
+  "Environments in this project (paginated)."
+  environments(sort: EnvironmentsSort, cursor: Cursor): EnvironmentsPage
+}
+
+type ProjectsPage {
+  "Pagination cursors"
+  cursor: PaginationCursor!
+
+  "A list of type project_leaf."
+  items: [ProjectLeaf]
+}
+
+type ProjectPayload {
+  "Indicates if the mutation completed successfully or not."
+  successful: Boolean!
+
+  "A list of failed validations. May be blank or null if mutation succeeded."
+  messages: [ValidationMessage]
+
+  "The object created\/updated\/deleted by the mutation. May be null if mutation failed."
+  result: Project
+}
+
+input Cursor {
+  "Maximum number of items to return"
+  limit: Int
+
+  "Cursor after which to return items"
+  next: String
+
+  "Cursor before which to return items"
+  previous: String
+}
+
+type PaginationCursor {
+  "Cursor to the next page"
+  next: String
+
+  "Cursor to the previous page"
+  previous: String
+}
+
+type ValidationOption {
+  "The name of a variable to be subsituted in a validation message template"
+  key: String!
+
+  "The value of a variable to be substituted in a validation message template"
+  value: String!
+}
+
+"""
+Validation messages are returned when mutation input does not meet the requirements.
+  While client-side validation is highly recommended to provide the best User Experience,
+  All inputs will always be validated server-side.
+
+  Some examples of validations are:
+
+  * Username must be at least 10 characters
+  * Email field does not contain an email address
+  * Birth Date is required
+
+  While GraphQL has support for required values, mutation data fields are always
+  set to optional in our API. This allows 'required field' messages
+  to be returned in the same manner as other validations. The only exceptions
+  are id fields, which may be required to perform updates or deletes.
+"""
+type ValidationMessage {
+  """
+  The input field that the error applies to. The field can be used to
+  identify which field the error message should be displayed next to in the
+  presentation layer.
+
+  If there are multiple errors to display for a field, multiple validation
+  messages will be in the result.
+
+  This field may be null in cases where an error cannot be applied to a specific field.
+  """
+  field: String
+
+  """
+  A friendly error message, appropriate for display to the end user.
+
+  The message is interpolated to include the appropriate variables.
+
+  Example: `Username must be at least 10 characters`
+
+  This message may change without notice, so we do not recommend you match against the text.
+  Instead, use the *code* field for matching.
+  """
+  message: String
+
+  "A unique error code for the type of validation used."
+  code: String!
+
+  """
+  A template used to generate the error message, with placeholders for option substiution.
+
+  Example: `Username must be at least {count} characters`
+
+  This message may change without notice, so we do not recommend you match against the text.
+  Instead, use the *code* field for matching.
+  """
+  template: String
+
+  "A list of substitutions to be applied to a validation message template"
+  options: [ValidationOption]
+}
+
+"""
+The `DateTime` scalar type represents a date and time in the UTC
+timezone. The DateTime appears in a JSON response as an ISO8601 formatted
+string, including UTC timezone ("Z"). The parsed date and time string will
+be converted to UTC if there is an offset.
+"""
+scalar DateTime
