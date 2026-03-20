@@ -51,7 +51,7 @@ func TestListEnvironments(t *testing.T) {
 		},
 		{
 			name:   "filter by project ID",
-			filter: EnvironmentsFilter{ProjectIds: []string{"proj1"}},
+			filter: EnvironmentsFilter{ProjectId: IdFilter{Eq: "proj1"}},
 			responses: []any{gqlmock.MockQueryResponse("environments", map[string]any{
 				"cursor": map[string]any{"next": ""},
 				"items":  []map[string]any{envItem("proj1-prod")},

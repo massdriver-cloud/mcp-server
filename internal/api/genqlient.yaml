@@ -15,6 +15,10 @@ bindings:
     type: time.Time
   VersionConstraint:
     type: string
+  BundleName:
+    type: string
+  RepoName:
+    type: string
   Markdown:
     type: string
   Cursor:

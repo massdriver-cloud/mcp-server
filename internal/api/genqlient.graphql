@@ -1,7 +1,7 @@
 # Projects
 
-query listProjects($organization: ID!, $cursor: Cursor) {
-  projects(organization: $organization, cursor: $cursor) {
+query listProjects($organizationId: ID!, $cursor: Cursor) {
+  projects(organizationId: $organizationId, cursor: $cursor) {
     cursor {
       next
       previous
@@ -16,8 +16,8 @@ query listProjects($organization: ID!, $cursor: Cursor) {
   }
 }
 
-query getProject($organization: ID!, $id: ID!) {
-  project(organization: $organization, id: $id) {
+query getProject($organizationId: ID!, $id: ID!) {
+  project(organizationId: $organizationId, id: $id) {
     id
     name
     description
@@ -39,8 +39,8 @@ query getProject($organization: ID!, $id: ID!) {
   }
 }
 
-mutation createProject($organization: ID!, $input: CreateProjectInput!) {
-  createProject(organization: $organization, input: $input) {
+mutation createProject($organizationId: ID!, $input: CreateProjectInput!) {
+  createProject(organizationId: $organizationId, input: $input) {
     successful
     messages {
       field
@@ -57,8 +57,8 @@ mutation createProject($organization: ID!, $input: CreateProjectInput!) {
   }
 }
 
-mutation updateProject($organization: ID!, $id: ID!, $input: UpdateProjectInput!) {
-  updateProject(organization: $organization, id: $id, input: $input) {
+mutation updateProject($organizationId: ID!, $id: ID!, $input: UpdateProjectInput!) {
+  updateProject(organizationId: $organizationId, id: $id, input: $input) {
     successful
     messages {
       field
@@ -75,8 +75,8 @@ mutation updateProject($organization: ID!, $id: ID!, $input: UpdateProjectInput!
   }
 }
 
-mutation deleteProject($organization: ID!, $id: ID!) {
-  deleteProject(organization: $organization, id: $id) {
+mutation deleteProject($organizationId: ID!, $id: ID!) {
+  deleteProject(organizationId: $organizationId, id: $id) {
     successful
     messages {
       field
@@ -92,8 +92,8 @@ mutation deleteProject($organization: ID!, $id: ID!) {
 
 # Environments
 
-query listEnvironments($organization: ID!, $filter: EnvironmentsFilter, $cursor: Cursor) {
-  environments(organization: $organization, filter: $filter, cursor: $cursor) {
+query listEnvironments($organizationId: ID!, $filter: EnvironmentsFilter, $cursor: Cursor) {
+  environments(organizationId: $organizationId, filter: $filter, cursor: $cursor) {
     cursor {
       next
       previous
@@ -115,8 +115,8 @@ query listEnvironments($organization: ID!, $filter: EnvironmentsFilter, $cursor:
   }
 }
 
-query getEnvironment($organization: ID!, $id: ID!) {
-  environment(organization: $organization, id: $id) {
+query getEnvironment($organizationId: ID!, $id: ID!) {
+  environment(organizationId: $organizationId, id: $id) {
     id
     name
     description
@@ -132,8 +132,8 @@ query getEnvironment($organization: ID!, $id: ID!) {
   }
 }
 
-mutation createEnvironment($organization: ID!, $project: ID!, $input: CreateEnvironmentInput!) {
-  createEnvironment(organization: $organization, project: $project, input: $input) {
+mutation createEnvironment($organizationId: ID!, $projectId: ID!, $input: CreateEnvironmentInput!) {
+  createEnvironment(organizationId: $organizationId, projectId: $projectId, input: $input) {
     successful
     messages {
       field
@@ -150,8 +150,8 @@ mutation createEnvironment($organization: ID!, $project: ID!, $input: CreateEnvi
   }
 }
 
-mutation updateEnvironment($organization: ID!, $id: ID!, $input: UpdateEnvironmentInput!) {
-  updateEnvironment(organization: $organization, id: $id, input: $input) {
+mutation updateEnvironment($organizationId: ID!, $id: ID!, $input: UpdateEnvironmentInput!) {
+  updateEnvironment(organizationId: $organizationId, id: $id, input: $input) {
     successful
     messages {
       field
@@ -168,8 +168,8 @@ mutation updateEnvironment($organization: ID!, $id: ID!, $input: UpdateEnvironme
   }
 }
 
-mutation deleteEnvironment($organization: ID!, $id: ID!) {
-  deleteEnvironment(organization: $organization, id: $id) {
+mutation deleteEnvironment($organizationId: ID!, $id: ID!) {
+  deleteEnvironment(organizationId: $organizationId, id: $id) {
     successful
     messages {
       field
@@ -179,6 +179,199 @@ mutation deleteEnvironment($organization: ID!, $id: ID!) {
     result {
       id
       name
+    }
+  }
+}
+
+# Instances
+
+query listInstances($organizationId: ID!, $filter: InstancesFilter, $cursor: Cursor) {
+  instances(organizationId: $organizationId, filter: $filter, cursor: $cursor) {
+    cursor {
+      next
+      previous
+    }
+    items {
+      id
+      name
+      status
+      version
+      releaseStrategy
+      createdAt
+      updatedAt
+      environment {
+        id
+        name
+        project {
+          id
+          name
+        }
+      }
+      release {
+        id
+        name
+        version
+      }
+    }
+  }
+}
+
+query getInstance($organizationId: ID!, $id: ID!) {
+  instance(organizationId: $organizationId, id: $id) {
+    id
+    name
+    status
+    version
+    releaseStrategy
+    createdAt
+    updatedAt
+    environment {
+      id
+      name
+      project {
+        id
+        name
+      }
+    }
+    release {
+      id
+      name
+      version
+    }
+  }
+}
+
+# Deployments
+
+query listDeployments($organizationId: ID!, $filter: DeploymentsFilter, $cursor: Cursor) {
+  deployments(organizationId: $organizationId, filter: $filter, cursor: $cursor) {
+    cursor {
+      next
+      previous
+    }
+    items {
+      id
+      status
+      action
+      version
+      message
+      createdAt
+      updatedAt
+      lastTransitionedAt
+      elapsedTime
+      deployedBy
+      instance {
+        id
+        name
+        environment {
+          id
+          name
+          project {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+}
+
+query getDeployment($organizationId: ID!, $id: ID!) {
+  deployment(organizationId: $organizationId, id: $id) {
+    id
+    status
+    action
+    version
+    message
+    createdAt
+    updatedAt
+    lastTransitionedAt
+    elapsedTime
+    deployedBy
+    instance {
+      id
+      name
+      environment {
+        id
+        name
+        project {
+          id
+          name
+        }
+      }
+    }
+  }
+}
+
+# Blueprint
+
+mutation addComponent($organizationId: ID!, $projectId: ID!, $input: AddComponentInput!) {
+  addComponent(organizationId: $organizationId, projectId: $projectId, input: $input) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+mutation removeComponent($organizationId: ID!, $projectId: ID!, $id: ID!) {
+  removeComponent(organizationId: $organizationId, projectId: $projectId, id: $id) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      name
+    }
+  }
+}
+
+mutation linkComponents($organizationId: ID!, $projectId: ID!, $input: LinkComponentsInput!) {
+  linkComponents(organizationId: $organizationId, projectId: $projectId, input: $input) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
+      fromField
+      toField
+      fromComponent {
+        id
+        name
+      }
+      toComponent {
+        id
+        name
+      }
+    }
+  }
+}
+
+mutation unlinkComponents($organizationId: ID!, $id: ID!) {
+  unlinkComponents(organizationId: $organizationId, id: $id) {
+    successful
+    messages {
+      field
+      message
+      code
+    }
+    result {
+      id
     }
   }
 }

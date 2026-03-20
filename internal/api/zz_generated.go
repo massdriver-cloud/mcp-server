@@ -10,15 +10,56 @@ import (
 	"github.com/massdriver-cloud/mcp-server/internal/api/scalars"
 )
 
-// Input for creating a new environment.
-type CreateEnvironmentInput struct {
-	// Unique identifier within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation.
-	Id string `json:"id"`
-	// Human-readable name shown in the UI
-	Name string `json:"name"`
-	// Optional details about this environment
+// Add an infrastructure component to a project's blueprint. Each component is a specific instance of a bundle (like a Redis cache or PostgreSQL database) that composes with other components to form your application.
+type AddComponentInput struct {
+	// Name of the bundle to add (e.g., 'aws-aurora-postgres')
+	BundleName string `json:"bundleName"`
+	// Optional description of this component's purpose
 	Description string `json:"description"`
+	// A short, memorable identifier for this component. This becomes the final segment of package identifiers. For example, project 'ecomm' with environment 'prod' and component 'db' creates 'ecomm-prod-db'. Max 20 characters, lowercase alphanumeric only (a-z, 0-9). Immutable after creation.
+	Id string `json:"id"`
+	// Display name for this component (e.g., 'Billing Database')
+	Name string `json:"name"`
 }
+
+// GetBundleName returns AddComponentInput.BundleName, and is useful for accessing the field via an interface.
+func (v *AddComponentInput) GetBundleName() string { return v.BundleName }
+
+// GetDescription returns AddComponentInput.Description, and is useful for accessing the field via an interface.
+func (v *AddComponentInput) GetDescription() string { return v.Description }
+
+// GetId returns AddComponentInput.Id, and is useful for accessing the field via an interface.
+func (v *AddComponentInput) GetId() string { return v.Id }
+
+// GetName returns AddComponentInput.Name, and is useful for accessing the field via an interface.
+func (v *AddComponentInput) GetName() string { return v.Name }
+
+// Filter for bundle name fields.
+type BundleNameFilter struct {
+	// Exact match
+	Eq string `json:"eq"`
+	// Match any of these values
+	In []string `json:"in"`
+}
+
+// GetEq returns BundleNameFilter.Eq, and is useful for accessing the field via an interface.
+func (v *BundleNameFilter) GetEq() string { return v.Eq }
+
+// GetIn returns BundleNameFilter.In, and is useful for accessing the field via an interface.
+func (v *BundleNameFilter) GetIn() []string { return v.In }
+
+// Create a new environment. Environments are isolated deployment contexts like production, staging, or development, each with independent secrets and configurations.
+type CreateEnvironmentInput struct {
+	// An optional description of the environment's purpose
+	Description string `json:"description"`
+	// A short, memorable identifier for looking up this environment in the API and CLI. This becomes the second segment of package identifiers. For example, project 'ecomm' with environment 'prod' and component 'db' creates 'ecomm-prod-db'. Use familiar names like 'prod', 'staging', 'dev'—human-readable, not a UUID. Max 20 characters, lowercase alphanumeric only (a-z, 0-9). Immutable after creation.
+	Id string `json:"id"`
+	// A human-readable name for the environment
+	Name string `json:"name"`
+}
+
+// GetDescription returns CreateEnvironmentInput.Description, and is useful for accessing the field via an interface.
+func (v *CreateEnvironmentInput) GetDescription() string { return v.Description }
 
 // GetId returns CreateEnvironmentInput.Id, and is useful for accessing the field via an interface.
 func (v *CreateEnvironmentInput) GetId() string { return v.Id }
@@ -26,17 +67,18 @@ func (v *CreateEnvironmentInput) GetId() string { return v.Id }
 // GetName returns CreateEnvironmentInput.Name, and is useful for accessing the field via an interface.
 func (v *CreateEnvironmentInput) GetName() string { return v.Name }
 
-// GetDescription returns CreateEnvironmentInput.Description, and is useful for accessing the field via an interface.
-func (v *CreateEnvironmentInput) GetDescription() string { return v.Description }
-
+// Create a new project. A project is the complete model of your application—its infrastructure, architecture, configurations, and environments.
 type CreateProjectInput struct {
-	// Unique identifier, max 12 lowercase alphanumeric characters. Cannot be changed after creation.
-	Id string `json:"id"`
-	// Human-readable name shown in the UI
-	Name string `json:"name"`
-	// Optional details about what this project contains
+	// An optional description of the project's purpose or contents
 	Description string `json:"description"`
+	// A short, memorable identifier for looking up this project in the API and CLI. This becomes the first segment of all resource identifiers within the project. For example, a project 'ecomm' with environment 'prod' and component 'db' creates the package identifier 'ecomm-prod-db'. Choose something concise and meaningful—human-readable, not a UUID. Max 20 characters, lowercase alphanumeric only (a-z, 0-9). Immutable after creation.
+	Id string `json:"id"`
+	// A human-readable name for the project
+	Name string `json:"name"`
 }
+
+// GetDescription returns CreateProjectInput.Description, and is useful for accessing the field via an interface.
+func (v *CreateProjectInput) GetDescription() string { return v.Description }
 
 // GetId returns CreateProjectInput.Id, and is useful for accessing the field via an interface.
 func (v *CreateProjectInput) GetId() string { return v.Id }
@@ -44,135 +86,463 @@ func (v *CreateProjectInput) GetId() string { return v.Id }
 // GetName returns CreateProjectInput.Name, and is useful for accessing the field via an interface.
 func (v *CreateProjectInput) GetName() string { return v.Name }
 
-// GetDescription returns CreateProjectInput.Description, and is useful for accessing the field via an interface.
-func (v *CreateProjectInput) GetDescription() string { return v.Description }
+// The type of infrastructure operation.
+type DeploymentAction string
 
-// Filter criteria for listing environments.
+const (
+	// Create or update infrastructure
+	DeploymentActionProvision DeploymentAction = "PROVISION"
+	// Tear down infrastructure
+	DeploymentActionDecommission DeploymentAction = "DECOMMISSION"
+	// Preview changes without applying them
+	DeploymentActionPlan DeploymentAction = "PLAN"
+)
+
+var AllDeploymentAction = []DeploymentAction{
+	DeploymentActionProvision,
+	DeploymentActionDecommission,
+	DeploymentActionPlan,
+}
+
+// Filter for deployment action. All provided operators are combined with AND.
+type DeploymentActionFilter struct {
+	// Exact match
+	Eq DeploymentAction `json:"eq"`
+	// Match any of these actions
+	In []DeploymentAction `json:"in"`
+}
+
+// GetEq returns DeploymentActionFilter.Eq, and is useful for accessing the field via an interface.
+func (v *DeploymentActionFilter) GetEq() DeploymentAction { return v.Eq }
+
+// GetIn returns DeploymentActionFilter.In, and is useful for accessing the field via an interface.
+func (v *DeploymentActionFilter) GetIn() []DeploymentAction { return v.In }
+
+// The current state of a deployment operation.
+type DeploymentStatus string
+
+const (
+	// Waiting to start
+	DeploymentStatusPending DeploymentStatus = "PENDING"
+	// Currently executing
+	DeploymentStatusRunning DeploymentStatus = "RUNNING"
+	// Finished successfully
+	DeploymentStatusCompleted DeploymentStatus = "COMPLETED"
+	// Failed - check logs for details
+	DeploymentStatusFailed DeploymentStatus = "FAILED"
+	// Manually stopped before completion
+	DeploymentStatusAborted DeploymentStatus = "ABORTED"
+)
+
+var AllDeploymentStatus = []DeploymentStatus{
+	DeploymentStatusPending,
+	DeploymentStatusRunning,
+	DeploymentStatusCompleted,
+	DeploymentStatusFailed,
+	DeploymentStatusAborted,
+}
+
+// Filter for deployment status. All provided operators are combined with AND.
+type DeploymentStatusFilter struct {
+	// Exact match
+	Eq DeploymentStatus `json:"eq"`
+	// Match any of these statuses
+	In []DeploymentStatus `json:"in"`
+}
+
+// GetEq returns DeploymentStatusFilter.Eq, and is useful for accessing the field via an interface.
+func (v *DeploymentStatusFilter) GetEq() DeploymentStatus { return v.Eq }
+
+// GetIn returns DeploymentStatusFilter.In, and is useful for accessing the field via an interface.
+func (v *DeploymentStatusFilter) GetIn() []DeploymentStatus { return v.In }
+
+// Filter which deployments to return.
+type DeploymentsFilter struct {
+	// Filter by instance ID
+	InstanceId IdFilter `json:"instanceId"`
+	// Filter by deployment status
+	Status DeploymentStatusFilter `json:"status"`
+	// Filter by deployment action
+	Action DeploymentActionFilter `json:"action"`
+}
+
+// GetInstanceId returns DeploymentsFilter.InstanceId, and is useful for accessing the field via an interface.
+func (v *DeploymentsFilter) GetInstanceId() IdFilter { return v.InstanceId }
+
+// GetStatus returns DeploymentsFilter.Status, and is useful for accessing the field via an interface.
+func (v *DeploymentsFilter) GetStatus() DeploymentStatusFilter { return v.Status }
+
+// GetAction returns DeploymentsFilter.Action, and is useful for accessing the field via an interface.
+func (v *DeploymentsFilter) GetAction() DeploymentActionFilter { return v.Action }
+
+// Filter which environments to return.
 type EnvironmentsFilter struct {
-	// Filter to environments in specific project(s)
-	ProjectIds []string `json:"projectIds"`
-	// Filter by environment ID (the local identifier, e.g., 'staging'). Matches what was provided when creating the environment.
-	Ids []string `json:"ids"`
+	// Filter by project ID
+	ProjectId IdFilter `json:"projectId"`
+	// Filter by environment ID
+	Id StringFilter `json:"id"`
 }
 
-// GetProjectIds returns EnvironmentsFilter.ProjectIds, and is useful for accessing the field via an interface.
-func (v *EnvironmentsFilter) GetProjectIds() []string { return v.ProjectIds }
+// GetProjectId returns EnvironmentsFilter.ProjectId, and is useful for accessing the field via an interface.
+func (v *EnvironmentsFilter) GetProjectId() IdFilter { return v.ProjectId }
 
-// GetIds returns EnvironmentsFilter.Ids, and is useful for accessing the field via an interface.
-func (v *EnvironmentsFilter) GetIds() []string { return v.Ids }
+// GetId returns EnvironmentsFilter.Id, and is useful for accessing the field via an interface.
+func (v *EnvironmentsFilter) GetId() StringFilter { return v.Id }
 
-// Input for updating an environment.
+// Filter for ID fields. All provided operators are combined with AND.
+type IdFilter struct {
+	// Exact match
+	Eq string `json:"eq"`
+	// Match any of these values
+	In []string `json:"in"`
+}
+
+// GetEq returns IdFilter.Eq, and is useful for accessing the field via an interface.
+func (v *IdFilter) GetEq() string { return v.Eq }
+
+// GetIn returns IdFilter.In, and is useful for accessing the field via an interface.
+func (v *IdFilter) GetIn() []string { return v.In }
+
+// The current state of an instance.
+type InstanceStatus string
+
+const (
+	// Created but not yet deployed
+	InstanceStatusInitialized InstanceStatus = "INITIALIZED"
+	// Successfully deployed and running
+	InstanceStatusProvisioned InstanceStatus = "PROVISIONED"
+	// Infrastructure has been torn down
+	InstanceStatusDecommissioned InstanceStatus = "DECOMMISSIONED"
+	// Deployment failed - check the deployment logs
+	InstanceStatusFailed InstanceStatus = "FAILED"
+	// Imported infrastructure managed outside Massdriver
+	InstanceStatusExternal InstanceStatus = "EXTERNAL"
+)
+
+var AllInstanceStatus = []InstanceStatus{
+	InstanceStatusInitialized,
+	InstanceStatusProvisioned,
+	InstanceStatusDecommissioned,
+	InstanceStatusFailed,
+	InstanceStatusExternal,
+}
+
+// Filter for instance status. All provided operators are combined with AND.
+type InstanceStatusFilter struct {
+	// Exact match
+	Eq InstanceStatus `json:"eq"`
+	// Match any of these statuses
+	In []InstanceStatus `json:"in"`
+}
+
+// GetEq returns InstanceStatusFilter.Eq, and is useful for accessing the field via an interface.
+func (v *InstanceStatusFilter) GetEq() InstanceStatus { return v.Eq }
+
+// GetIn returns InstanceStatusFilter.In, and is useful for accessing the field via an interface.
+func (v *InstanceStatusFilter) GetIn() []InstanceStatus { return v.In }
+
+// Filter which instances to return.
+type InstancesFilter struct {
+	// Filter by project ID
+	ProjectId IdFilter `json:"projectId"`
+	// Filter by environment ID
+	EnvironmentId IdFilter `json:"environmentId"`
+	// Filter by instance status
+	Status InstanceStatusFilter `json:"status"`
+	// Filter by bundle name
+	BundleName BundleNameFilter `json:"bundleName"`
+	// Filter by param dimension values. Multiple filters are combined with AND.
+	ParamDimension []ParamDimensionFilter `json:"paramDimension"`
+}
+
+// GetProjectId returns InstancesFilter.ProjectId, and is useful for accessing the field via an interface.
+func (v *InstancesFilter) GetProjectId() IdFilter { return v.ProjectId }
+
+// GetEnvironmentId returns InstancesFilter.EnvironmentId, and is useful for accessing the field via an interface.
+func (v *InstancesFilter) GetEnvironmentId() IdFilter { return v.EnvironmentId }
+
+// GetStatus returns InstancesFilter.Status, and is useful for accessing the field via an interface.
+func (v *InstancesFilter) GetStatus() InstanceStatusFilter { return v.Status }
+
+// GetBundleName returns InstancesFilter.BundleName, and is useful for accessing the field via an interface.
+func (v *InstancesFilter) GetBundleName() BundleNameFilter { return v.BundleName }
+
+// GetParamDimension returns InstancesFilter.ParamDimension, and is useful for accessing the field via an interface.
+func (v *InstancesFilter) GetParamDimension() []ParamDimensionFilter { return v.ParamDimension }
+
+// Create a link between two components in a project's blueprint. Links connect an output field on the source component to an input field on the destination component, establishing data flow between infrastructure resources.
+type LinkComponentsInput struct {
+	// Component that produces the artifact (e.g., 'database')
+	From string `json:"from"`
+	// Output field name on the source component
+	FromField string `json:"fromField"`
+	// Version constraint for the source component (e.g., '~1.0', '1.2.3', 'latest')
+	FromVersion string `json:"fromVersion"`
+	// Component that consumes the artifact (e.g., 'app')
+	To string `json:"to"`
+	// Input field name on the destination component
+	ToField string `json:"toField"`
+	// Version constraint for the destination component (e.g., '~1.0', '1.2.3', 'latest')
+	ToVersion string `json:"toVersion"`
+}
+
+// GetFrom returns LinkComponentsInput.From, and is useful for accessing the field via an interface.
+func (v *LinkComponentsInput) GetFrom() string { return v.From }
+
+// GetFromField returns LinkComponentsInput.FromField, and is useful for accessing the field via an interface.
+func (v *LinkComponentsInput) GetFromField() string { return v.FromField }
+
+// GetFromVersion returns LinkComponentsInput.FromVersion, and is useful for accessing the field via an interface.
+func (v *LinkComponentsInput) GetFromVersion() string { return v.FromVersion }
+
+// GetTo returns LinkComponentsInput.To, and is useful for accessing the field via an interface.
+func (v *LinkComponentsInput) GetTo() string { return v.To }
+
+// GetToField returns LinkComponentsInput.ToField, and is useful for accessing the field via an interface.
+func (v *LinkComponentsInput) GetToField() string { return v.ToField }
+
+// GetToVersion returns LinkComponentsInput.ToVersion, and is useful for accessing the field via an interface.
+func (v *LinkComponentsInput) GetToVersion() string { return v.ToVersion }
+
+// Filter instances by a configuration parameter value at a specific path.
+// Use `paramDimensions` query to discover available dimensions.
+type ParamDimensionFilter struct {
+	// Dot-path to the param field (e.g., 'database.instance_type')
+	Dimension string `json:"dimension"`
+	// Exact match
+	Eq string `json:"eq"`
+	// Match any of these values
+	In []string `json:"in"`
+	// Case-insensitive substring match
+	Contains string `json:"contains"`
+}
+
+// GetDimension returns ParamDimensionFilter.Dimension, and is useful for accessing the field via an interface.
+func (v *ParamDimensionFilter) GetDimension() string { return v.Dimension }
+
+// GetEq returns ParamDimensionFilter.Eq, and is useful for accessing the field via an interface.
+func (v *ParamDimensionFilter) GetEq() string { return v.Eq }
+
+// GetIn returns ParamDimensionFilter.In, and is useful for accessing the field via an interface.
+func (v *ParamDimensionFilter) GetIn() []string { return v.In }
+
+// GetContains returns ParamDimensionFilter.Contains, and is useful for accessing the field via an interface.
+func (v *ParamDimensionFilter) GetContains() string { return v.Contains }
+
+// Which bundle releases an instance will use.
+type ReleaseStrategy string
+
+const (
+	// Only use stable, published releases
+	ReleaseStrategyStable ReleaseStrategy = "STABLE"
+	// Use development releases for testing
+	ReleaseStrategyDevelopment ReleaseStrategy = "DEVELOPMENT"
+)
+
+var AllReleaseStrategy = []ReleaseStrategy{
+	ReleaseStrategyStable,
+	ReleaseStrategyDevelopment,
+}
+
+// Filter for string fields. All provided operators are combined with AND.
+type StringFilter struct {
+	// Exact match
+	Eq string `json:"eq"`
+	// Match any of these values
+	In []string `json:"in"`
+}
+
+// GetEq returns StringFilter.Eq, and is useful for accessing the field via an interface.
+func (v *StringFilter) GetEq() string { return v.Eq }
+
+// GetIn returns StringFilter.In, and is useful for accessing the field via an interface.
+func (v *StringFilter) GetIn() []string { return v.In }
+
+// Update an existing environment's name and description. The ID cannot be changed after creation.
 type UpdateEnvironmentInput struct {
-	// Human-readable name shown in the UI
-	Name string `json:"name"`
-	// Optional details about this environment
+	// An optional description of the environment's purpose
 	Description string `json:"description"`
+	// A human-readable name for the environment
+	Name string `json:"name"`
 }
-
-// GetName returns UpdateEnvironmentInput.Name, and is useful for accessing the field via an interface.
-func (v *UpdateEnvironmentInput) GetName() string { return v.Name }
 
 // GetDescription returns UpdateEnvironmentInput.Description, and is useful for accessing the field via an interface.
 func (v *UpdateEnvironmentInput) GetDescription() string { return v.Description }
 
-type UpdateProjectInput struct {
-	// Human-readable name shown in the UI
-	Name string `json:"name"`
-	// Optional details about what this project contains
-	Description string `json:"description"`
-}
+// GetName returns UpdateEnvironmentInput.Name, and is useful for accessing the field via an interface.
+func (v *UpdateEnvironmentInput) GetName() string { return v.Name }
 
-// GetName returns UpdateProjectInput.Name, and is useful for accessing the field via an interface.
-func (v *UpdateProjectInput) GetName() string { return v.Name }
+// Update an existing project's name and description. The ID cannot be changed after creation.
+type UpdateProjectInput struct {
+	// An optional description of the project's purpose or contents
+	Description string `json:"description"`
+	// A human-readable name for the project
+	Name string `json:"name"`
+}
 
 // GetDescription returns UpdateProjectInput.Description, and is useful for accessing the field via an interface.
 func (v *UpdateProjectInput) GetDescription() string { return v.Description }
 
-// __createEnvironmentInput is used internally by genqlient
-type __createEnvironmentInput struct {
-	Organization string                 `json:"organization"`
-	Project      string                 `json:"project"`
-	Input        CreateEnvironmentInput `json:"input"`
+// GetName returns UpdateProjectInput.Name, and is useful for accessing the field via an interface.
+func (v *UpdateProjectInput) GetName() string { return v.Name }
+
+// __addComponentInput is used internally by genqlient
+type __addComponentInput struct {
+	OrganizationId string            `json:"organizationId"`
+	ProjectId      string            `json:"projectId"`
+	Input          AddComponentInput `json:"input"`
 }
 
-// GetOrganization returns __createEnvironmentInput.Organization, and is useful for accessing the field via an interface.
-func (v *__createEnvironmentInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __addComponentInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__addComponentInput) GetOrganizationId() string { return v.OrganizationId }
 
-// GetProject returns __createEnvironmentInput.Project, and is useful for accessing the field via an interface.
-func (v *__createEnvironmentInput) GetProject() string { return v.Project }
+// GetProjectId returns __addComponentInput.ProjectId, and is useful for accessing the field via an interface.
+func (v *__addComponentInput) GetProjectId() string { return v.ProjectId }
+
+// GetInput returns __addComponentInput.Input, and is useful for accessing the field via an interface.
+func (v *__addComponentInput) GetInput() AddComponentInput { return v.Input }
+
+// __createEnvironmentInput is used internally by genqlient
+type __createEnvironmentInput struct {
+	OrganizationId string                 `json:"organizationId"`
+	ProjectId      string                 `json:"projectId"`
+	Input          CreateEnvironmentInput `json:"input"`
+}
+
+// GetOrganizationId returns __createEnvironmentInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__createEnvironmentInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetProjectId returns __createEnvironmentInput.ProjectId, and is useful for accessing the field via an interface.
+func (v *__createEnvironmentInput) GetProjectId() string { return v.ProjectId }
 
 // GetInput returns __createEnvironmentInput.Input, and is useful for accessing the field via an interface.
 func (v *__createEnvironmentInput) GetInput() CreateEnvironmentInput { return v.Input }
 
 // __createProjectInput is used internally by genqlient
 type __createProjectInput struct {
-	Organization string             `json:"organization"`
-	Input        CreateProjectInput `json:"input"`
+	OrganizationId string             `json:"organizationId"`
+	Input          CreateProjectInput `json:"input"`
 }
 
-// GetOrganization returns __createProjectInput.Organization, and is useful for accessing the field via an interface.
-func (v *__createProjectInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __createProjectInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__createProjectInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetInput returns __createProjectInput.Input, and is useful for accessing the field via an interface.
 func (v *__createProjectInput) GetInput() CreateProjectInput { return v.Input }
 
 // __deleteEnvironmentInput is used internally by genqlient
 type __deleteEnvironmentInput struct {
-	Organization string `json:"organization"`
-	Id           string `json:"id"`
+	OrganizationId string `json:"organizationId"`
+	Id             string `json:"id"`
 }
 
-// GetOrganization returns __deleteEnvironmentInput.Organization, and is useful for accessing the field via an interface.
-func (v *__deleteEnvironmentInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __deleteEnvironmentInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__deleteEnvironmentInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetId returns __deleteEnvironmentInput.Id, and is useful for accessing the field via an interface.
 func (v *__deleteEnvironmentInput) GetId() string { return v.Id }
 
 // __deleteProjectInput is used internally by genqlient
 type __deleteProjectInput struct {
-	Organization string `json:"organization"`
-	Id           string `json:"id"`
+	OrganizationId string `json:"organizationId"`
+	Id             string `json:"id"`
 }
 
-// GetOrganization returns __deleteProjectInput.Organization, and is useful for accessing the field via an interface.
-func (v *__deleteProjectInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __deleteProjectInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__deleteProjectInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetId returns __deleteProjectInput.Id, and is useful for accessing the field via an interface.
 func (v *__deleteProjectInput) GetId() string { return v.Id }
 
-// __getEnvironmentInput is used internally by genqlient
-type __getEnvironmentInput struct {
-	Organization string `json:"organization"`
-	Id           string `json:"id"`
+// __getDeploymentInput is used internally by genqlient
+type __getDeploymentInput struct {
+	OrganizationId string `json:"organizationId"`
+	Id             string `json:"id"`
 }
 
-// GetOrganization returns __getEnvironmentInput.Organization, and is useful for accessing the field via an interface.
-func (v *__getEnvironmentInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __getDeploymentInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__getDeploymentInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetId returns __getDeploymentInput.Id, and is useful for accessing the field via an interface.
+func (v *__getDeploymentInput) GetId() string { return v.Id }
+
+// __getEnvironmentInput is used internally by genqlient
+type __getEnvironmentInput struct {
+	OrganizationId string `json:"organizationId"`
+	Id             string `json:"id"`
+}
+
+// GetOrganizationId returns __getEnvironmentInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__getEnvironmentInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetId returns __getEnvironmentInput.Id, and is useful for accessing the field via an interface.
 func (v *__getEnvironmentInput) GetId() string { return v.Id }
 
-// __getProjectInput is used internally by genqlient
-type __getProjectInput struct {
-	Organization string `json:"organization"`
-	Id           string `json:"id"`
+// __getInstanceInput is used internally by genqlient
+type __getInstanceInput struct {
+	OrganizationId string `json:"organizationId"`
+	Id             string `json:"id"`
 }
 
-// GetOrganization returns __getProjectInput.Organization, and is useful for accessing the field via an interface.
-func (v *__getProjectInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __getInstanceInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__getInstanceInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetId returns __getInstanceInput.Id, and is useful for accessing the field via an interface.
+func (v *__getInstanceInput) GetId() string { return v.Id }
+
+// __getProjectInput is used internally by genqlient
+type __getProjectInput struct {
+	OrganizationId string `json:"organizationId"`
+	Id             string `json:"id"`
+}
+
+// GetOrganizationId returns __getProjectInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__getProjectInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetId returns __getProjectInput.Id, and is useful for accessing the field via an interface.
 func (v *__getProjectInput) GetId() string { return v.Id }
 
-// __listEnvironmentsInput is used internally by genqlient
-type __listEnvironmentsInput struct {
-	Organization string             `json:"organization"`
-	Filter       EnvironmentsFilter `json:"filter"`
-	Cursor       scalars.Cursor     `json:"cursor"`
+// __linkComponentsInput is used internally by genqlient
+type __linkComponentsInput struct {
+	OrganizationId string              `json:"organizationId"`
+	ProjectId      string              `json:"projectId"`
+	Input          LinkComponentsInput `json:"input"`
 }
 
-// GetOrganization returns __listEnvironmentsInput.Organization, and is useful for accessing the field via an interface.
-func (v *__listEnvironmentsInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __linkComponentsInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__linkComponentsInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetProjectId returns __linkComponentsInput.ProjectId, and is useful for accessing the field via an interface.
+func (v *__linkComponentsInput) GetProjectId() string { return v.ProjectId }
+
+// GetInput returns __linkComponentsInput.Input, and is useful for accessing the field via an interface.
+func (v *__linkComponentsInput) GetInput() LinkComponentsInput { return v.Input }
+
+// __listDeploymentsInput is used internally by genqlient
+type __listDeploymentsInput struct {
+	OrganizationId string            `json:"organizationId"`
+	Filter         DeploymentsFilter `json:"filter"`
+	Cursor         scalars.Cursor    `json:"cursor"`
+}
+
+// GetOrganizationId returns __listDeploymentsInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__listDeploymentsInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetFilter returns __listDeploymentsInput.Filter, and is useful for accessing the field via an interface.
+func (v *__listDeploymentsInput) GetFilter() DeploymentsFilter { return v.Filter }
+
+// GetCursor returns __listDeploymentsInput.Cursor, and is useful for accessing the field via an interface.
+func (v *__listDeploymentsInput) GetCursor() scalars.Cursor { return v.Cursor }
+
+// __listEnvironmentsInput is used internally by genqlient
+type __listEnvironmentsInput struct {
+	OrganizationId string             `json:"organizationId"`
+	Filter         EnvironmentsFilter `json:"filter"`
+	Cursor         scalars.Cursor     `json:"cursor"`
+}
+
+// GetOrganizationId returns __listEnvironmentsInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__listEnvironmentsInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetFilter returns __listEnvironmentsInput.Filter, and is useful for accessing the field via an interface.
 func (v *__listEnvironmentsInput) GetFilter() EnvironmentsFilter { return v.Filter }
@@ -180,27 +550,71 @@ func (v *__listEnvironmentsInput) GetFilter() EnvironmentsFilter { return v.Filt
 // GetCursor returns __listEnvironmentsInput.Cursor, and is useful for accessing the field via an interface.
 func (v *__listEnvironmentsInput) GetCursor() scalars.Cursor { return v.Cursor }
 
-// __listProjectsInput is used internally by genqlient
-type __listProjectsInput struct {
-	Organization string         `json:"organization"`
-	Cursor       scalars.Cursor `json:"cursor"`
+// __listInstancesInput is used internally by genqlient
+type __listInstancesInput struct {
+	OrganizationId string          `json:"organizationId"`
+	Filter         InstancesFilter `json:"filter"`
+	Cursor         scalars.Cursor  `json:"cursor"`
 }
 
-// GetOrganization returns __listProjectsInput.Organization, and is useful for accessing the field via an interface.
-func (v *__listProjectsInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __listInstancesInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__listInstancesInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetFilter returns __listInstancesInput.Filter, and is useful for accessing the field via an interface.
+func (v *__listInstancesInput) GetFilter() InstancesFilter { return v.Filter }
+
+// GetCursor returns __listInstancesInput.Cursor, and is useful for accessing the field via an interface.
+func (v *__listInstancesInput) GetCursor() scalars.Cursor { return v.Cursor }
+
+// __listProjectsInput is used internally by genqlient
+type __listProjectsInput struct {
+	OrganizationId string         `json:"organizationId"`
+	Cursor         scalars.Cursor `json:"cursor"`
+}
+
+// GetOrganizationId returns __listProjectsInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__listProjectsInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetCursor returns __listProjectsInput.Cursor, and is useful for accessing the field via an interface.
 func (v *__listProjectsInput) GetCursor() scalars.Cursor { return v.Cursor }
 
-// __updateEnvironmentInput is used internally by genqlient
-type __updateEnvironmentInput struct {
-	Organization string                 `json:"organization"`
-	Id           string                 `json:"id"`
-	Input        UpdateEnvironmentInput `json:"input"`
+// __removeComponentInput is used internally by genqlient
+type __removeComponentInput struct {
+	OrganizationId string `json:"organizationId"`
+	ProjectId      string `json:"projectId"`
+	Id             string `json:"id"`
 }
 
-// GetOrganization returns __updateEnvironmentInput.Organization, and is useful for accessing the field via an interface.
-func (v *__updateEnvironmentInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __removeComponentInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__removeComponentInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetProjectId returns __removeComponentInput.ProjectId, and is useful for accessing the field via an interface.
+func (v *__removeComponentInput) GetProjectId() string { return v.ProjectId }
+
+// GetId returns __removeComponentInput.Id, and is useful for accessing the field via an interface.
+func (v *__removeComponentInput) GetId() string { return v.Id }
+
+// __unlinkComponentsInput is used internally by genqlient
+type __unlinkComponentsInput struct {
+	OrganizationId string `json:"organizationId"`
+	Id             string `json:"id"`
+}
+
+// GetOrganizationId returns __unlinkComponentsInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__unlinkComponentsInput) GetOrganizationId() string { return v.OrganizationId }
+
+// GetId returns __unlinkComponentsInput.Id, and is useful for accessing the field via an interface.
+func (v *__unlinkComponentsInput) GetId() string { return v.Id }
+
+// __updateEnvironmentInput is used internally by genqlient
+type __updateEnvironmentInput struct {
+	OrganizationId string                 `json:"organizationId"`
+	Id             string                 `json:"id"`
+	Input          UpdateEnvironmentInput `json:"input"`
+}
+
+// GetOrganizationId returns __updateEnvironmentInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__updateEnvironmentInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetId returns __updateEnvironmentInput.Id, and is useful for accessing the field via an interface.
 func (v *__updateEnvironmentInput) GetId() string { return v.Id }
@@ -210,19 +624,145 @@ func (v *__updateEnvironmentInput) GetInput() UpdateEnvironmentInput { return v.
 
 // __updateProjectInput is used internally by genqlient
 type __updateProjectInput struct {
-	Organization string             `json:"organization"`
-	Id           string             `json:"id"`
-	Input        UpdateProjectInput `json:"input"`
+	OrganizationId string             `json:"organizationId"`
+	Id             string             `json:"id"`
+	Input          UpdateProjectInput `json:"input"`
 }
 
-// GetOrganization returns __updateProjectInput.Organization, and is useful for accessing the field via an interface.
-func (v *__updateProjectInput) GetOrganization() string { return v.Organization }
+// GetOrganizationId returns __updateProjectInput.OrganizationId, and is useful for accessing the field via an interface.
+func (v *__updateProjectInput) GetOrganizationId() string { return v.OrganizationId }
 
 // GetId returns __updateProjectInput.Id, and is useful for accessing the field via an interface.
 func (v *__updateProjectInput) GetId() string { return v.Id }
 
 // GetInput returns __updateProjectInput.Input, and is useful for accessing the field via an interface.
 func (v *__updateProjectInput) GetInput() UpdateProjectInput { return v.Input }
+
+// addComponentAddComponentComponentPayload includes the requested fields of the GraphQL type ComponentPayload.
+type addComponentAddComponentComponentPayload struct {
+	// Indicates if the mutation completed successfully or not.
+	Successful bool `json:"successful"`
+	// A list of failed validations. May be blank or null if mutation succeeded.
+	Messages []addComponentAddComponentComponentPayloadMessagesValidationMessage `json:"messages"`
+	// The object created/updated/deleted by the mutation. May be null if mutation failed.
+	Result addComponentAddComponentComponentPayloadResultComponent `json:"result"`
+}
+
+// GetSuccessful returns addComponentAddComponentComponentPayload.Successful, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayload) GetSuccessful() bool { return v.Successful }
+
+// GetMessages returns addComponentAddComponentComponentPayload.Messages, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayload) GetMessages() []addComponentAddComponentComponentPayloadMessagesValidationMessage {
+	return v.Messages
+}
+
+// GetResult returns addComponentAddComponentComponentPayload.Result, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayload) GetResult() addComponentAddComponentComponentPayloadResultComponent {
+	return v.Result
+}
+
+// addComponentAddComponentComponentPayloadMessagesValidationMessage includes the requested fields of the GraphQL type ValidationMessage.
+// The GraphQL type's documentation follows.
+//
+// Validation messages are returned when mutation input does not meet the requirements.
+// While client-side validation is highly recommended to provide the best User Experience,
+// All inputs will always be validated server-side.
+//
+// Some examples of validations are:
+//
+// * Username must be at least 10 characters
+// * Email field does not contain an email address
+// * Birth Date is required
+//
+// While GraphQL has support for required values, mutation data fields are always
+// set to optional in our API. This allows 'required field' messages
+// to be returned in the same manner as other validations. The only exceptions
+// are id fields, which may be required to perform updates or deletes.
+type addComponentAddComponentComponentPayloadMessagesValidationMessage struct {
+	// The input field that the error applies to. The field can be used to
+	// identify which field the error message should be displayed next to in the
+	// presentation layer.
+	//
+	// If there are multiple errors to display for a field, multiple validation
+	// messages will be in the result.
+	//
+	// This field may be null in cases where an error cannot be applied to a specific field.
+	Field string `json:"field"`
+	// A friendly error message, appropriate for display to the end user.
+	//
+	// The message is interpolated to include the appropriate variables.
+	//
+	// Example: `Username must be at least 10 characters`
+	//
+	// This message may change without notice, so we do not recommend you match against the text.
+	// Instead, use the *code* field for matching.
+	Message string `json:"message"`
+	// A unique error code for the type of validation used.
+	Code string `json:"code"`
+}
+
+// GetField returns addComponentAddComponentComponentPayloadMessagesValidationMessage.Field, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayloadMessagesValidationMessage) GetField() string {
+	return v.Field
+}
+
+// GetMessage returns addComponentAddComponentComponentPayloadMessagesValidationMessage.Message, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayloadMessagesValidationMessage) GetMessage() string {
+	return v.Message
+}
+
+// GetCode returns addComponentAddComponentComponentPayloadMessagesValidationMessage.Code, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayloadMessagesValidationMessage) GetCode() string {
+	return v.Code
+}
+
+// addComponentAddComponentComponentPayloadResultComponent includes the requested fields of the GraphQL type Component.
+// The GraphQL type's documentation follows.
+//
+// A component with its full details and related resources.
+type addComponentAddComponentComponentPayloadResultComponent struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+	// Component description
+	Description string `json:"description"`
+	// When this component was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this component was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// GetId returns addComponentAddComponentComponentPayloadResultComponent.Id, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayloadResultComponent) GetId() string { return v.Id }
+
+// GetName returns addComponentAddComponentComponentPayloadResultComponent.Name, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayloadResultComponent) GetName() string { return v.Name }
+
+// GetDescription returns addComponentAddComponentComponentPayloadResultComponent.Description, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayloadResultComponent) GetDescription() string {
+	return v.Description
+}
+
+// GetCreatedAt returns addComponentAddComponentComponentPayloadResultComponent.CreatedAt, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayloadResultComponent) GetCreatedAt() time.Time {
+	return v.CreatedAt
+}
+
+// GetUpdatedAt returns addComponentAddComponentComponentPayloadResultComponent.UpdatedAt, and is useful for accessing the field via an interface.
+func (v *addComponentAddComponentComponentPayloadResultComponent) GetUpdatedAt() time.Time {
+	return v.UpdatedAt
+}
+
+// addComponentResponse is returned by addComponent on success.
+type addComponentResponse struct {
+	// Add a component to a project's blueprint.
+	AddComponent addComponentAddComponentComponentPayload `json:"addComponent"`
+}
+
+// GetAddComponent returns addComponentResponse.AddComponent, and is useful for accessing the field via an interface.
+func (v *addComponentResponse) GetAddComponent() addComponentAddComponentComponentPayload {
+	return v.AddComponent
+}
 
 // createEnvironmentCreateEnvironmentEnvironmentPayload includes the requested fields of the GraphQL type EnvironmentPayload.
 type createEnvironmentCreateEnvironmentEnvironmentPayload struct {
@@ -307,14 +847,17 @@ func (v *createEnvironmentCreateEnvironmentEnvironmentPayloadMessagesValidationM
 // createEnvironmentCreateEnvironmentEnvironmentPayloadResultEnvironment includes the requested fields of the GraphQL type Environment.
 // The GraphQL type's documentation follows.
 //
-// An environment within a project (full type with relations).
+// An environment with its full details and related resources.
 type createEnvironmentCreateEnvironmentEnvironmentPayloadResultEnvironment struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Display name
+	Name string `json:"name"`
+	// What this environment is for
+	Description string `json:"description"`
+	// When this environment was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this environment was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetId returns createEnvironmentCreateEnvironmentEnvironmentPayloadResultEnvironment.Id, and is useful for accessing the field via an interface.
@@ -434,14 +977,17 @@ func (v *createProjectCreateProjectProjectPayloadMessagesValidationMessage) GetC
 // createProjectCreateProjectProjectPayloadResultProject includes the requested fields of the GraphQL type Project.
 // The GraphQL type's documentation follows.
 //
-// A container for organizing environments and infrastructure (full type with relations).
+// A project with its full details and related resources.
 type createProjectCreateProjectProjectPayloadResultProject struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Display name
+	Name string `json:"name"`
+	// What this project is for
+	Description string `json:"description"`
+	// When this project was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this project was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetId returns createProjectCreateProjectProjectPayloadResultProject.Id, and is useful for accessing the field via an interface.
@@ -467,7 +1013,7 @@ func (v *createProjectCreateProjectProjectPayloadResultProject) GetUpdatedAt() t
 
 // createProjectResponse is returned by createProject on success.
 type createProjectResponse struct {
-	// Create a new project.
+	// Create a new project in your organization.
 	CreateProject createProjectCreateProjectProjectPayload `json:"createProject"`
 }
 
@@ -559,10 +1105,10 @@ func (v *deleteEnvironmentDeleteEnvironmentEnvironmentPayloadMessagesValidationM
 // deleteEnvironmentDeleteEnvironmentEnvironmentPayloadResultEnvironment includes the requested fields of the GraphQL type Environment.
 // The GraphQL type's documentation follows.
 //
-// An environment within a project (full type with relations).
+// An environment with its full details and related resources.
 type deleteEnvironmentDeleteEnvironmentEnvironmentPayloadResultEnvironment struct {
 	Id string `json:"id"`
-	// Human-readable name
+	// Display name
 	Name string `json:"name"`
 }
 
@@ -578,7 +1124,7 @@ func (v *deleteEnvironmentDeleteEnvironmentEnvironmentPayloadResultEnvironment) 
 
 // deleteEnvironmentResponse is returned by deleteEnvironment on success.
 type deleteEnvironmentResponse struct {
-	// Delete an environment. All packages must be decommissioned before deletion.
+	// Delete an environment. You must decommission all packages first.
 	DeleteEnvironment deleteEnvironmentDeleteEnvironmentEnvironmentPayload `json:"deleteEnvironment"`
 }
 
@@ -668,10 +1214,10 @@ func (v *deleteProjectDeleteProjectProjectPayloadMessagesValidationMessage) GetC
 // deleteProjectDeleteProjectProjectPayloadResultProject includes the requested fields of the GraphQL type Project.
 // The GraphQL type's documentation follows.
 //
-// A container for organizing environments and infrastructure (full type with relations).
+// A project with its full details and related resources.
 type deleteProjectDeleteProjectProjectPayloadResultProject struct {
 	Id string `json:"id"`
-	// Human-readable name
+	// Display name
 	Name string `json:"name"`
 }
 
@@ -683,7 +1229,7 @@ func (v *deleteProjectDeleteProjectProjectPayloadResultProject) GetName() string
 
 // deleteProjectResponse is returned by deleteProject on success.
 type deleteProjectResponse struct {
-	// Delete a project. All environments must be empty before deletion.
+	// Delete a project. You must delete all environments first.
 	DeleteProject deleteProjectDeleteProjectProjectPayload `json:"deleteProject"`
 }
 
@@ -692,18 +1238,153 @@ func (v *deleteProjectResponse) GetDeleteProject() deleteProjectDeleteProjectPro
 	return v.DeleteProject
 }
 
+// getDeploymentDeployment includes the requested fields of the GraphQL type Deployment.
+// The GraphQL type's documentation follows.
+//
+// A deployment with its full details and related resources.
+type getDeploymentDeployment struct {
+	Id string `json:"id"`
+	// Current state of the deployment
+	Status DeploymentStatus `json:"status"`
+	// Type of operation
+	Action DeploymentAction `json:"action"`
+	// Bundle version being deployed
+	Version string `json:"version"`
+	// Deployment message or commit info
+	Message string `json:"message"`
+	// When this deployment started (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this deployment was last updated (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
+	// When the status last changed (UTC)
+	LastTransitionedAt time.Time `json:"lastTransitionedAt"`
+	// How long the deployment has been running, in seconds.
+	ElapsedTime int `json:"elapsedTime"`
+	// Who started this deployment.
+	DeployedBy string `json:"deployedBy"`
+	// The instance being deployed.
+	Instance getDeploymentDeploymentInstance `json:"instance"`
+}
+
+// GetId returns getDeploymentDeployment.Id, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetId() string { return v.Id }
+
+// GetStatus returns getDeploymentDeployment.Status, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetStatus() DeploymentStatus { return v.Status }
+
+// GetAction returns getDeploymentDeployment.Action, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetAction() DeploymentAction { return v.Action }
+
+// GetVersion returns getDeploymentDeployment.Version, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetVersion() string { return v.Version }
+
+// GetMessage returns getDeploymentDeployment.Message, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetMessage() string { return v.Message }
+
+// GetCreatedAt returns getDeploymentDeployment.CreatedAt, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetCreatedAt() time.Time { return v.CreatedAt }
+
+// GetUpdatedAt returns getDeploymentDeployment.UpdatedAt, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetUpdatedAt() time.Time { return v.UpdatedAt }
+
+// GetLastTransitionedAt returns getDeploymentDeployment.LastTransitionedAt, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetLastTransitionedAt() time.Time { return v.LastTransitionedAt }
+
+// GetElapsedTime returns getDeploymentDeployment.ElapsedTime, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetElapsedTime() int { return v.ElapsedTime }
+
+// GetDeployedBy returns getDeploymentDeployment.DeployedBy, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetDeployedBy() string { return v.DeployedBy }
+
+// GetInstance returns getDeploymentDeployment.Instance, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeployment) GetInstance() getDeploymentDeploymentInstance { return v.Instance }
+
+// getDeploymentDeploymentInstance includes the requested fields of the GraphQL type Instance.
+// The GraphQL type's documentation follows.
+//
+// An instance with its full details and related resources.
+type getDeploymentDeploymentInstance struct {
+	Id string `json:"id"`
+	// Instance display name
+	Name string `json:"name"`
+	// The environment this instance is deployed in.
+	Environment getDeploymentDeploymentInstanceEnvironment `json:"environment"`
+}
+
+// GetId returns getDeploymentDeploymentInstance.Id, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeploymentInstance) GetId() string { return v.Id }
+
+// GetName returns getDeploymentDeploymentInstance.Name, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeploymentInstance) GetName() string { return v.Name }
+
+// GetEnvironment returns getDeploymentDeploymentInstance.Environment, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeploymentInstance) GetEnvironment() getDeploymentDeploymentInstanceEnvironment {
+	return v.Environment
+}
+
+// getDeploymentDeploymentInstanceEnvironment includes the requested fields of the GraphQL type Environment.
+// The GraphQL type's documentation follows.
+//
+// An environment with its full details and related resources.
+type getDeploymentDeploymentInstanceEnvironment struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+	// The project containing this environment.
+	Project getDeploymentDeploymentInstanceEnvironmentProject `json:"project"`
+}
+
+// GetId returns getDeploymentDeploymentInstanceEnvironment.Id, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeploymentInstanceEnvironment) GetId() string { return v.Id }
+
+// GetName returns getDeploymentDeploymentInstanceEnvironment.Name, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeploymentInstanceEnvironment) GetName() string { return v.Name }
+
+// GetProject returns getDeploymentDeploymentInstanceEnvironment.Project, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeploymentInstanceEnvironment) GetProject() getDeploymentDeploymentInstanceEnvironmentProject {
+	return v.Project
+}
+
+// getDeploymentDeploymentInstanceEnvironmentProject includes the requested fields of the GraphQL type Project.
+// The GraphQL type's documentation follows.
+//
+// A project with its full details and related resources.
+type getDeploymentDeploymentInstanceEnvironmentProject struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+}
+
+// GetId returns getDeploymentDeploymentInstanceEnvironmentProject.Id, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeploymentInstanceEnvironmentProject) GetId() string { return v.Id }
+
+// GetName returns getDeploymentDeploymentInstanceEnvironmentProject.Name, and is useful for accessing the field via an interface.
+func (v *getDeploymentDeploymentInstanceEnvironmentProject) GetName() string { return v.Name }
+
+// getDeploymentResponse is returned by getDeployment on success.
+type getDeploymentResponse struct {
+	// Get a single deployment by its ID.
+	Deployment getDeploymentDeployment `json:"deployment"`
+}
+
+// GetDeployment returns getDeploymentResponse.Deployment, and is useful for accessing the field via an interface.
+func (v *getDeploymentResponse) GetDeployment() getDeploymentDeployment { return v.Deployment }
+
 // getEnvironmentEnvironment includes the requested fields of the GraphQL type Environment.
 // The GraphQL type's documentation follows.
 //
-// An environment within a project (full type with relations).
+// An environment with its full details and related resources.
 type getEnvironmentEnvironment struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	// The project this environment belongs to.
+	// Display name
+	Name string `json:"name"`
+	// What this environment is for
+	Description string `json:"description"`
+	// When this environment was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this environment was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
+	// The project containing this environment.
 	Project getEnvironmentEnvironmentProject `json:"project"`
 }
 
@@ -728,14 +1409,17 @@ func (v *getEnvironmentEnvironment) GetProject() getEnvironmentEnvironmentProjec
 // getEnvironmentEnvironmentProject includes the requested fields of the GraphQL type Project.
 // The GraphQL type's documentation follows.
 //
-// A container for organizing environments and infrastructure (full type with relations).
+// A project with its full details and related resources.
 type getEnvironmentEnvironmentProject struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Display name
+	Name string `json:"name"`
+	// What this project is for
+	Description string `json:"description"`
+	// When this project was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this project was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetId returns getEnvironmentEnvironmentProject.Id, and is useful for accessing the field via an interface.
@@ -755,25 +1439,150 @@ func (v *getEnvironmentEnvironmentProject) GetUpdatedAt() time.Time { return v.U
 
 // getEnvironmentResponse is returned by getEnvironment on success.
 type getEnvironmentResponse struct {
-	// Get an environment by ID (identifier).
+	// Get a single environment by its ID.
 	Environment getEnvironmentEnvironment `json:"environment"`
 }
 
 // GetEnvironment returns getEnvironmentResponse.Environment, and is useful for accessing the field via an interface.
 func (v *getEnvironmentResponse) GetEnvironment() getEnvironmentEnvironment { return v.Environment }
 
+// getInstanceInstance includes the requested fields of the GraphQL type Instance.
+// The GraphQL type's documentation follows.
+//
+// An instance with its full details and related resources.
+type getInstanceInstance struct {
+	Id string `json:"id"`
+	// Instance display name
+	Name string `json:"name"`
+	// Current state of the instance
+	Status InstanceStatus `json:"status"`
+	// Version constraint (e.g., '~1.0' or '1.2.3')
+	Version string `json:"version"`
+	// Whether to use stable or development releases
+	ReleaseStrategy ReleaseStrategy `json:"releaseStrategy"`
+	// When this instance was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this instance was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
+	// The environment this instance is deployed in.
+	Environment getInstanceInstanceEnvironment `json:"environment"`
+	// The bundle release currently deployed.
+	Release getInstanceInstanceReleaseBundleReleaseLeaf `json:"release"`
+}
+
+// GetId returns getInstanceInstance.Id, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetId() string { return v.Id }
+
+// GetName returns getInstanceInstance.Name, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetName() string { return v.Name }
+
+// GetStatus returns getInstanceInstance.Status, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetStatus() InstanceStatus { return v.Status }
+
+// GetVersion returns getInstanceInstance.Version, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetVersion() string { return v.Version }
+
+// GetReleaseStrategy returns getInstanceInstance.ReleaseStrategy, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetReleaseStrategy() ReleaseStrategy { return v.ReleaseStrategy }
+
+// GetCreatedAt returns getInstanceInstance.CreatedAt, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetCreatedAt() time.Time { return v.CreatedAt }
+
+// GetUpdatedAt returns getInstanceInstance.UpdatedAt, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetUpdatedAt() time.Time { return v.UpdatedAt }
+
+// GetEnvironment returns getInstanceInstance.Environment, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetEnvironment() getInstanceInstanceEnvironment { return v.Environment }
+
+// GetRelease returns getInstanceInstance.Release, and is useful for accessing the field via an interface.
+func (v *getInstanceInstance) GetRelease() getInstanceInstanceReleaseBundleReleaseLeaf {
+	return v.Release
+}
+
+// getInstanceInstanceEnvironment includes the requested fields of the GraphQL type Environment.
+// The GraphQL type's documentation follows.
+//
+// An environment with its full details and related resources.
+type getInstanceInstanceEnvironment struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+	// The project containing this environment.
+	Project getInstanceInstanceEnvironmentProject `json:"project"`
+}
+
+// GetId returns getInstanceInstanceEnvironment.Id, and is useful for accessing the field via an interface.
+func (v *getInstanceInstanceEnvironment) GetId() string { return v.Id }
+
+// GetName returns getInstanceInstanceEnvironment.Name, and is useful for accessing the field via an interface.
+func (v *getInstanceInstanceEnvironment) GetName() string { return v.Name }
+
+// GetProject returns getInstanceInstanceEnvironment.Project, and is useful for accessing the field via an interface.
+func (v *getInstanceInstanceEnvironment) GetProject() getInstanceInstanceEnvironmentProject {
+	return v.Project
+}
+
+// getInstanceInstanceEnvironmentProject includes the requested fields of the GraphQL type Project.
+// The GraphQL type's documentation follows.
+//
+// A project with its full details and related resources.
+type getInstanceInstanceEnvironmentProject struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+}
+
+// GetId returns getInstanceInstanceEnvironmentProject.Id, and is useful for accessing the field via an interface.
+func (v *getInstanceInstanceEnvironmentProject) GetId() string { return v.Id }
+
+// GetName returns getInstanceInstanceEnvironmentProject.Name, and is useful for accessing the field via an interface.
+func (v *getInstanceInstanceEnvironmentProject) GetName() string { return v.Name }
+
+// getInstanceInstanceReleaseBundleReleaseLeaf includes the requested fields of the GraphQL type BundleReleaseLeaf.
+// The GraphQL type's documentation follows.
+//
+// A specific version of a bundle.
+type getInstanceInstanceReleaseBundleReleaseLeaf struct {
+	Id string `json:"id"`
+	// The bundle name
+	Name string `json:"name"`
+	// Semantic version (e.g., '1.2.3')
+	Version string `json:"version"`
+}
+
+// GetId returns getInstanceInstanceReleaseBundleReleaseLeaf.Id, and is useful for accessing the field via an interface.
+func (v *getInstanceInstanceReleaseBundleReleaseLeaf) GetId() string { return v.Id }
+
+// GetName returns getInstanceInstanceReleaseBundleReleaseLeaf.Name, and is useful for accessing the field via an interface.
+func (v *getInstanceInstanceReleaseBundleReleaseLeaf) GetName() string { return v.Name }
+
+// GetVersion returns getInstanceInstanceReleaseBundleReleaseLeaf.Version, and is useful for accessing the field via an interface.
+func (v *getInstanceInstanceReleaseBundleReleaseLeaf) GetVersion() string { return v.Version }
+
+// getInstanceResponse is returned by getInstance on success.
+type getInstanceResponse struct {
+	// Get a single instance by its ID.
+	Instance getInstanceInstance `json:"instance"`
+}
+
+// GetInstance returns getInstanceResponse.Instance, and is useful for accessing the field via an interface.
+func (v *getInstanceResponse) GetInstance() getInstanceInstance { return v.Instance }
+
 // getProjectProject includes the requested fields of the GraphQL type Project.
 // The GraphQL type's documentation follows.
 //
-// A container for organizing environments and infrastructure (full type with relations).
+// A project with its full details and related resources.
 type getProjectProject struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	// Environments in this project (paginated).
+	// Display name
+	Name string `json:"name"`
+	// What this project is for
+	Description string `json:"description"`
+	// When this project was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this project was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
+	// The environments in this project, like staging or production.
 	Environments getProjectProjectEnvironmentsEnvironmentsPage `json:"environments"`
 }
 
@@ -836,14 +1645,17 @@ func (v *getProjectProjectEnvironmentsEnvironmentsPageCursorPaginationCursor) Ge
 // getProjectProjectEnvironmentsEnvironmentsPageItemsEnvironmentLeaf includes the requested fields of the GraphQL type EnvironmentLeaf.
 // The GraphQL type's documentation follows.
 //
-// An environment within a project (leaf type, no has_many relations).
+// An environment returned in list results.
 type getProjectProjectEnvironmentsEnvironmentsPageItemsEnvironmentLeaf struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Display name
+	Name string `json:"name"`
+	// What this environment is for
+	Description string `json:"description"`
+	// When this environment was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this environment was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetId returns getProjectProjectEnvironmentsEnvironmentsPageItemsEnvironmentLeaf.Id, and is useful for accessing the field via an interface.
@@ -873,12 +1685,374 @@ func (v *getProjectProjectEnvironmentsEnvironmentsPageItemsEnvironmentLeaf) GetU
 
 // getProjectResponse is returned by getProject on success.
 type getProjectResponse struct {
-	// Get a project by ID.
+	// Get a single project by its ID.
 	Project getProjectProject `json:"project"`
 }
 
 // GetProject returns getProjectResponse.Project, and is useful for accessing the field via an interface.
 func (v *getProjectResponse) GetProject() getProjectProject { return v.Project }
+
+// linkComponentsLinkComponentsLinkPayload includes the requested fields of the GraphQL type LinkPayload.
+type linkComponentsLinkComponentsLinkPayload struct {
+	// Indicates if the mutation completed successfully or not.
+	Successful bool `json:"successful"`
+	// A list of failed validations. May be blank or null if mutation succeeded.
+	Messages []linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage `json:"messages"`
+	// The object created/updated/deleted by the mutation. May be null if mutation failed.
+	Result linkComponentsLinkComponentsLinkPayloadResultLink `json:"result"`
+}
+
+// GetSuccessful returns linkComponentsLinkComponentsLinkPayload.Successful, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayload) GetSuccessful() bool { return v.Successful }
+
+// GetMessages returns linkComponentsLinkComponentsLinkPayload.Messages, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayload) GetMessages() []linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage {
+	return v.Messages
+}
+
+// GetResult returns linkComponentsLinkComponentsLinkPayload.Result, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayload) GetResult() linkComponentsLinkComponentsLinkPayloadResultLink {
+	return v.Result
+}
+
+// linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage includes the requested fields of the GraphQL type ValidationMessage.
+// The GraphQL type's documentation follows.
+//
+// Validation messages are returned when mutation input does not meet the requirements.
+// While client-side validation is highly recommended to provide the best User Experience,
+// All inputs will always be validated server-side.
+//
+// Some examples of validations are:
+//
+// * Username must be at least 10 characters
+// * Email field does not contain an email address
+// * Birth Date is required
+//
+// While GraphQL has support for required values, mutation data fields are always
+// set to optional in our API. This allows 'required field' messages
+// to be returned in the same manner as other validations. The only exceptions
+// are id fields, which may be required to perform updates or deletes.
+type linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage struct {
+	// The input field that the error applies to. The field can be used to
+	// identify which field the error message should be displayed next to in the
+	// presentation layer.
+	//
+	// If there are multiple errors to display for a field, multiple validation
+	// messages will be in the result.
+	//
+	// This field may be null in cases where an error cannot be applied to a specific field.
+	Field string `json:"field"`
+	// A friendly error message, appropriate for display to the end user.
+	//
+	// The message is interpolated to include the appropriate variables.
+	//
+	// Example: `Username must be at least 10 characters`
+	//
+	// This message may change without notice, so we do not recommend you match against the text.
+	// Instead, use the *code* field for matching.
+	Message string `json:"message"`
+	// A unique error code for the type of validation used.
+	Code string `json:"code"`
+}
+
+// GetField returns linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage.Field, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage) GetField() string {
+	return v.Field
+}
+
+// GetMessage returns linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage.Message, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage) GetMessage() string {
+	return v.Message
+}
+
+// GetCode returns linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage.Code, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadMessagesValidationMessage) GetCode() string {
+	return v.Code
+}
+
+// linkComponentsLinkComponentsLinkPayloadResultLink includes the requested fields of the GraphQL type Link.
+// The GraphQL type's documentation follows.
+//
+// A link with its full details.
+type linkComponentsLinkComponentsLinkPayloadResultLink struct {
+	Id string `json:"id"`
+	// Output field name on the source component
+	FromField string `json:"fromField"`
+	// Input field name on the destination component
+	ToField string `json:"toField"`
+	// The source (from) component.
+	FromComponent linkComponentsLinkComponentsLinkPayloadResultLinkFromComponent `json:"fromComponent"`
+	// The destination (to) component.
+	ToComponent linkComponentsLinkComponentsLinkPayloadResultLinkToComponent `json:"toComponent"`
+}
+
+// GetId returns linkComponentsLinkComponentsLinkPayloadResultLink.Id, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLink) GetId() string { return v.Id }
+
+// GetFromField returns linkComponentsLinkComponentsLinkPayloadResultLink.FromField, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLink) GetFromField() string { return v.FromField }
+
+// GetToField returns linkComponentsLinkComponentsLinkPayloadResultLink.ToField, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLink) GetToField() string { return v.ToField }
+
+// GetFromComponent returns linkComponentsLinkComponentsLinkPayloadResultLink.FromComponent, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLink) GetFromComponent() linkComponentsLinkComponentsLinkPayloadResultLinkFromComponent {
+	return v.FromComponent
+}
+
+// GetToComponent returns linkComponentsLinkComponentsLinkPayloadResultLink.ToComponent, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLink) GetToComponent() linkComponentsLinkComponentsLinkPayloadResultLinkToComponent {
+	return v.ToComponent
+}
+
+// linkComponentsLinkComponentsLinkPayloadResultLinkFromComponent includes the requested fields of the GraphQL type Component.
+// The GraphQL type's documentation follows.
+//
+// A component with its full details and related resources.
+type linkComponentsLinkComponentsLinkPayloadResultLinkFromComponent struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+}
+
+// GetId returns linkComponentsLinkComponentsLinkPayloadResultLinkFromComponent.Id, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLinkFromComponent) GetId() string { return v.Id }
+
+// GetName returns linkComponentsLinkComponentsLinkPayloadResultLinkFromComponent.Name, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLinkFromComponent) GetName() string {
+	return v.Name
+}
+
+// linkComponentsLinkComponentsLinkPayloadResultLinkToComponent includes the requested fields of the GraphQL type Component.
+// The GraphQL type's documentation follows.
+//
+// A component with its full details and related resources.
+type linkComponentsLinkComponentsLinkPayloadResultLinkToComponent struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+}
+
+// GetId returns linkComponentsLinkComponentsLinkPayloadResultLinkToComponent.Id, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLinkToComponent) GetId() string { return v.Id }
+
+// GetName returns linkComponentsLinkComponentsLinkPayloadResultLinkToComponent.Name, and is useful for accessing the field via an interface.
+func (v *linkComponentsLinkComponentsLinkPayloadResultLinkToComponent) GetName() string {
+	return v.Name
+}
+
+// linkComponentsResponse is returned by linkComponents on success.
+type linkComponentsResponse struct {
+	// Create a link between two components.
+	LinkComponents linkComponentsLinkComponentsLinkPayload `json:"linkComponents"`
+}
+
+// GetLinkComponents returns linkComponentsResponse.LinkComponents, and is useful for accessing the field via an interface.
+func (v *linkComponentsResponse) GetLinkComponents() linkComponentsLinkComponentsLinkPayload {
+	return v.LinkComponents
+}
+
+// listDeploymentsDeploymentsDeploymentsPage includes the requested fields of the GraphQL type DeploymentsPage.
+type listDeploymentsDeploymentsDeploymentsPage struct {
+	// Pagination cursors
+	Cursor listDeploymentsDeploymentsDeploymentsPageCursorPaginationCursor `json:"cursor"`
+	// A list of type deployment_leaf.
+	Items []listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf `json:"items"`
+}
+
+// GetCursor returns listDeploymentsDeploymentsDeploymentsPage.Cursor, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPage) GetCursor() listDeploymentsDeploymentsDeploymentsPageCursorPaginationCursor {
+	return v.Cursor
+}
+
+// GetItems returns listDeploymentsDeploymentsDeploymentsPage.Items, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPage) GetItems() []listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf {
+	return v.Items
+}
+
+// listDeploymentsDeploymentsDeploymentsPageCursorPaginationCursor includes the requested fields of the GraphQL type PaginationCursor.
+type listDeploymentsDeploymentsDeploymentsPageCursorPaginationCursor struct {
+	// Cursor to the next page
+	Next string `json:"next"`
+	// Cursor to the previous page
+	Previous string `json:"previous"`
+}
+
+// GetNext returns listDeploymentsDeploymentsDeploymentsPageCursorPaginationCursor.Next, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageCursorPaginationCursor) GetNext() string {
+	return v.Next
+}
+
+// GetPrevious returns listDeploymentsDeploymentsDeploymentsPageCursorPaginationCursor.Previous, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageCursorPaginationCursor) GetPrevious() string {
+	return v.Previous
+}
+
+// listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf includes the requested fields of the GraphQL type DeploymentLeaf.
+// The GraphQL type's documentation follows.
+//
+// A deployment returned in list results.
+type listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf struct {
+	Id string `json:"id"`
+	// Current state of the deployment
+	Status DeploymentStatus `json:"status"`
+	// Type of operation
+	Action DeploymentAction `json:"action"`
+	// Bundle version being deployed
+	Version string `json:"version"`
+	// Deployment message or commit info
+	Message string `json:"message"`
+	// When this deployment started (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this deployment was last updated (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
+	// When the status last changed (UTC)
+	LastTransitionedAt time.Time `json:"lastTransitionedAt"`
+	// How long the deployment has been running, in seconds.
+	ElapsedTime int `json:"elapsedTime"`
+	// Who started this deployment.
+	DeployedBy string `json:"deployedBy"`
+	// The instance being deployed.
+	Instance listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf `json:"instance"`
+}
+
+// GetId returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.Id, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetId() string { return v.Id }
+
+// GetStatus returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.Status, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetStatus() DeploymentStatus {
+	return v.Status
+}
+
+// GetAction returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.Action, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetAction() DeploymentAction {
+	return v.Action
+}
+
+// GetVersion returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.Version, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetVersion() string {
+	return v.Version
+}
+
+// GetMessage returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.Message, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetMessage() string {
+	return v.Message
+}
+
+// GetCreatedAt returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.CreatedAt, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetCreatedAt() time.Time {
+	return v.CreatedAt
+}
+
+// GetUpdatedAt returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.UpdatedAt, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetUpdatedAt() time.Time {
+	return v.UpdatedAt
+}
+
+// GetLastTransitionedAt returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.LastTransitionedAt, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetLastTransitionedAt() time.Time {
+	return v.LastTransitionedAt
+}
+
+// GetElapsedTime returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.ElapsedTime, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetElapsedTime() int {
+	return v.ElapsedTime
+}
+
+// GetDeployedBy returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.DeployedBy, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetDeployedBy() string {
+	return v.DeployedBy
+}
+
+// GetInstance returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf.Instance, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeaf) GetInstance() listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf {
+	return v.Instance
+}
+
+// listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf includes the requested fields of the GraphQL type InstanceLeaf.
+// The GraphQL type's documentation follows.
+//
+// An instance returned in list results.
+type listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf struct {
+	Id string `json:"id"`
+	// Instance display name
+	Name string `json:"name"`
+	// The environment this instance is deployed in.
+	Environment listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf `json:"environment"`
+}
+
+// GetId returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf.Id, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf) GetId() string {
+	return v.Id
+}
+
+// GetName returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf.Name, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf) GetName() string {
+	return v.Name
+}
+
+// GetEnvironment returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf.Environment, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeaf) GetEnvironment() listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf {
+	return v.Environment
+}
+
+// listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf includes the requested fields of the GraphQL type EnvironmentLeaf.
+// The GraphQL type's documentation follows.
+//
+// An environment returned in list results.
+type listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+	// The project containing this environment.
+	Project listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf `json:"project"`
+}
+
+// GetId returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf.Id, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf) GetId() string {
+	return v.Id
+}
+
+// GetName returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf.Name, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf) GetName() string {
+	return v.Name
+}
+
+// GetProject returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf.Project, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeaf) GetProject() listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf {
+	return v.Project
+}
+
+// listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf includes the requested fields of the GraphQL type ProjectLeaf.
+// The GraphQL type's documentation follows.
+//
+// A project returned in list results.
+type listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+}
+
+// GetId returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf.Id, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf) GetId() string {
+	return v.Id
+}
+
+// GetName returns listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf.Name, and is useful for accessing the field via an interface.
+func (v *listDeploymentsDeploymentsDeploymentsPageItemsDeploymentLeafInstanceInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf) GetName() string {
+	return v.Name
+}
+
+// listDeploymentsResponse is returned by listDeployments on success.
+type listDeploymentsResponse struct {
+	// List all deployments you have access to. Returns a paginated list, newest first.
+	Deployments listDeploymentsDeploymentsDeploymentsPage `json:"deployments"`
+}
+
+// GetDeployments returns listDeploymentsResponse.Deployments, and is useful for accessing the field via an interface.
+func (v *listDeploymentsResponse) GetDeployments() listDeploymentsDeploymentsDeploymentsPage {
+	return v.Deployments
+}
 
 // listEnvironmentsEnvironmentsEnvironmentsPage includes the requested fields of the GraphQL type EnvironmentsPage.
 type listEnvironmentsEnvironmentsEnvironmentsPage struct {
@@ -919,15 +2093,18 @@ func (v *listEnvironmentsEnvironmentsEnvironmentsPageCursorPaginationCursor) Get
 // listEnvironmentsEnvironmentsEnvironmentsPageItemsEnvironmentLeaf includes the requested fields of the GraphQL type EnvironmentLeaf.
 // The GraphQL type's documentation follows.
 //
-// An environment within a project (leaf type, no has_many relations).
+// An environment returned in list results.
 type listEnvironmentsEnvironmentsEnvironmentsPageItemsEnvironmentLeaf struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	// The project this environment belongs to.
+	// Display name
+	Name string `json:"name"`
+	// What this environment is for
+	Description string `json:"description"`
+	// When this environment was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this environment was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
+	// The project containing this environment.
 	Project listEnvironmentsEnvironmentsEnvironmentsPageItemsEnvironmentLeafProjectProjectLeaf `json:"project"`
 }
 
@@ -964,14 +2141,17 @@ func (v *listEnvironmentsEnvironmentsEnvironmentsPageItemsEnvironmentLeaf) GetPr
 // listEnvironmentsEnvironmentsEnvironmentsPageItemsEnvironmentLeafProjectProjectLeaf includes the requested fields of the GraphQL type ProjectLeaf.
 // The GraphQL type's documentation follows.
 //
-// A container for organizing environments and infrastructure (leaf type, no has_many relations).
+// A project returned in list results.
 type listEnvironmentsEnvironmentsEnvironmentsPageItemsEnvironmentLeafProjectProjectLeaf struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Display name
+	Name string `json:"name"`
+	// What this project is for
+	Description string `json:"description"`
+	// When this project was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this project was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetId returns listEnvironmentsEnvironmentsEnvironmentsPageItemsEnvironmentLeafProjectProjectLeaf.Id, and is useful for accessing the field via an interface.
@@ -1001,13 +2181,195 @@ func (v *listEnvironmentsEnvironmentsEnvironmentsPageItemsEnvironmentLeafProject
 
 // listEnvironmentsResponse is returned by listEnvironments on success.
 type listEnvironmentsResponse struct {
-	// List environments. Returns all environments visible to the user.
+	// List all environments you have access to. Returns a paginated list sorted by name.
 	Environments listEnvironmentsEnvironmentsEnvironmentsPage `json:"environments"`
 }
 
 // GetEnvironments returns listEnvironmentsResponse.Environments, and is useful for accessing the field via an interface.
 func (v *listEnvironmentsResponse) GetEnvironments() listEnvironmentsEnvironmentsEnvironmentsPage {
 	return v.Environments
+}
+
+// listInstancesInstancesInstancesPage includes the requested fields of the GraphQL type InstancesPage.
+type listInstancesInstancesInstancesPage struct {
+	// Pagination cursors
+	Cursor listInstancesInstancesInstancesPageCursorPaginationCursor `json:"cursor"`
+	// A list of type instance_leaf.
+	Items []listInstancesInstancesInstancesPageItemsInstanceLeaf `json:"items"`
+}
+
+// GetCursor returns listInstancesInstancesInstancesPage.Cursor, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPage) GetCursor() listInstancesInstancesInstancesPageCursorPaginationCursor {
+	return v.Cursor
+}
+
+// GetItems returns listInstancesInstancesInstancesPage.Items, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPage) GetItems() []listInstancesInstancesInstancesPageItemsInstanceLeaf {
+	return v.Items
+}
+
+// listInstancesInstancesInstancesPageCursorPaginationCursor includes the requested fields of the GraphQL type PaginationCursor.
+type listInstancesInstancesInstancesPageCursorPaginationCursor struct {
+	// Cursor to the next page
+	Next string `json:"next"`
+	// Cursor to the previous page
+	Previous string `json:"previous"`
+}
+
+// GetNext returns listInstancesInstancesInstancesPageCursorPaginationCursor.Next, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageCursorPaginationCursor) GetNext() string { return v.Next }
+
+// GetPrevious returns listInstancesInstancesInstancesPageCursorPaginationCursor.Previous, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageCursorPaginationCursor) GetPrevious() string {
+	return v.Previous
+}
+
+// listInstancesInstancesInstancesPageItemsInstanceLeaf includes the requested fields of the GraphQL type InstanceLeaf.
+// The GraphQL type's documentation follows.
+//
+// An instance returned in list results.
+type listInstancesInstancesInstancesPageItemsInstanceLeaf struct {
+	Id string `json:"id"`
+	// Instance display name
+	Name string `json:"name"`
+	// Current state of the instance
+	Status InstanceStatus `json:"status"`
+	// Version constraint (e.g., '~1.0' or '1.2.3')
+	Version string `json:"version"`
+	// Whether to use stable or development releases
+	ReleaseStrategy ReleaseStrategy `json:"releaseStrategy"`
+	// When this instance was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this instance was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
+	// The environment this instance is deployed in.
+	Environment listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf `json:"environment"`
+	// The bundle release currently deployed.
+	Release listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf `json:"release"`
+}
+
+// GetId returns listInstancesInstancesInstancesPageItemsInstanceLeaf.Id, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetId() string { return v.Id }
+
+// GetName returns listInstancesInstancesInstancesPageItemsInstanceLeaf.Name, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetName() string { return v.Name }
+
+// GetStatus returns listInstancesInstancesInstancesPageItemsInstanceLeaf.Status, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetStatus() InstanceStatus {
+	return v.Status
+}
+
+// GetVersion returns listInstancesInstancesInstancesPageItemsInstanceLeaf.Version, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetVersion() string { return v.Version }
+
+// GetReleaseStrategy returns listInstancesInstancesInstancesPageItemsInstanceLeaf.ReleaseStrategy, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetReleaseStrategy() ReleaseStrategy {
+	return v.ReleaseStrategy
+}
+
+// GetCreatedAt returns listInstancesInstancesInstancesPageItemsInstanceLeaf.CreatedAt, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetCreatedAt() time.Time {
+	return v.CreatedAt
+}
+
+// GetUpdatedAt returns listInstancesInstancesInstancesPageItemsInstanceLeaf.UpdatedAt, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetUpdatedAt() time.Time {
+	return v.UpdatedAt
+}
+
+// GetEnvironment returns listInstancesInstancesInstancesPageItemsInstanceLeaf.Environment, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetEnvironment() listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf {
+	return v.Environment
+}
+
+// GetRelease returns listInstancesInstancesInstancesPageItemsInstanceLeaf.Release, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeaf) GetRelease() listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf {
+	return v.Release
+}
+
+// listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf includes the requested fields of the GraphQL type EnvironmentLeaf.
+// The GraphQL type's documentation follows.
+//
+// An environment returned in list results.
+type listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+	// The project containing this environment.
+	Project listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf `json:"project"`
+}
+
+// GetId returns listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf.Id, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf) GetId() string {
+	return v.Id
+}
+
+// GetName returns listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf.Name, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf) GetName() string {
+	return v.Name
+}
+
+// GetProject returns listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf.Project, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeaf) GetProject() listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf {
+	return v.Project
+}
+
+// listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf includes the requested fields of the GraphQL type ProjectLeaf.
+// The GraphQL type's documentation follows.
+//
+// A project returned in list results.
+type listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+}
+
+// GetId returns listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf.Id, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf) GetId() string {
+	return v.Id
+}
+
+// GetName returns listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf.Name, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeafEnvironmentEnvironmentLeafProjectProjectLeaf) GetName() string {
+	return v.Name
+}
+
+// listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf includes the requested fields of the GraphQL type BundleReleaseLeaf.
+// The GraphQL type's documentation follows.
+//
+// A specific version of a bundle.
+type listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf struct {
+	Id string `json:"id"`
+	// The bundle name
+	Name string `json:"name"`
+	// Semantic version (e.g., '1.2.3')
+	Version string `json:"version"`
+}
+
+// GetId returns listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf.Id, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf) GetId() string {
+	return v.Id
+}
+
+// GetName returns listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf.Name, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf) GetName() string {
+	return v.Name
+}
+
+// GetVersion returns listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf.Version, and is useful for accessing the field via an interface.
+func (v *listInstancesInstancesInstancesPageItemsInstanceLeafReleaseBundleReleaseLeaf) GetVersion() string {
+	return v.Version
+}
+
+// listInstancesResponse is returned by listInstances on success.
+type listInstancesResponse struct {
+	// List all instances you have access to. Returns a paginated list sorted by name.
+	Instances listInstancesInstancesInstancesPage `json:"instances"`
+}
+
+// GetInstances returns listInstancesResponse.Instances, and is useful for accessing the field via an interface.
+func (v *listInstancesResponse) GetInstances() listInstancesInstancesInstancesPage {
+	return v.Instances
 }
 
 // listProjectsProjectsProjectsPage includes the requested fields of the GraphQL type ProjectsPage.
@@ -1047,14 +2409,17 @@ func (v *listProjectsProjectsProjectsPageCursorPaginationCursor) GetPrevious() s
 // listProjectsProjectsProjectsPageItemsProjectLeaf includes the requested fields of the GraphQL type ProjectLeaf.
 // The GraphQL type's documentation follows.
 //
-// A container for organizing environments and infrastructure (leaf type, no has_many relations).
+// A project returned in list results.
 type listProjectsProjectsProjectsPageItemsProjectLeaf struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Display name
+	Name string `json:"name"`
+	// What this project is for
+	Description string `json:"description"`
+	// When this project was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this project was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetId returns listProjectsProjectsProjectsPageItemsProjectLeaf.Id, and is useful for accessing the field via an interface.
@@ -1080,12 +2445,219 @@ func (v *listProjectsProjectsProjectsPageItemsProjectLeaf) GetUpdatedAt() time.T
 
 // listProjectsResponse is returned by listProjects on success.
 type listProjectsResponse struct {
-	// List projects. Returns a paginated list sorted by name by default.
+	// List all projects you have access to. Returns a paginated list sorted by name.
 	Projects listProjectsProjectsProjectsPage `json:"projects"`
 }
 
 // GetProjects returns listProjectsResponse.Projects, and is useful for accessing the field via an interface.
 func (v *listProjectsResponse) GetProjects() listProjectsProjectsProjectsPage { return v.Projects }
+
+// removeComponentRemoveComponentComponentPayload includes the requested fields of the GraphQL type ComponentPayload.
+type removeComponentRemoveComponentComponentPayload struct {
+	// Indicates if the mutation completed successfully or not.
+	Successful bool `json:"successful"`
+	// A list of failed validations. May be blank or null if mutation succeeded.
+	Messages []removeComponentRemoveComponentComponentPayloadMessagesValidationMessage `json:"messages"`
+	// The object created/updated/deleted by the mutation. May be null if mutation failed.
+	Result removeComponentRemoveComponentComponentPayloadResultComponent `json:"result"`
+}
+
+// GetSuccessful returns removeComponentRemoveComponentComponentPayload.Successful, and is useful for accessing the field via an interface.
+func (v *removeComponentRemoveComponentComponentPayload) GetSuccessful() bool { return v.Successful }
+
+// GetMessages returns removeComponentRemoveComponentComponentPayload.Messages, and is useful for accessing the field via an interface.
+func (v *removeComponentRemoveComponentComponentPayload) GetMessages() []removeComponentRemoveComponentComponentPayloadMessagesValidationMessage {
+	return v.Messages
+}
+
+// GetResult returns removeComponentRemoveComponentComponentPayload.Result, and is useful for accessing the field via an interface.
+func (v *removeComponentRemoveComponentComponentPayload) GetResult() removeComponentRemoveComponentComponentPayloadResultComponent {
+	return v.Result
+}
+
+// removeComponentRemoveComponentComponentPayloadMessagesValidationMessage includes the requested fields of the GraphQL type ValidationMessage.
+// The GraphQL type's documentation follows.
+//
+// Validation messages are returned when mutation input does not meet the requirements.
+// While client-side validation is highly recommended to provide the best User Experience,
+// All inputs will always be validated server-side.
+//
+// Some examples of validations are:
+//
+// * Username must be at least 10 characters
+// * Email field does not contain an email address
+// * Birth Date is required
+//
+// While GraphQL has support for required values, mutation data fields are always
+// set to optional in our API. This allows 'required field' messages
+// to be returned in the same manner as other validations. The only exceptions
+// are id fields, which may be required to perform updates or deletes.
+type removeComponentRemoveComponentComponentPayloadMessagesValidationMessage struct {
+	// The input field that the error applies to. The field can be used to
+	// identify which field the error message should be displayed next to in the
+	// presentation layer.
+	//
+	// If there are multiple errors to display for a field, multiple validation
+	// messages will be in the result.
+	//
+	// This field may be null in cases where an error cannot be applied to a specific field.
+	Field string `json:"field"`
+	// A friendly error message, appropriate for display to the end user.
+	//
+	// The message is interpolated to include the appropriate variables.
+	//
+	// Example: `Username must be at least 10 characters`
+	//
+	// This message may change without notice, so we do not recommend you match against the text.
+	// Instead, use the *code* field for matching.
+	Message string `json:"message"`
+	// A unique error code for the type of validation used.
+	Code string `json:"code"`
+}
+
+// GetField returns removeComponentRemoveComponentComponentPayloadMessagesValidationMessage.Field, and is useful for accessing the field via an interface.
+func (v *removeComponentRemoveComponentComponentPayloadMessagesValidationMessage) GetField() string {
+	return v.Field
+}
+
+// GetMessage returns removeComponentRemoveComponentComponentPayloadMessagesValidationMessage.Message, and is useful for accessing the field via an interface.
+func (v *removeComponentRemoveComponentComponentPayloadMessagesValidationMessage) GetMessage() string {
+	return v.Message
+}
+
+// GetCode returns removeComponentRemoveComponentComponentPayloadMessagesValidationMessage.Code, and is useful for accessing the field via an interface.
+func (v *removeComponentRemoveComponentComponentPayloadMessagesValidationMessage) GetCode() string {
+	return v.Code
+}
+
+// removeComponentRemoveComponentComponentPayloadResultComponent includes the requested fields of the GraphQL type Component.
+// The GraphQL type's documentation follows.
+//
+// A component with its full details and related resources.
+type removeComponentRemoveComponentComponentPayloadResultComponent struct {
+	Id string `json:"id"`
+	// Display name
+	Name string `json:"name"`
+}
+
+// GetId returns removeComponentRemoveComponentComponentPayloadResultComponent.Id, and is useful for accessing the field via an interface.
+func (v *removeComponentRemoveComponentComponentPayloadResultComponent) GetId() string { return v.Id }
+
+// GetName returns removeComponentRemoveComponentComponentPayloadResultComponent.Name, and is useful for accessing the field via an interface.
+func (v *removeComponentRemoveComponentComponentPayloadResultComponent) GetName() string {
+	return v.Name
+}
+
+// removeComponentResponse is returned by removeComponent on success.
+type removeComponentResponse struct {
+	// Remove a component from a project's blueprint.
+	RemoveComponent removeComponentRemoveComponentComponentPayload `json:"removeComponent"`
+}
+
+// GetRemoveComponent returns removeComponentResponse.RemoveComponent, and is useful for accessing the field via an interface.
+func (v *removeComponentResponse) GetRemoveComponent() removeComponentRemoveComponentComponentPayload {
+	return v.RemoveComponent
+}
+
+// unlinkComponentsResponse is returned by unlinkComponents on success.
+type unlinkComponentsResponse struct {
+	// Remove a link between two components.
+	UnlinkComponents unlinkComponentsUnlinkComponentsLinkPayload `json:"unlinkComponents"`
+}
+
+// GetUnlinkComponents returns unlinkComponentsResponse.UnlinkComponents, and is useful for accessing the field via an interface.
+func (v *unlinkComponentsResponse) GetUnlinkComponents() unlinkComponentsUnlinkComponentsLinkPayload {
+	return v.UnlinkComponents
+}
+
+// unlinkComponentsUnlinkComponentsLinkPayload includes the requested fields of the GraphQL type LinkPayload.
+type unlinkComponentsUnlinkComponentsLinkPayload struct {
+	// Indicates if the mutation completed successfully or not.
+	Successful bool `json:"successful"`
+	// A list of failed validations. May be blank or null if mutation succeeded.
+	Messages []unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage `json:"messages"`
+	// The object created/updated/deleted by the mutation. May be null if mutation failed.
+	Result unlinkComponentsUnlinkComponentsLinkPayloadResultLink `json:"result"`
+}
+
+// GetSuccessful returns unlinkComponentsUnlinkComponentsLinkPayload.Successful, and is useful for accessing the field via an interface.
+func (v *unlinkComponentsUnlinkComponentsLinkPayload) GetSuccessful() bool { return v.Successful }
+
+// GetMessages returns unlinkComponentsUnlinkComponentsLinkPayload.Messages, and is useful for accessing the field via an interface.
+func (v *unlinkComponentsUnlinkComponentsLinkPayload) GetMessages() []unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage {
+	return v.Messages
+}
+
+// GetResult returns unlinkComponentsUnlinkComponentsLinkPayload.Result, and is useful for accessing the field via an interface.
+func (v *unlinkComponentsUnlinkComponentsLinkPayload) GetResult() unlinkComponentsUnlinkComponentsLinkPayloadResultLink {
+	return v.Result
+}
+
+// unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage includes the requested fields of the GraphQL type ValidationMessage.
+// The GraphQL type's documentation follows.
+//
+// Validation messages are returned when mutation input does not meet the requirements.
+// While client-side validation is highly recommended to provide the best User Experience,
+// All inputs will always be validated server-side.
+//
+// Some examples of validations are:
+//
+// * Username must be at least 10 characters
+// * Email field does not contain an email address
+// * Birth Date is required
+//
+// While GraphQL has support for required values, mutation data fields are always
+// set to optional in our API. This allows 'required field' messages
+// to be returned in the same manner as other validations. The only exceptions
+// are id fields, which may be required to perform updates or deletes.
+type unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage struct {
+	// The input field that the error applies to. The field can be used to
+	// identify which field the error message should be displayed next to in the
+	// presentation layer.
+	//
+	// If there are multiple errors to display for a field, multiple validation
+	// messages will be in the result.
+	//
+	// This field may be null in cases where an error cannot be applied to a specific field.
+	Field string `json:"field"`
+	// A friendly error message, appropriate for display to the end user.
+	//
+	// The message is interpolated to include the appropriate variables.
+	//
+	// Example: `Username must be at least 10 characters`
+	//
+	// This message may change without notice, so we do not recommend you match against the text.
+	// Instead, use the *code* field for matching.
+	Message string `json:"message"`
+	// A unique error code for the type of validation used.
+	Code string `json:"code"`
+}
+
+// GetField returns unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage.Field, and is useful for accessing the field via an interface.
+func (v *unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage) GetField() string {
+	return v.Field
+}
+
+// GetMessage returns unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage.Message, and is useful for accessing the field via an interface.
+func (v *unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage) GetMessage() string {
+	return v.Message
+}
+
+// GetCode returns unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage.Code, and is useful for accessing the field via an interface.
+func (v *unlinkComponentsUnlinkComponentsLinkPayloadMessagesValidationMessage) GetCode() string {
+	return v.Code
+}
+
+// unlinkComponentsUnlinkComponentsLinkPayloadResultLink includes the requested fields of the GraphQL type Link.
+// The GraphQL type's documentation follows.
+//
+// A link with its full details.
+type unlinkComponentsUnlinkComponentsLinkPayloadResultLink struct {
+	Id string `json:"id"`
+}
+
+// GetId returns unlinkComponentsUnlinkComponentsLinkPayloadResultLink.Id, and is useful for accessing the field via an interface.
+func (v *unlinkComponentsUnlinkComponentsLinkPayloadResultLink) GetId() string { return v.Id }
 
 // updateEnvironmentResponse is returned by updateEnvironment on success.
 type updateEnvironmentResponse struct {
@@ -1181,14 +2753,17 @@ func (v *updateEnvironmentUpdateEnvironmentEnvironmentPayloadMessagesValidationM
 // updateEnvironmentUpdateEnvironmentEnvironmentPayloadResultEnvironment includes the requested fields of the GraphQL type Environment.
 // The GraphQL type's documentation follows.
 //
-// An environment within a project (full type with relations).
+// An environment with its full details and related resources.
 type updateEnvironmentUpdateEnvironmentEnvironmentPayloadResultEnvironment struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Display name
+	Name string `json:"name"`
+	// What this environment is for
+	Description string `json:"description"`
+	// When this environment was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this environment was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetId returns updateEnvironmentUpdateEnvironmentEnvironmentPayloadResultEnvironment.Id, and is useful for accessing the field via an interface.
@@ -1308,14 +2883,17 @@ func (v *updateProjectUpdateProjectProjectPayloadMessagesValidationMessage) GetC
 // updateProjectUpdateProjectProjectPayloadResultProject includes the requested fields of the GraphQL type Project.
 // The GraphQL type's documentation follows.
 //
-// A container for organizing environments and infrastructure (full type with relations).
+// A project with its full details and related resources.
 type updateProjectUpdateProjectProjectPayloadResultProject struct {
 	Id string `json:"id"`
-	// Human-readable name
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Display name
+	Name string `json:"name"`
+	// What this project is for
+	Description string `json:"description"`
+	// When this project was created (UTC)
+	CreatedAt time.Time `json:"createdAt"`
+	// When this project was last modified (UTC)
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetId returns updateProjectUpdateProjectProjectPayloadResultProject.Id, and is useful for accessing the field via an interface.
@@ -1339,10 +2917,60 @@ func (v *updateProjectUpdateProjectProjectPayloadResultProject) GetUpdatedAt() t
 	return v.UpdatedAt
 }
 
+// The mutation executed by addComponent.
+const addComponent_Operation = `
+mutation addComponent ($organizationId: ID!, $projectId: ID!, $input: AddComponentInput!) {
+	addComponent(organizationId: $organizationId, projectId: $projectId, input: $input) {
+		successful
+		messages {
+			field
+			message
+			code
+		}
+		result {
+			id
+			name
+			description
+			createdAt
+			updatedAt
+		}
+	}
+}
+`
+
+func addComponent(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	organizationId string,
+	projectId string,
+	input AddComponentInput,
+) (data_ *addComponentResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "addComponent",
+		Query:  addComponent_Operation,
+		Variables: &__addComponentInput{
+			OrganizationId: organizationId,
+			ProjectId:      projectId,
+			Input:          input,
+		},
+	}
+
+	data_ = &addComponentResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The mutation executed by createEnvironment.
 const createEnvironment_Operation = `
-mutation createEnvironment ($organization: ID!, $project: ID!, $input: CreateEnvironmentInput!) {
-	createEnvironment(organization: $organization, project: $project, input: $input) {
+mutation createEnvironment ($organizationId: ID!, $projectId: ID!, $input: CreateEnvironmentInput!) {
+	createEnvironment(organizationId: $organizationId, projectId: $projectId, input: $input) {
 		successful
 		messages {
 			field
@@ -1363,17 +2991,17 @@ mutation createEnvironment ($organization: ID!, $project: ID!, $input: CreateEnv
 func createEnvironment(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
-	project string,
+	organizationId string,
+	projectId string,
 	input CreateEnvironmentInput,
 ) (data_ *createEnvironmentResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "createEnvironment",
 		Query:  createEnvironment_Operation,
 		Variables: &__createEnvironmentInput{
-			Organization: organization,
-			Project:      project,
-			Input:        input,
+			OrganizationId: organizationId,
+			ProjectId:      projectId,
+			Input:          input,
 		},
 	}
 
@@ -1391,8 +3019,8 @@ func createEnvironment(
 
 // The mutation executed by createProject.
 const createProject_Operation = `
-mutation createProject ($organization: ID!, $input: CreateProjectInput!) {
-	createProject(organization: $organization, input: $input) {
+mutation createProject ($organizationId: ID!, $input: CreateProjectInput!) {
+	createProject(organizationId: $organizationId, input: $input) {
 		successful
 		messages {
 			field
@@ -1413,15 +3041,15 @@ mutation createProject ($organization: ID!, $input: CreateProjectInput!) {
 func createProject(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	input CreateProjectInput,
 ) (data_ *createProjectResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "createProject",
 		Query:  createProject_Operation,
 		Variables: &__createProjectInput{
-			Organization: organization,
-			Input:        input,
+			OrganizationId: organizationId,
+			Input:          input,
 		},
 	}
 
@@ -1439,8 +3067,8 @@ func createProject(
 
 // The mutation executed by deleteEnvironment.
 const deleteEnvironment_Operation = `
-mutation deleteEnvironment ($organization: ID!, $id: ID!) {
-	deleteEnvironment(organization: $organization, id: $id) {
+mutation deleteEnvironment ($organizationId: ID!, $id: ID!) {
+	deleteEnvironment(organizationId: $organizationId, id: $id) {
 		successful
 		messages {
 			field
@@ -1458,15 +3086,15 @@ mutation deleteEnvironment ($organization: ID!, $id: ID!) {
 func deleteEnvironment(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	id string,
 ) (data_ *deleteEnvironmentResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "deleteEnvironment",
 		Query:  deleteEnvironment_Operation,
 		Variables: &__deleteEnvironmentInput{
-			Organization: organization,
-			Id:           id,
+			OrganizationId: organizationId,
+			Id:             id,
 		},
 	}
 
@@ -1484,8 +3112,8 @@ func deleteEnvironment(
 
 // The mutation executed by deleteProject.
 const deleteProject_Operation = `
-mutation deleteProject ($organization: ID!, $id: ID!) {
-	deleteProject(organization: $organization, id: $id) {
+mutation deleteProject ($organizationId: ID!, $id: ID!) {
+	deleteProject(organizationId: $organizationId, id: $id) {
 		successful
 		messages {
 			field
@@ -1503,15 +3131,15 @@ mutation deleteProject ($organization: ID!, $id: ID!) {
 func deleteProject(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	id string,
 ) (data_ *deleteProjectResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "deleteProject",
 		Query:  deleteProject_Operation,
 		Variables: &__deleteProjectInput{
-			Organization: organization,
-			Id:           id,
+			OrganizationId: organizationId,
+			Id:             id,
 		},
 	}
 
@@ -1527,10 +3155,67 @@ func deleteProject(
 	return data_, err_
 }
 
+// The query executed by getDeployment.
+const getDeployment_Operation = `
+query getDeployment ($organizationId: ID!, $id: ID!) {
+	deployment(organizationId: $organizationId, id: $id) {
+		id
+		status
+		action
+		version
+		message
+		createdAt
+		updatedAt
+		lastTransitionedAt
+		elapsedTime
+		deployedBy
+		instance {
+			id
+			name
+			environment {
+				id
+				name
+				project {
+					id
+					name
+				}
+			}
+		}
+	}
+}
+`
+
+func getDeployment(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	organizationId string,
+	id string,
+) (data_ *getDeploymentResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "getDeployment",
+		Query:  getDeployment_Operation,
+		Variables: &__getDeploymentInput{
+			OrganizationId: organizationId,
+			Id:             id,
+		},
+	}
+
+	data_ = &getDeploymentResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The query executed by getEnvironment.
 const getEnvironment_Operation = `
-query getEnvironment ($organization: ID!, $id: ID!) {
-	environment(organization: $organization, id: $id) {
+query getEnvironment ($organizationId: ID!, $id: ID!) {
+	environment(organizationId: $organizationId, id: $id) {
 		id
 		name
 		description
@@ -1550,15 +3235,15 @@ query getEnvironment ($organization: ID!, $id: ID!) {
 func getEnvironment(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	id string,
 ) (data_ *getEnvironmentResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "getEnvironment",
 		Query:  getEnvironment_Operation,
 		Variables: &__getEnvironmentInput{
-			Organization: organization,
-			Id:           id,
+			OrganizationId: organizationId,
+			Id:             id,
 		},
 	}
 
@@ -1574,10 +3259,65 @@ func getEnvironment(
 	return data_, err_
 }
 
+// The query executed by getInstance.
+const getInstance_Operation = `
+query getInstance ($organizationId: ID!, $id: ID!) {
+	instance(organizationId: $organizationId, id: $id) {
+		id
+		name
+		status
+		version
+		releaseStrategy
+		createdAt
+		updatedAt
+		environment {
+			id
+			name
+			project {
+				id
+				name
+			}
+		}
+		release {
+			id
+			name
+			version
+		}
+	}
+}
+`
+
+func getInstance(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	organizationId string,
+	id string,
+) (data_ *getInstanceResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "getInstance",
+		Query:  getInstance_Operation,
+		Variables: &__getInstanceInput{
+			OrganizationId: organizationId,
+			Id:             id,
+		},
+	}
+
+	data_ = &getInstanceResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The query executed by getProject.
 const getProject_Operation = `
-query getProject ($organization: ID!, $id: ID!) {
-	project(organization: $organization, id: $id) {
+query getProject ($organizationId: ID!, $id: ID!) {
+	project(organizationId: $organizationId, id: $id) {
 		id
 		name
 		description
@@ -1603,15 +3343,15 @@ query getProject ($organization: ID!, $id: ID!) {
 func getProject(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	id string,
 ) (data_ *getProjectResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "getProject",
 		Query:  getProject_Operation,
 		Variables: &__getProjectInput{
-			Organization: organization,
-			Id:           id,
+			OrganizationId: organizationId,
+			Id:             id,
 		},
 	}
 
@@ -1627,10 +3367,131 @@ func getProject(
 	return data_, err_
 }
 
+// The mutation executed by linkComponents.
+const linkComponents_Operation = `
+mutation linkComponents ($organizationId: ID!, $projectId: ID!, $input: LinkComponentsInput!) {
+	linkComponents(organizationId: $organizationId, projectId: $projectId, input: $input) {
+		successful
+		messages {
+			field
+			message
+			code
+		}
+		result {
+			id
+			fromField
+			toField
+			fromComponent {
+				id
+				name
+			}
+			toComponent {
+				id
+				name
+			}
+		}
+	}
+}
+`
+
+func linkComponents(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	organizationId string,
+	projectId string,
+	input LinkComponentsInput,
+) (data_ *linkComponentsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "linkComponents",
+		Query:  linkComponents_Operation,
+		Variables: &__linkComponentsInput{
+			OrganizationId: organizationId,
+			ProjectId:      projectId,
+			Input:          input,
+		},
+	}
+
+	data_ = &linkComponentsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by listDeployments.
+const listDeployments_Operation = `
+query listDeployments ($organizationId: ID!, $filter: DeploymentsFilter, $cursor: Cursor) {
+	deployments(organizationId: $organizationId, filter: $filter, cursor: $cursor) {
+		cursor {
+			next
+			previous
+		}
+		items {
+			id
+			status
+			action
+			version
+			message
+			createdAt
+			updatedAt
+			lastTransitionedAt
+			elapsedTime
+			deployedBy
+			instance {
+				id
+				name
+				environment {
+					id
+					name
+					project {
+						id
+						name
+					}
+				}
+			}
+		}
+	}
+}
+`
+
+func listDeployments(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	organizationId string,
+	filter DeploymentsFilter,
+	cursor scalars.Cursor,
+) (data_ *listDeploymentsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "listDeployments",
+		Query:  listDeployments_Operation,
+		Variables: &__listDeploymentsInput{
+			OrganizationId: organizationId,
+			Filter:         filter,
+			Cursor:         cursor,
+		},
+	}
+
+	data_ = &listDeploymentsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The query executed by listEnvironments.
 const listEnvironments_Operation = `
-query listEnvironments ($organization: ID!, $filter: EnvironmentsFilter, $cursor: Cursor) {
-	environments(organization: $organization, filter: $filter, cursor: $cursor) {
+query listEnvironments ($organizationId: ID!, $filter: EnvironmentsFilter, $cursor: Cursor) {
+	environments(organizationId: $organizationId, filter: $filter, cursor: $cursor) {
 		cursor {
 			next
 			previous
@@ -1656,7 +3517,7 @@ query listEnvironments ($organization: ID!, $filter: EnvironmentsFilter, $cursor
 func listEnvironments(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	filter EnvironmentsFilter,
 	cursor scalars.Cursor,
 ) (data_ *listEnvironmentsResponse, err_ error) {
@@ -1664,9 +3525,9 @@ func listEnvironments(
 		OpName: "listEnvironments",
 		Query:  listEnvironments_Operation,
 		Variables: &__listEnvironmentsInput{
-			Organization: organization,
-			Filter:       filter,
-			Cursor:       cursor,
+			OrganizationId: organizationId,
+			Filter:         filter,
+			Cursor:         cursor,
 		},
 	}
 
@@ -1682,10 +3543,73 @@ func listEnvironments(
 	return data_, err_
 }
 
+// The query executed by listInstances.
+const listInstances_Operation = `
+query listInstances ($organizationId: ID!, $filter: InstancesFilter, $cursor: Cursor) {
+	instances(organizationId: $organizationId, filter: $filter, cursor: $cursor) {
+		cursor {
+			next
+			previous
+		}
+		items {
+			id
+			name
+			status
+			version
+			releaseStrategy
+			createdAt
+			updatedAt
+			environment {
+				id
+				name
+				project {
+					id
+					name
+				}
+			}
+			release {
+				id
+				name
+				version
+			}
+		}
+	}
+}
+`
+
+func listInstances(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	organizationId string,
+	filter InstancesFilter,
+	cursor scalars.Cursor,
+) (data_ *listInstancesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "listInstances",
+		Query:  listInstances_Operation,
+		Variables: &__listInstancesInput{
+			OrganizationId: organizationId,
+			Filter:         filter,
+			Cursor:         cursor,
+		},
+	}
+
+	data_ = &listInstancesResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The query executed by listProjects.
 const listProjects_Operation = `
-query listProjects ($organization: ID!, $cursor: Cursor) {
-	projects(organization: $organization, cursor: $cursor) {
+query listProjects ($organizationId: ID!, $cursor: Cursor) {
+	projects(organizationId: $organizationId, cursor: $cursor) {
 		cursor {
 			next
 			previous
@@ -1704,15 +3628,15 @@ query listProjects ($organization: ID!, $cursor: Cursor) {
 func listProjects(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	cursor scalars.Cursor,
 ) (data_ *listProjectsResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "listProjects",
 		Query:  listProjects_Operation,
 		Variables: &__listProjectsInput{
-			Organization: organization,
-			Cursor:       cursor,
+			OrganizationId: organizationId,
+			Cursor:         cursor,
 		},
 	}
 
@@ -1728,10 +3652,101 @@ func listProjects(
 	return data_, err_
 }
 
+// The mutation executed by removeComponent.
+const removeComponent_Operation = `
+mutation removeComponent ($organizationId: ID!, $projectId: ID!, $id: ID!) {
+	removeComponent(organizationId: $organizationId, projectId: $projectId, id: $id) {
+		successful
+		messages {
+			field
+			message
+			code
+		}
+		result {
+			id
+			name
+		}
+	}
+}
+`
+
+func removeComponent(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	organizationId string,
+	projectId string,
+	id string,
+) (data_ *removeComponentResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "removeComponent",
+		Query:  removeComponent_Operation,
+		Variables: &__removeComponentInput{
+			OrganizationId: organizationId,
+			ProjectId:      projectId,
+			Id:             id,
+		},
+	}
+
+	data_ = &removeComponentResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by unlinkComponents.
+const unlinkComponents_Operation = `
+mutation unlinkComponents ($organizationId: ID!, $id: ID!) {
+	unlinkComponents(organizationId: $organizationId, id: $id) {
+		successful
+		messages {
+			field
+			message
+			code
+		}
+		result {
+			id
+		}
+	}
+}
+`
+
+func unlinkComponents(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	organizationId string,
+	id string,
+) (data_ *unlinkComponentsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "unlinkComponents",
+		Query:  unlinkComponents_Operation,
+		Variables: &__unlinkComponentsInput{
+			OrganizationId: organizationId,
+			Id:             id,
+		},
+	}
+
+	data_ = &unlinkComponentsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The mutation executed by updateEnvironment.
 const updateEnvironment_Operation = `
-mutation updateEnvironment ($organization: ID!, $id: ID!, $input: UpdateEnvironmentInput!) {
-	updateEnvironment(organization: $organization, id: $id, input: $input) {
+mutation updateEnvironment ($organizationId: ID!, $id: ID!, $input: UpdateEnvironmentInput!) {
+	updateEnvironment(organizationId: $organizationId, id: $id, input: $input) {
 		successful
 		messages {
 			field
@@ -1752,7 +3767,7 @@ mutation updateEnvironment ($organization: ID!, $id: ID!, $input: UpdateEnvironm
 func updateEnvironment(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	id string,
 	input UpdateEnvironmentInput,
 ) (data_ *updateEnvironmentResponse, err_ error) {
@@ -1760,9 +3775,9 @@ func updateEnvironment(
 		OpName: "updateEnvironment",
 		Query:  updateEnvironment_Operation,
 		Variables: &__updateEnvironmentInput{
-			Organization: organization,
-			Id:           id,
-			Input:        input,
+			OrganizationId: organizationId,
+			Id:             id,
+			Input:          input,
 		},
 	}
 
@@ -1780,8 +3795,8 @@ func updateEnvironment(
 
 // The mutation executed by updateProject.
 const updateProject_Operation = `
-mutation updateProject ($organization: ID!, $id: ID!, $input: UpdateProjectInput!) {
-	updateProject(organization: $organization, id: $id, input: $input) {
+mutation updateProject ($organizationId: ID!, $id: ID!, $input: UpdateProjectInput!) {
+	updateProject(organizationId: $organizationId, id: $id, input: $input) {
 		successful
 		messages {
 			field
@@ -1802,7 +3817,7 @@ mutation updateProject ($organization: ID!, $id: ID!, $input: UpdateProjectInput
 func updateProject(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	organization string,
+	organizationId string,
 	id string,
 	input UpdateProjectInput,
 ) (data_ *updateProjectResponse, err_ error) {
@@ -1810,9 +3825,9 @@ func updateProject(
 		OpName: "updateProject",
 		Query:  updateProject_Operation,
 		Variables: &__updateProjectInput{
-			Organization: organization,
-			Id:           id,
-			Input:        input,
+			OrganizationId: organizationId,
+			Id:             id,
+			Input:          input,
 		},
 	}
 

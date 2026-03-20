@@ -45,6 +45,20 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.CreateEnvironmentTool, tools.HandleCreateEnvironment(s.client))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateEnvironmentTool, tools.HandleUpdateEnvironment(s.client))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteEnvironmentTool, tools.HandleDeleteEnvironment(s.client))
+
+	// Instances
+	mcpsdk.AddTool(s.mcpServer, tools.ListInstancesTool, tools.HandleListInstances(s.client))
+	mcpsdk.AddTool(s.mcpServer, tools.GetInstanceTool, tools.HandleGetInstance(s.client))
+
+	// Deployments
+	mcpsdk.AddTool(s.mcpServer, tools.ListDeploymentsTool, tools.HandleListDeployments(s.client))
+	mcpsdk.AddTool(s.mcpServer, tools.GetDeploymentTool, tools.HandleGetDeployment(s.client))
+
+	// Blueprint
+	mcpsdk.AddTool(s.mcpServer, tools.AddComponentTool, tools.HandleAddComponent(s.client))
+	mcpsdk.AddTool(s.mcpServer, tools.RemoveComponentTool, tools.HandleRemoveComponent(s.client))
+	mcpsdk.AddTool(s.mcpServer, tools.LinkComponentsTool, tools.HandleLinkComponents(s.client))
+	mcpsdk.AddTool(s.mcpServer, tools.UnlinkComponentsTool, tools.HandleUnlinkComponents(s.client))
 }
 
 // Run starts the MCP server with the specified transport.

@@ -128,7 +128,7 @@ func UpdateEnvironment(ctx context.Context, c *client.Client, id string, input U
 }
 
 // DeleteEnvironment deletes an environment and returns the mutation payload.
-// All packages must be decommissioned before an environment can be deleted.
+// All instances must be decommissioned before an environment can be deleted.
 func DeleteEnvironment(ctx context.Context, c *client.Client, id string) (*EnvironmentPayload, error) {
 	resp, err := deleteEnvironment(ctx, c.GQL, c.Config.OrganizationID, id)
 	if err != nil {
