@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	mdclient "github.com/massdriver-cloud/massdriver-sdk-go/massdriver/client"
-	"github.com/massdriver-cloud/mcp-server/internal/api"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/environments"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -18,14 +17,14 @@ type ListEnvironmentsInput struct {
 	ProjectID string `json:"project_id" jsonschema:"Optional. Filter to environments belonging to this project ID. Leave empty to list all environments across all projects."`
 }
 
-func HandleListEnvironments(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, ListEnvironmentsInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleListEnvironments(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListEnvironmentsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListEnvironmentsInput) (*mcpsdk.CallToolResult, any, error) {
-		filter := api.EnvironmentsFilter{}
+		input := environments.ListInput{}
 		if args.ProjectID != "" {
-			filter.ProjectId = api.IdFilter{Eq: args.ProjectID}
+			input.ProjectID = args.ProjectID
 		}
 
-		envs, err := api.ListEnvironments(ctx, c, filter)
+		envs, err := c.Environments.List(ctx, input)
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_environments: %w", err)
 		}
@@ -47,13 +46,13 @@ type GetEnvironmentInput struct {
 	ID string `json:"id" jsonschema:"The environment identifier, typically in the format 'project-environment' (e.g., 'myproj-staging')."`
 }
 
-func HandleGetEnvironment(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, GetEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleGetEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args GetEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("get_environment: id is required")
 		}
 
-		env, err := api.GetEnvironment(ctx, c, args.ID)
+		env, err := c.Environments.Get(ctx, args.ID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get_environment: %w", err)
 		}
@@ -78,7 +77,7 @@ type CreateEnvironmentInput struct {
 	Description string `json:"description"  jsonschema:"Optional description of the environment."`
 }
 
-func HandleCreateEnvironment(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, CreateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleCreateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CreateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ProjectID == "" {
 			return nil, nil, fmt.Errorf("create_environment: project_id is required")
@@ -90,27 +89,23 @@ func HandleCreateEnvironment(c *mdclient.Client) func(context.Context, *mcpsdk.C
 			return nil, nil, fmt.Errorf("create_environment: name is required")
 		}
 
-		input := api.CreateEnvironmentInput{
-			Id:          args.ID,
+		env, err := c.Environments.Create(ctx, args.ProjectID, environments.CreateInput{
+			ID:          args.ID,
 			Name:        args.Name,
 			Description: args.Description,
-		}
-
-		payload, err := api.CreateEnvironment(ctx, c, args.ProjectID, input)
+		})
 		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("create_environment failed: %s", mutationErr(err))), nil, nil
+			}
 			return nil, nil, fmt.Errorf("create_environment: %w", err)
 		}
 
-		if !payload.Successful {
-			msgs := payloadMessages(payload.Messages)
-			return textResult(fmt.Sprintf("create_environment failed: %s", msgs)), payload, nil
-		}
-
-		result, err := jsonResult(payload.Result)
+		result, err := jsonResult(env)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, payload, nil
+		return result, env, nil
 	}
 }
 
@@ -125,32 +120,28 @@ type UpdateEnvironmentInput struct {
 	Description string `json:"description" jsonschema:"Optional. New description for the environment."`
 }
 
-func HandleUpdateEnvironment(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleUpdateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args UpdateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("update_environment: id is required")
 		}
 
-		input := api.UpdateEnvironmentInput{
+		env, err := c.Environments.Update(ctx, args.ID, environments.UpdateInput{
 			Name:        args.Name,
 			Description: args.Description,
-		}
-
-		payload, err := api.UpdateEnvironment(ctx, c, args.ID, input)
+		})
 		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("update_environment failed: %s", mutationErr(err))), nil, nil
+			}
 			return nil, nil, fmt.Errorf("update_environment: %w", err)
 		}
 
-		if !payload.Successful {
-			msgs := payloadMessages(payload.Messages)
-			return textResult(fmt.Sprintf("update_environment failed: %s", msgs)), payload, nil
-		}
-
-		result, err := jsonResult(payload.Result)
+		result, err := jsonResult(env)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, payload, nil
+		return result, env, nil
 	}
 }
 
@@ -163,22 +154,86 @@ type DeleteEnvironmentInput struct {
 	ID string `json:"id" jsonschema:"The environment identifier to delete (e.g., 'myproj-staging')."`
 }
 
-func HandleDeleteEnvironment(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, DeleteEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleDeleteEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, DeleteEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args DeleteEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("delete_environment: id is required")
 		}
 
-		payload, err := api.DeleteEnvironment(ctx, c, args.ID)
+		_, err := c.Environments.Delete(ctx, args.ID)
 		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("delete_environment failed: %s", mutationErr(err))), nil, nil
+			}
 			return nil, nil, fmt.Errorf("delete_environment: %w", err)
 		}
 
-		if !payload.Successful {
-			msgs := payloadMessages(payload.Messages)
-			return textResult(fmt.Sprintf("delete_environment failed: %s", msgs)), payload, nil
+		return textResult(fmt.Sprintf("environment %q deleted successfully", args.ID)), nil, nil
+	}
+}
+
+var SetEnvironmentDefaultTool = &mcpsdk.Tool{
+	Name:        "set_environment_default",
+	Description: "Sets a default resource binding for an environment.",
+}
+
+type SetEnvironmentDefaultInput struct {
+	EnvironmentID string `json:"environment_id" jsonschema:"The environment ID to set the default on."`
+	ResourceID    string `json:"resource_id"    jsonschema:"The resource ID to bind as the default."`
+}
+
+func HandleSetEnvironmentDefault(c *Client) func(context.Context, *mcpsdk.CallToolRequest, SetEnvironmentDefaultInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args SetEnvironmentDefaultInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.EnvironmentID == "" {
+			return nil, nil, fmt.Errorf("set_environment_default: environment_id is required")
+		}
+		if args.ResourceID == "" {
+			return nil, nil, fmt.Errorf("set_environment_default: resource_id is required")
 		}
 
-		return textResult(fmt.Sprintf("environment %q deleted successfully", args.ID)), payload, nil
+		envDefault, err := c.Environments.SetDefault(ctx, args.EnvironmentID, args.ResourceID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("set_environment_default failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("set_environment_default: %w", err)
+		}
+
+		result, err := jsonResult(envDefault)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, envDefault, nil
+	}
+}
+
+var RemoveEnvironmentDefaultTool = &mcpsdk.Tool{
+	Name:        "remove_environment_default",
+	Description: "Removes a default resource binding from an environment.",
+}
+
+type RemoveEnvironmentDefaultInput struct {
+	ID string `json:"id" jsonschema:"The environment default ID to remove."`
+}
+
+func HandleRemoveEnvironmentDefault(c *Client) func(context.Context, *mcpsdk.CallToolRequest, RemoveEnvironmentDefaultInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args RemoveEnvironmentDefaultInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("remove_environment_default: id is required")
+		}
+
+		envDefault, err := c.Environments.RemoveDefault(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("remove_environment_default failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("remove_environment_default: %w", err)
+		}
+
+		result, err := jsonResult(envDefault)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, envDefault, nil
 	}
 }

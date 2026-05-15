@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	mdclient "github.com/massdriver-cloud/massdriver-sdk-go/massdriver/client"
-	"github.com/massdriver-cloud/mcp-server/internal/api"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/deployments"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -16,33 +15,28 @@ var ListDeploymentsTool = &mcpsdk.Tool{
 
 type ListDeploymentsInput struct {
 	InstanceID string `json:"instance_id" jsonschema:"Optional. Filter to deployments for this instance ID."`
-	Status     string `json:"status"      jsonschema:"Optional. Filter by status: PENDING, RUNNING, COMPLETED, FAILED, or ABORTED."`
+	Status     string `json:"status"      jsonschema:"Optional. Filter by status: PROPOSED, APPROVED, PENDING, RUNNING, COMPLETED, FAILED, REJECTED, or ABORTED."`
 	Action     string `json:"action"      jsonschema:"Optional. Filter by action: PROVISION, DECOMMISSION, or PLAN."`
 }
 
-func HandleListDeployments(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, ListDeploymentsInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleListDeployments(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListDeploymentsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListDeploymentsInput) (*mcpsdk.CallToolResult, any, error) {
-		filter := api.DeploymentsFilter{}
-		if args.InstanceID != "" {
-			filter.InstanceId = api.IdFilter{Eq: args.InstanceID}
-		}
-		if args.Status != "" {
-			filter.Status = api.DeploymentStatusFilter{Eq: api.DeploymentStatus(args.Status)}
-		}
-		if args.Action != "" {
-			filter.Action = api.DeploymentActionFilter{Eq: api.DeploymentAction(args.Action)}
+		input := deployments.ListInput{
+			InstanceID: args.InstanceID,
+			Status:     deployments.Status(args.Status),
+			Action:     deployments.Action(args.Action),
 		}
 
-		deployments, err := api.ListDeployments(ctx, c, filter)
+		list, err := c.Deployments.List(ctx, input)
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_deployments: %w", err)
 		}
 
-		result, err := jsonResult(deployments)
+		result, err := jsonResult(list)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, deployments, nil
+		return result, list, nil
 	}
 }
 
@@ -55,15 +49,217 @@ type GetDeploymentInput struct {
 	ID string `json:"id" jsonschema:"The deployment ID."`
 }
 
-func HandleGetDeployment(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, GetDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleGetDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args GetDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("get_deployment: id is required")
 		}
 
-		deployment, err := api.GetDeployment(ctx, c, args.ID)
+		deployment, err := c.Deployments.Get(ctx, args.ID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get_deployment: %w", err)
+		}
+
+		result, err := jsonResult(deployment)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, deployment, nil
+	}
+}
+
+var GetDeploymentLogsTool = &mcpsdk.Tool{
+	Name:        "get_deployment_logs",
+	Description: "Gets the concatenated logs for a specific deployment.",
+}
+
+type GetDeploymentLogsInput struct {
+	ID string `json:"id" jsonschema:"The deployment ID to fetch logs for."`
+}
+
+func HandleGetDeploymentLogs(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetDeploymentLogsInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args GetDeploymentLogsInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("get_deployment_logs: id is required")
+		}
+
+		logs, err := c.Deployments.GetLogs(ctx, args.ID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get_deployment_logs: %w", err)
+		}
+
+		if logs == "" {
+			return textResult("no logs available"), nil, nil
+		}
+		return textResult(logs), nil, nil
+	}
+}
+
+var CreateDeploymentTool = &mcpsdk.Tool{
+	Name:        "create_deployment",
+	Description: "Creates and starts a deployment for an instance. Use action PROVISION to deploy, DECOMMISSION to tear down, or PLAN to preview changes.",
+}
+
+type CreateDeploymentInput struct {
+	InstanceID string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
+	Action     string         `json:"action"      jsonschema:"Deployment action: PROVISION, DECOMMISSION, or PLAN."`
+	Params     map[string]any `json:"params"      jsonschema:"Optional. Parameter overrides for the deployment."`
+	Message    string         `json:"message"     jsonschema:"Optional. Deployment message or reason."`
+}
+
+func HandleCreateDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CreateDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.InstanceID == "" {
+			return nil, nil, fmt.Errorf("create_deployment: instance_id is required")
+		}
+		if args.Action == "" {
+			return nil, nil, fmt.Errorf("create_deployment: action is required")
+		}
+
+		deployment, err := c.Deployments.Create(ctx, args.InstanceID, deployments.CreateInput{
+			Action:  deployments.Action(args.Action),
+			Params:  args.Params,
+			Message: args.Message,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("create_deployment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("create_deployment: %w", err)
+		}
+
+		result, err := jsonResult(deployment)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, deployment, nil
+	}
+}
+
+var AbortDeploymentTool = &mcpsdk.Tool{
+	Name:        "abort_deployment",
+	Description: "Aborts a running deployment.",
+}
+
+type AbortDeploymentInput struct {
+	ID string `json:"id" jsonschema:"The deployment ID to abort."`
+}
+
+func HandleAbortDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, AbortDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args AbortDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("abort_deployment: id is required")
+		}
+
+		deployment, err := c.Deployments.Abort(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("abort_deployment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("abort_deployment: %w", err)
+		}
+
+		result, err := jsonResult(deployment)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, deployment, nil
+	}
+}
+
+var ProposeDeploymentTool = &mcpsdk.Tool{
+	Name:        "propose_deployment",
+	Description: "Proposes a deployment for approval. Only supports PROVISION and DECOMMISSION actions. The deployment enters PROPOSED status and must be approved or rejected.",
+}
+
+type ProposeDeploymentInput struct {
+	InstanceID string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
+	Action     string         `json:"action"      jsonschema:"Deployment action: PROVISION or DECOMMISSION."`
+	Params     map[string]any `json:"params"      jsonschema:"Optional. Parameter overrides for the deployment."`
+	Message    string         `json:"message"     jsonschema:"Optional. Deployment message or reason."`
+}
+
+func HandleProposeDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ProposeDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ProposeDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.InstanceID == "" {
+			return nil, nil, fmt.Errorf("propose_deployment: instance_id is required")
+		}
+		if args.Action == "" {
+			return nil, nil, fmt.Errorf("propose_deployment: action is required")
+		}
+
+		deployment, err := c.Deployments.Propose(ctx, args.InstanceID, deployments.ProposeInput{
+			Action:  deployments.Action(args.Action),
+			Params:  args.Params,
+			Message: args.Message,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("propose_deployment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("propose_deployment: %w", err)
+		}
+
+		result, err := jsonResult(deployment)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, deployment, nil
+	}
+}
+
+var ApproveDeploymentTool = &mcpsdk.Tool{
+	Name:        "approve_deployment",
+	Description: "Approves a proposed deployment, allowing it to proceed.",
+}
+
+type ApproveDeploymentInput struct {
+	ID string `json:"id" jsonschema:"The deployment ID to approve."`
+}
+
+func HandleApproveDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ApproveDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ApproveDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("approve_deployment: id is required")
+		}
+
+		deployment, err := c.Deployments.Approve(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("approve_deployment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("approve_deployment: %w", err)
+		}
+
+		result, err := jsonResult(deployment)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, deployment, nil
+	}
+}
+
+var RejectDeploymentTool = &mcpsdk.Tool{
+	Name:        "reject_deployment",
+	Description: "Rejects a proposed deployment, preventing it from proceeding.",
+}
+
+type RejectDeploymentInput struct {
+	ID string `json:"id" jsonschema:"The deployment ID to reject."`
+}
+
+func HandleRejectDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, RejectDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args RejectDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("reject_deployment: id is required")
+		}
+
+		deployment, err := c.Deployments.Reject(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("reject_deployment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("reject_deployment: %w", err)
 		}
 
 		result, err := jsonResult(deployment)

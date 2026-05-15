@@ -1,0 +1,141 @@
+package tools
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/ocirepos"
+	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+var ListOciReposTool = &mcpsdk.Tool{
+	Name:        "list_oci_repos",
+	Description: "Lists OCI repositories in the organization. Optionally filter by name or artifact type.",
+}
+
+type ListOciReposInput struct {
+	Search       string `json:"search"         jsonschema:"Optional. Search term to filter repositories."`
+	ArtifactType string `json:"artifact_type"  jsonschema:"Optional. Filter by artifact type (e.g., 'BUNDLE')."`
+}
+
+func HandleListOciRepos(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListOciReposInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListOciReposInput) (*mcpsdk.CallToolResult, any, error) {
+		input := ocirepos.ListInput{
+			Search:       args.Search,
+			ArtifactType: ocirepos.ArtifactType(args.ArtifactType),
+		}
+
+		list, err := c.OciRepos.List(ctx, input)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_oci_repos: %w", err)
+		}
+
+		result, err := jsonResult(list)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, list, nil
+	}
+}
+
+var GetOciRepoTool = &mcpsdk.Tool{
+	Name:        "get_oci_repo",
+	Description: "Gets a specific OCI repository by ID.",
+}
+
+type GetOciRepoInput struct {
+	ID string `json:"id" jsonschema:"The OCI repository ID."`
+}
+
+func HandleGetOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args GetOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("get_oci_repo: id is required")
+		}
+
+		repo, err := c.OciRepos.Get(ctx, args.ID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get_oci_repo: %w", err)
+		}
+
+		result, err := jsonResult(repo)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, repo, nil
+	}
+}
+
+var CreateOciRepoTool = &mcpsdk.Tool{
+	Name:        "create_oci_repo",
+	Description: "Creates a new OCI repository.",
+}
+
+type CreateOciRepoInput struct {
+	ID           string         `json:"id"            jsonschema:"Repository name (immutable after creation)."`
+	ArtifactType string         `json:"artifact_type" jsonschema:"Artifact type (e.g., 'BUNDLE')."`
+	Attributes   map[string]any `json:"attributes"    jsonschema:"Optional. Custom attributes for the repository."`
+}
+
+func HandleCreateOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CreateOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("create_oci_repo: id is required")
+		}
+		if args.ArtifactType == "" {
+			return nil, nil, fmt.Errorf("create_oci_repo: artifact_type is required")
+		}
+
+		repo, err := c.OciRepos.Create(ctx, ocirepos.CreateInput{
+			ID:           args.ID,
+			ArtifactType: ocirepos.ArtifactType(args.ArtifactType),
+			Attributes:   args.Attributes,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("create_oci_repo failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("create_oci_repo: %w", err)
+		}
+
+		result, err := jsonResult(repo)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, repo, nil
+	}
+}
+
+var UpdateOciRepoTool = &mcpsdk.Tool{
+	Name:        "update_oci_repo",
+	Description: "Updates an OCI repository's attributes.",
+}
+
+type UpdateOciRepoInput struct {
+	ID         string         `json:"id"         jsonschema:"The OCI repository ID to update."`
+	Attributes map[string]any `json:"attributes" jsonschema:"New attributes for the repository."`
+}
+
+func HandleUpdateOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args UpdateOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("update_oci_repo: id is required")
+		}
+
+		repo, err := c.OciRepos.Update(ctx, args.ID, ocirepos.UpdateInput{
+			Attributes: args.Attributes,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("update_oci_repo failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("update_oci_repo: %w", err)
+		}
+
+		result, err := jsonResult(repo)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, repo, nil
+	}
+}

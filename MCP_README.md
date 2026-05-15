@@ -1,138 +1,166 @@
-# Massdriver MCP Server
+# Massdriver MCP Server — Tool Reference
 
-A Model Context Protocol (MCP) server for Massdriver, providing AI assistants with the ability to interact with your Massdriver organization's projects, environments, and infrastructure.
+This document describes all 83 tools available in the Massdriver MCP server.
 
-## Features
+## Projects
 
-This MCP server provides the following tools:
+| Tool | Description |
+|------|-------------|
+| `list_projects` | Lists all projects in the organization, including their environments. |
+| `get_project` | Gets a specific project by ID, including its environments. |
+| `create_project` | Creates a new project. Requires `id` and `name`. |
+| `update_project` | Updates a project's name or description. |
+| `delete_project` | Deletes a project. All environments must be empty first. |
 
-### `list_projects`
-Lists all projects in your Massdriver organization, including:
-- Project metadata (ID, name, slug, description)
-- Environment information
-- Cost data (when available)
+## Environments
 
-## Setup
+| Tool | Description |
+|------|-------------|
+| `list_environments` | Lists all environments. Optionally filter by `project_id`. |
+| `get_environment` | Gets an environment by its identifier (e.g., `myproj-staging`). |
+| `create_environment` | Creates an environment within a project. Requires `project_id`, `id`, `name`. |
+| `update_environment` | Updates an environment's name or description. |
+| `delete_environment` | Deletes an environment. All instances must be decommissioned first. |
+| `set_environment_default` | Sets a default resource binding for an environment. |
+| `remove_environment_default` | Removes a default resource binding. |
 
-### Prerequisites
+## Instances
 
-1. **Massdriver Account**: You need access to a Massdriver organization
-2. **API Credentials**: You'll need:
-   - A Massdriver API key
-   - Your organization ID
+| Tool | Description |
+|------|-------------|
+| `list_instances` | Lists instances. Optionally filter by `project_id`, `environment_id`, or `status`. |
+| `get_instance` | Gets an instance by ID, including environment, project, and release info. |
+| `update_instance` | Updates an instance's version pin. |
+| `set_instance_secret` | Sets or updates a secret on an instance. |
+| `remove_instance_secret` | Removes a secret from an instance. |
+| `list_alarms` | Lists alarms. Optionally filter by project, environment, component, instance, or bundle. |
 
-### Environment Variables
+## Deployments
 
-Set the following environment variables:
+| Tool | Description |
+|------|-------------|
+| `list_deployments` | Lists deployments (newest first). Optionally filter by `instance_id`, `status`, or `action`. |
+| `get_deployment` | Gets a deployment by ID. |
+| `get_deployment_logs` | Gets concatenated logs for a deployment. |
+| `create_deployment` | Creates and starts a deployment. Actions: `PROVISION`, `DECOMMISSION`, `PLAN`. |
+| `propose_deployment` | Proposes a deployment for approval (enters `PROPOSED` status). Actions: `PROVISION`, `DECOMMISSION`. |
+| `approve_deployment` | Approves a proposed deployment. |
+| `reject_deployment` | Rejects a proposed deployment. |
+| `abort_deployment` | Aborts a running deployment. |
 
-```bash
-export MASSDRIVER_API_KEY="your-api-key-here"
-export MASSDRIVER_ORGANIZATION_ID="your-org-id-here"
-export MASSDRIVER_URL="https://api.massdriver.cloud"  # Optional, defaults to production
-```
+## Components
 
-### Building
+| Tool | Description |
+|------|-------------|
+| `list_components` | Lists all components in a project's blueprint. Requires `project_id`. |
+| `get_component` | Gets a component by ID. |
+| `add_component` | Adds a component to a project blueprint. Requires `project_id`, `bundle_name`, `id`, `name`. |
+| `update_component` | Updates a component's name or description. |
+| `remove_component` | Removes a component from a blueprint. |
+| `link_components` | Links two components (source output field to destination input field). |
+| `unlink_components` | Removes a link between components. |
 
-```bash
-go build -o mcp-server
-```
+## Bundles
 
-### Usage with MCP Clients
+| Tool | Description |
+|------|-------------|
+| `list_bundles` | Lists bundles in the catalog. Optionally filter by `search`, `oci_repo_name`, `resource_type`, or `dependency_type`. |
+| `get_bundle` | Gets a bundle by ID. Supports version constraints (e.g., `aws-aurora-postgres@~1`). |
 
-#### Claude Desktop
+## Resources
 
-Add to your Claude Desktop configuration file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+| Tool | Description |
+|------|-------------|
+| `list_resources` | Lists resources. Optionally filter by `origin`, `resource_type`, `environment_id`, or `search`. |
+| `get_resource` | Gets a resource by ID (payload values are masked). |
+| `create_resource` | Imports a resource. Requires `resource_type_id` and `name`. |
+| `update_resource` | Updates a resource's name or payload. |
+| `delete_resource` | Deletes an imported resource. |
+| `export_resource` | Exports a resource with unmasked payload (audit-logged). |
+| `create_resource_grant` | Creates a sharing grant on a resource. |
+| `delete_resource_grant` | Deletes a sharing grant. |
 
-```json
-{
-  "mcpServers": {
-    "massdriver": {
-      "command": "/path/to/mcp-server",
-      "env": {
-        "MASSDRIVER_API_KEY": "your-api-key-here",
-        "MASSDRIVER_ORGANIZATION_ID": "your-org-id-here"
-      }
-    }
-  }
-}
-```
+## Organization
 
-#### Other MCP Clients
+| Tool | Description |
+|------|-------------|
+| `get_organization` | Gets the current organization's details. |
+| `create_custom_attribute` | Creates a custom attribute definition. Requires `key` and `scope`. |
+| `update_custom_attribute` | Updates a custom attribute's required flag or allowed values. |
+| `delete_custom_attribute` | Deletes a custom attribute definition. |
 
-The server communicates over stdin/stdout using the standard MCP protocol. You can integrate it with any MCP-compatible client by running:
+## Viewer
 
-```bash
-./mcp-server
-```
+| Tool | Description |
+|------|-------------|
+| `get_viewer` | Gets the currently authenticated identity (user or service account). |
 
-## Available Tools
+## Audit Logs
 
-### list_projects
+| Tool | Description |
+|------|-------------|
+| `get_audit_log` | Gets a specific audit log entry by ID. |
+| `list_audit_logs` | Lists audit log entries. Optionally filter by `type`, `actor_id`, or `actor_search`. |
+| `list_audit_log_event_types` | Lists all available audit log event types. |
 
-**Description**: Retrieve all projects in your Massdriver organization
+## Groups
 
-**Parameters**: None (uses organization from configuration)
+| Tool | Description |
+|------|-------------|
+| `list_groups` | Lists all access control groups. |
+| `get_group` | Gets a group by ID, including members, service accounts, and policies. |
+| `create_group` | Creates a new group. Requires `name`. |
+| `update_group` | Updates a group's name or description. |
+| `delete_group` | Deletes a group. |
+| `add_group_user` | Adds a user to a group by email (sends invitation if not yet a member). |
+| `remove_group_user` | Removes a user from a group. |
+| `revoke_group_invitation` | Revokes a pending group invitation. |
+| `add_group_service_account` | Adds a service account to a group. |
+| `remove_group_service_account` | Removes a service account from a group. |
 
-**Example Usage**:
-```
-Please list all projects in my Massdriver organization
-```
+## Service Accounts
 
-**Output**: Returns structured data containing:
-- Project details (ID, name, slug, description)
-- Associated environments
-- Cost information (daily/monthly averages when available)
+| Tool | Description |
+|------|-------------|
+| `list_service_accounts` | Lists all service accounts. Optionally filter by `search`. |
+| `get_service_account` | Gets a service account by ID. |
+| `create_service_account` | Creates a service account. Response includes the bearer token (shown once). |
+| `update_service_account` | Updates a service account's name or description. |
+| `delete_service_account` | Deletes a service account. |
 
-## Architecture
+## OCI Repos
 
-The MCP server is organized as follows:
+| Tool | Description |
+|------|-------------|
+| `list_oci_repos` | Lists OCI repositories. Optionally filter by `search` or `artifact_type`. |
+| `get_oci_repo` | Gets an OCI repository by ID. |
+| `create_oci_repo` | Creates an OCI repository. Requires `id` and `artifact_type`. |
+| `update_oci_repo` | Updates an OCI repository's attributes. |
 
-- `main.go` - Entry point and server initialization
-- `mcp/server.go` - Main MCP server wrapper
-- `mcp/config.go` - Configuration management
-- `mcp/tools/` - Individual MCP tool implementations
-- `src/api/` - Existing Massdriver GraphQL API integration
+## Policies
 
-## Development
+| Tool | Description |
+|------|-------------|
+| `get_policy` | Gets an ABAC policy by ID. |
+| `create_policy` | Creates a policy on a group. Requires `group_id` and `effect` (`ALLOW`/`DENY`). |
+| `update_policy` | Updates a policy's effect, actions, or conditions. |
+| `delete_policy` | Deletes a policy. |
+| `list_policy_actions` | Lists all available policy actions. |
+| `list_policy_entities` | Lists all entity kinds that policies can target. |
+| `evaluate_policy` | Checks if the caller is allowed to perform an action on an entity. |
+| `evaluate_policies_batch` | Checks multiple action/entity pairs in one request (max 10). |
+| `explain_policy` | Returns a human-readable explanation of a policy configuration. |
+| `get_policy_attribute_schema` | Gets the JSON Schema for valid condition attributes for a policy action. |
+| `list_policy_attribute_values` | Lists permitted values for a custom attribute key at a given scope. |
 
-### Adding New Tools
+## Server
 
-To add a new MCP tool:
+| Tool | Description |
+|------|-------------|
+| `get_server` | Gets server metadata including version and authentication methods. |
 
-1. Create a new file in `mcp/tools/`
-2. Implement the tool following the pattern in `list_projects.go`
-3. Register the tool in `mcp/server.go` in the `registerTools()` method
+## URLs
 
-### Example Tool Structure
-
-```go
-func NewTool(ctx context.Context, req *mcpsdk.CallToolRequest, args ToolInput, mdClient *client.Client) (*mcpsdk.CallToolResult, *ToolOutput, error) {
-    // 1. Validate input
-    // 2. Call Massdriver API via existing api package
-    // 3. Transform data to MCP format
-    // 4. Return structured result
-}
-```
-
-## Troubleshooting
-
-### Authentication Issues
-
-- Verify your `MASSDRIVER_API_KEY` is correct and not expired
-- Ensure `MASSDRIVER_ORGANIZATION_ID` matches your organization
-- Check that you have appropriate permissions in Massdriver
-
-### Connection Issues
-
-- Verify the `MASSDRIVER_URL` (defaults to production if not set)
-- Check your network connectivity to Massdriver's API
-
-### MCP Client Issues
-
-- Ensure the server binary is executable and in the correct path
-- Check that environment variables are properly set in your MCP client configuration
-- Review MCP client logs for detailed error messages
-
-## License
-
-This project follows the same license as the broader Massdriver ecosystem.
+| Tool | Description |
+|------|-------------|
+| `get_url` | Generates a deep link URL into the Massdriver web UI. Supported types: `organization`, `projects`, `project`, `environment`, `instance`, `bundle`, `repo_instances`. |

@@ -5,60 +5,64 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/massdriver-cloud/mcp-server/internal/gqlmock"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/projects"
 )
 
-func toolProjectResp(id, name string) any {
-	return gqlmock.MockQueryResponse("projects", map[string]any{
-		"cursor": map[string]any{"next": ""},
-		"items": []map[string]any{{
-			"id": id, "name": name, "description": "",
-			"createdAt": "2024-01-01T00:00:00Z", "updatedAt": "2024-01-01T00:00:00Z",
-		}},
-	})
+type stubProjects struct {
+	listFn   func(context.Context, projects.ListInput) ([]projects.Project, error)
+	getFn    func(context.Context, string) (*projects.Project, error)
+	createFn func(context.Context, projects.CreateInput) (*projects.Project, error)
+	updateFn func(context.Context, string, projects.UpdateInput) (*projects.Project, error)
+	deleteFn func(context.Context, string) (*projects.Project, error)
 }
 
-func toolProjectMutationResp(op, id, name string) any {
-	return gqlmock.MockMutationResponse(op, map[string]any{
-		"id": id, "name": name, "description": "",
-		"createdAt": "2024-01-01T00:00:00Z", "updatedAt": "2024-01-01T00:00:00Z",
-	})
+func (s *stubProjects) List(ctx context.Context, input projects.ListInput) ([]projects.Project, error) {
+	return s.listFn(ctx, input)
 }
-
-func toolMutationFailureResp(op, field, msg string) any {
-	return map[string]any{
-		"data": map[string]any{
-			op: map[string]any{
-				"successful": false,
-				"result":     map[string]any{"id": "", "name": ""},
-				"messages":   []map[string]any{{"field": field, "message": msg, "code": "invalid"}},
-			},
-		},
-	}
+func (s *stubProjects) Get(ctx context.Context, id string) (*projects.Project, error) {
+	return s.getFn(ctx, id)
+}
+func (s *stubProjects) Create(ctx context.Context, input projects.CreateInput) (*projects.Project, error) {
+	return s.createFn(ctx, input)
+}
+func (s *stubProjects) Update(ctx context.Context, id string, input projects.UpdateInput) (*projects.Project, error) {
+	return s.updateFn(ctx, id, input)
+}
+func (s *stubProjects) Delete(ctx context.Context, id string) (*projects.Project, error) {
+	return s.deleteFn(ctx, id)
 }
 
 func TestHandleListProjects(t *testing.T) {
 	tests := []struct {
-		name      string
-		responses []any
-		wantErr   bool
-		wantText  string
+		name     string
+		stub     *stubProjects
+		wantErr  bool
+		wantText string
 	}{
 		{
-			name:      "returns all projects as JSON",
-			responses: []any{toolProjectResp("myproj", "My Project")},
-			wantText:  "myproj",
+			name: "returns all projects as JSON",
+			stub: &stubProjects{
+				listFn: func(context.Context, projects.ListInput) ([]projects.Project, error) {
+					return []projects.Project{{ID: "myproj", Name: "My Project"}}, nil
+				},
+			},
+			wantText: "myproj",
 		},
 		{
-			name:      "returns null for empty project list",
-			responses: []any{gqlmock.MockQueryResponse("projects", map[string]any{"cursor": map[string]any{"next": ""}, "items": []any{}})},
-			wantText:  "null",
+			name: "returns null for empty list",
+			stub: &stubProjects{
+				listFn: func(context.Context, projects.ListInput) ([]projects.Project, error) {
+					return nil, nil
+				},
+			},
+			wantText: "null",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := HandleListProjects(newToolClient(tt.responses))
+			c := &Client{Projects: tt.stub}
+			handler := HandleListProjects(c)
 			result, _, err := handler(context.Background(), nil, ListProjectsInput{})
 			if tt.wantErr {
 				if err == nil {
@@ -78,32 +82,34 @@ func TestHandleListProjects(t *testing.T) {
 
 func TestHandleGetProject(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     GetProjectInput
-		responses []any
-		wantErr   string
-		wantText  string
+		name     string
+		input    GetProjectInput
+		stub     *stubProjects
+		wantErr  string
+		wantText string
 	}{
 		{
 			name:    "missing id",
 			input:   GetProjectInput{},
+			stub:    &stubProjects{},
 			wantErr: "id is required",
 		},
 		{
 			name:  "returns project JSON",
 			input: GetProjectInput{ID: "myproj"},
-			responses: []any{gqlmock.MockQueryResponse("project", map[string]any{
-				"id": "myproj", "name": "My Project", "description": "",
-				"createdAt": "2024-01-01T00:00:00Z", "updatedAt": "2024-01-01T00:00:00Z",
-				"environments": map[string]any{"cursor": map[string]any{"next": ""}, "items": []any{}},
-			})},
+			stub: &stubProjects{
+				getFn: func(_ context.Context, id string) (*projects.Project, error) {
+					return &projects.Project{ID: id, Name: "My Project"}, nil
+				},
+			},
 			wantText: "myproj",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := HandleGetProject(newToolClient(tt.responses))
+			c := &Client{Projects: tt.stub}
+			handler := HandleGetProject(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
@@ -123,39 +129,50 @@ func TestHandleGetProject(t *testing.T) {
 
 func TestHandleCreateProject(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     CreateProjectInput
-		responses []any
-		wantErr   string
-		wantText  string
+		name     string
+		input    CreateProjectInput
+		stub     *stubProjects
+		wantErr  string
+		wantText string
 	}{
 		{
 			name:    "missing id",
 			input:   CreateProjectInput{Name: "My Project"},
+			stub:    &stubProjects{},
 			wantErr: "id is required",
 		},
 		{
 			name:    "missing name",
 			input:   CreateProjectInput{ID: "myproj"},
+			stub:    &stubProjects{},
 			wantErr: "name is required",
 		},
 		{
-			name:      "success returns project JSON",
-			input:     CreateProjectInput{ID: "myproj", Name: "My Project"},
-			responses: []any{toolProjectMutationResp("createProject", "myproj", "My Project")},
-			wantText:  "myproj",
+			name:  "success returns project JSON",
+			input: CreateProjectInput{ID: "myproj", Name: "My Project"},
+			stub: &stubProjects{
+				createFn: func(_ context.Context, input projects.CreateInput) (*projects.Project, error) {
+					return &projects.Project{ID: input.ID, Name: input.Name}, nil
+				},
+			},
+			wantText: "myproj",
 		},
 		{
-			name:      "payload failure returns error message",
-			input:     CreateProjectInput{ID: "myproj", Name: "My Project"},
-			responses: []any{toolMutationFailureResp("createProject", "id", "already taken")},
-			wantText:  "create_project failed",
+			name:  "mutation failure returns error message",
+			input: CreateProjectInput{ID: "myproj", Name: "My Project"},
+			stub: &stubProjects{
+				createFn: func(context.Context, projects.CreateInput) (*projects.Project, error) {
+					return nil, mutationFailedErr("create project", "id", "already taken")
+				},
+			},
+			wantText: "create_project failed",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := HandleCreateProject(newToolClient(tt.responses))
+			c := &Client{Projects: tt.stub}
+			handler := HandleCreateProject(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
@@ -175,34 +192,44 @@ func TestHandleCreateProject(t *testing.T) {
 
 func TestHandleUpdateProject(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     UpdateProjectInput
-		responses []any
-		wantErr   string
-		wantText  string
+		name     string
+		input    UpdateProjectInput
+		stub     *stubProjects
+		wantErr  string
+		wantText string
 	}{
 		{
 			name:    "missing id",
 			input:   UpdateProjectInput{Name: "New Name"},
+			stub:    &stubProjects{},
 			wantErr: "id is required",
 		},
 		{
-			name:      "success returns updated project JSON",
-			input:     UpdateProjectInput{ID: "myproj", Name: "Updated Name"},
-			responses: []any{toolProjectMutationResp("updateProject", "myproj", "Updated Name")},
-			wantText:  "Updated Name",
+			name:  "success returns updated project JSON",
+			input: UpdateProjectInput{ID: "myproj", Name: "Updated Name"},
+			stub: &stubProjects{
+				updateFn: func(_ context.Context, id string, input projects.UpdateInput) (*projects.Project, error) {
+					return &projects.Project{ID: id, Name: input.Name}, nil
+				},
+			},
+			wantText: "Updated Name",
 		},
 		{
-			name:      "payload failure returns error message",
-			input:     UpdateProjectInput{ID: "myproj"},
-			responses: []any{toolMutationFailureResp("updateProject", "name", "too long")},
-			wantText:  "update_project failed",
+			name:  "mutation failure returns error message",
+			input: UpdateProjectInput{ID: "myproj"},
+			stub: &stubProjects{
+				updateFn: func(context.Context, string, projects.UpdateInput) (*projects.Project, error) {
+					return nil, mutationFailedErr("update project", "name", "too long")
+				},
+			},
+			wantText: "update_project failed",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := HandleUpdateProject(newToolClient(tt.responses))
+			c := &Client{Projects: tt.stub}
+			handler := HandleUpdateProject(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
@@ -222,34 +249,44 @@ func TestHandleUpdateProject(t *testing.T) {
 
 func TestHandleDeleteProject(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     DeleteProjectInput
-		responses []any
-		wantErr   string
-		wantText  string
+		name     string
+		input    DeleteProjectInput
+		stub     *stubProjects
+		wantErr  string
+		wantText string
 	}{
 		{
 			name:    "missing id",
 			input:   DeleteProjectInput{},
+			stub:    &stubProjects{},
 			wantErr: "id is required",
 		},
 		{
-			name:      "success returns confirmation message",
-			input:     DeleteProjectInput{ID: "myproj"},
-			responses: []any{gqlmock.MockMutationResponse("deleteProject", map[string]any{"id": "myproj", "name": "My Project"})},
-			wantText:  "deleted successfully",
+			name:  "success returns confirmation message",
+			input: DeleteProjectInput{ID: "myproj"},
+			stub: &stubProjects{
+				deleteFn: func(_ context.Context, id string) (*projects.Project, error) {
+					return &projects.Project{ID: id}, nil
+				},
+			},
+			wantText: "deleted successfully",
 		},
 		{
-			name:      "payload failure returns error message",
-			input:     DeleteProjectInput{ID: "myproj"},
-			responses: []any{toolMutationFailureResp("deleteProject", "", "not empty")},
-			wantText:  "delete_project failed",
+			name:  "mutation failure returns error message",
+			input: DeleteProjectInput{ID: "myproj"},
+			stub: &stubProjects{
+				deleteFn: func(context.Context, string) (*projects.Project, error) {
+					return nil, mutationFailedErr("delete project", "", "not empty")
+				},
+			},
+			wantText: "delete_project failed",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := HandleDeleteProject(newToolClient(tt.responses))
+			c := &Client{Projects: tt.stub}
+			handler := HandleDeleteProject(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

@@ -4,30 +4,29 @@ import (
 	"context"
 	"fmt"
 
-	mdclient "github.com/massdriver-cloud/massdriver-sdk-go/massdriver/client"
-	"github.com/massdriver-cloud/mcp-server/internal/api"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/projects"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 var ListProjectsTool = &mcpsdk.Tool{
 	Name:        "list_projects",
-	Description: "Lists all projects in the Massdriver organization.",
+	Description: "Lists all projects in the Massdriver organization, including their environments.",
 }
 
 type ListProjectsInput struct{}
 
-func HandleListProjects(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleListProjects(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, _ ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
-		projects, err := api.ListProjects(ctx, c)
+		list, err := c.Projects.List(ctx, projects.ListInput{})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_projects: %w", err)
 		}
 
-		result, err := jsonResult(projects)
+		result, err := jsonResult(list)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, projects, nil
+		return result, list, nil
 	}
 }
 
@@ -40,13 +39,13 @@ type GetProjectInput struct {
 	ID string `json:"id" jsonschema:"The project ID (e.g., 'myproj')."`
 }
 
-func HandleGetProject(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, GetProjectInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleGetProject(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetProjectInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args GetProjectInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("get_project: id is required")
 		}
 
-		project, err := api.GetProject(ctx, c, args.ID)
+		project, err := c.Projects.Get(ctx, args.ID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get_project: %w", err)
 		}
@@ -70,7 +69,7 @@ type CreateProjectInput struct {
 	Description string `json:"description" jsonschema:"Optional description of the project."`
 }
 
-func HandleCreateProject(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, CreateProjectInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleCreateProject(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateProjectInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CreateProjectInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("create_project: id is required")
@@ -79,27 +78,23 @@ func HandleCreateProject(c *mdclient.Client) func(context.Context, *mcpsdk.CallT
 			return nil, nil, fmt.Errorf("create_project: name is required")
 		}
 
-		input := api.CreateProjectInput{
-			Id:          args.ID,
+		project, err := c.Projects.Create(ctx, projects.CreateInput{
+			ID:          args.ID,
 			Name:        args.Name,
 			Description: args.Description,
-		}
-
-		payload, err := api.CreateProject(ctx, c, input)
+		})
 		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("create_project failed: %s", mutationErr(err))), nil, nil
+			}
 			return nil, nil, fmt.Errorf("create_project: %w", err)
 		}
 
-		if !payload.Successful {
-			msgs := payloadMessages(payload.Messages)
-			return textResult(fmt.Sprintf("create_project failed: %s", msgs)), payload, nil
-		}
-
-		result, err := jsonResult(payload.Result)
+		result, err := jsonResult(project)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, payload, nil
+		return result, project, nil
 	}
 }
 
@@ -114,32 +109,28 @@ type UpdateProjectInput struct {
 	Description string `json:"description" jsonschema:"Optional. New description for the project."`
 }
 
-func HandleUpdateProject(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateProjectInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleUpdateProject(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateProjectInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args UpdateProjectInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("update_project: id is required")
 		}
 
-		input := api.UpdateProjectInput{
+		project, err := c.Projects.Update(ctx, args.ID, projects.UpdateInput{
 			Name:        args.Name,
 			Description: args.Description,
-		}
-
-		payload, err := api.UpdateProject(ctx, c, args.ID, input)
+		})
 		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("update_project failed: %s", mutationErr(err))), nil, nil
+			}
 			return nil, nil, fmt.Errorf("update_project: %w", err)
 		}
 
-		if !payload.Successful {
-			msgs := payloadMessages(payload.Messages)
-			return textResult(fmt.Sprintf("update_project failed: %s", msgs)), payload, nil
-		}
-
-		result, err := jsonResult(payload.Result)
+		result, err := jsonResult(project)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, payload, nil
+		return result, project, nil
 	}
 }
 
@@ -152,22 +143,20 @@ type DeleteProjectInput struct {
 	ID string `json:"id" jsonschema:"The project ID to delete."`
 }
 
-func HandleDeleteProject(c *mdclient.Client) func(context.Context, *mcpsdk.CallToolRequest, DeleteProjectInput) (*mcpsdk.CallToolResult, any, error) {
+func HandleDeleteProject(c *Client) func(context.Context, *mcpsdk.CallToolRequest, DeleteProjectInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args DeleteProjectInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.ID == "" {
 			return nil, nil, fmt.Errorf("delete_project: id is required")
 		}
 
-		payload, err := api.DeleteProject(ctx, c, args.ID)
+		_, err := c.Projects.Delete(ctx, args.ID)
 		if err != nil {
+			if isMutationFailed(err) {
+				return textResult(fmt.Sprintf("delete_project failed: %s", mutationErr(err))), nil, nil
+			}
 			return nil, nil, fmt.Errorf("delete_project: %w", err)
 		}
 
-		if !payload.Successful {
-			msgs := payloadMessages(payload.Messages)
-			return textResult(fmt.Sprintf("delete_project failed: %s", msgs)), payload, nil
-		}
-
-		return textResult(fmt.Sprintf("project %q deleted successfully", args.ID)), payload, nil
+		return textResult(fmt.Sprintf("project %q deleted successfully", args.ID)), nil, nil
 	}
 }

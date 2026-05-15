@@ -5,65 +5,71 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/massdriver-cloud/mcp-server/internal/gqlmock"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/instances"
 )
 
-func toolInstanceResp(id string) any {
-	return gqlmock.MockQueryResponse("instances", map[string]any{
-		"cursor": map[string]any{"next": ""},
-		"items": []map[string]any{{
-			"id": id, "name": id, "status": "PROVISIONED",
-			"version": "~1.0", "releaseStrategy": "STABLE",
-			"createdAt": "2024-01-01T00:00:00Z", "updatedAt": "2024-01-01T00:00:00Z",
-			"environment": map[string]any{
-				"id": "proj1-staging", "name": "Staging",
-				"project": map[string]any{"id": "proj1", "name": "Project One"},
-			},
-			"release": map[string]any{"id": "rel1", "name": "aws-rds", "version": "1.2.3"},
-		}},
-	})
+type stubInstances struct {
+	listFn         func(context.Context, instances.ListInput) ([]instances.Instance, error)
+	getFn          func(context.Context, string) (*instances.Instance, error)
+	updateFn       func(context.Context, string, instances.UpdateInput) (*instances.Instance, error)
+	setSecretFn    func(context.Context, string, string, string) (*instances.Secret, error)
+	removeSecretFn func(context.Context, string, string) (*instances.Secret, error)
+	listAlarmsFn   func(context.Context, instances.ListAlarmsInput) ([]instances.Alarm, error)
+}
+
+func (s *stubInstances) List(ctx context.Context, input instances.ListInput) ([]instances.Instance, error) {
+	return s.listFn(ctx, input)
+}
+func (s *stubInstances) Get(ctx context.Context, id string) (*instances.Instance, error) {
+	return s.getFn(ctx, id)
+}
+func (s *stubInstances) Update(ctx context.Context, id string, input instances.UpdateInput) (*instances.Instance, error) {
+	return s.updateFn(ctx, id, input)
+}
+func (s *stubInstances) SetSecret(ctx context.Context, instanceID, name, value string) (*instances.Secret, error) {
+	return s.setSecretFn(ctx, instanceID, name, value)
+}
+func (s *stubInstances) RemoveSecret(ctx context.Context, instanceID, name string) (*instances.Secret, error) {
+	return s.removeSecretFn(ctx, instanceID, name)
+}
+func (s *stubInstances) ListAlarms(ctx context.Context, input instances.ListAlarmsInput) ([]instances.Alarm, error) {
+	return s.listAlarmsFn(ctx, input)
 }
 
 func TestHandleListInstances(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     ListInstancesInput
-		responses []any
-		wantErr   bool
-		wantText  string
+		name     string
+		input    ListInstancesInput
+		stub     *stubInstances
+		wantErr  bool
+		wantText string
 	}{
 		{
-			name:      "returns all instances",
-			input:     ListInstancesInput{},
-			responses: []any{toolInstanceResp("proj1-staging-db")},
-			wantText:  "proj1-staging-db",
-		},
-		{
-			name:      "filters by environment ID",
-			input:     ListInstancesInput{EnvironmentID: "proj1-staging"},
-			responses: []any{toolInstanceResp("proj1-staging-db")},
-			wantText:  "proj1-staging-db",
-		},
-		{
-			name:      "filters by status",
-			input:     ListInstancesInput{Status: "PROVISIONED"},
-			responses: []any{toolInstanceResp("proj1-staging-db")},
-			wantText:  "PROVISIONED",
-		},
-		{
-			name: "returns null for empty instance list",
+			name:  "returns all instances",
 			input: ListInstancesInput{},
-			responses: []any{gqlmock.MockQueryResponse("instances", map[string]any{
-				"cursor": map[string]any{"next": ""},
-				"items":  []any{},
-			})},
+			stub: &stubInstances{
+				listFn: func(_ context.Context, _ instances.ListInput) ([]instances.Instance, error) {
+					return []instances.Instance{{ID: "proj1-staging-db", Name: "Database"}}, nil
+				},
+			},
+			wantText: "proj1-staging-db",
+		},
+		{
+			name:  "returns null for empty list",
+			input: ListInstancesInput{},
+			stub: &stubInstances{
+				listFn: func(context.Context, instances.ListInput) ([]instances.Instance, error) {
+					return nil, nil
+				},
+			},
 			wantText: "null",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := HandleListInstances(newToolClient(tt.responses))
+			c := &Client{Instances: tt.stub}
+			handler := HandleListInstances(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr {
 				if err == nil {
@@ -83,37 +89,270 @@ func TestHandleListInstances(t *testing.T) {
 
 func TestHandleGetInstance(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     GetInstanceInput
-		responses []any
-		wantErr   string
-		wantText  string
+		name     string
+		input    GetInstanceInput
+		stub     *stubInstances
+		wantErr  string
+		wantText string
 	}{
 		{
 			name:    "missing id",
 			input:   GetInstanceInput{},
+			stub:    &stubInstances{},
 			wantErr: "id is required",
 		},
 		{
 			name:  "returns instance JSON",
 			input: GetInstanceInput{ID: "proj1-staging-db"},
-			responses: []any{gqlmock.MockQueryResponse("instance", map[string]any{
-				"id": "proj1-staging-db", "name": "Database", "status": "PROVISIONED",
-				"version": "~1.0", "releaseStrategy": "STABLE",
-				"createdAt": "2024-01-01T00:00:00Z", "updatedAt": "2024-01-01T00:00:00Z",
-				"environment": map[string]any{
-					"id": "proj1-staging", "name": "Staging",
-					"project": map[string]any{"id": "proj1", "name": "Project One"},
+			stub: &stubInstances{
+				getFn: func(_ context.Context, id string) (*instances.Instance, error) {
+					return &instances.Instance{ID: id, Name: "Database"}, nil
 				},
-				"release": map[string]any{"id": "rel1", "name": "aws-rds", "version": "1.2.3"},
-			})},
+			},
 			wantText: "proj1-staging-db",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := HandleGetInstance(newToolClient(tt.responses))
+			c := &Client{Instances: tt.stub}
+			handler := HandleGetInstance(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleSetInstanceSecret(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    SetInstanceSecretInput
+		stub     *stubInstances
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing instance_id",
+			input:   SetInstanceSecretInput{Name: "DB_PASS", Value: "secret"},
+			stub:    &stubInstances{},
+			wantErr: "instance_id is required",
+		},
+		{
+			name:    "missing name",
+			input:   SetInstanceSecretInput{InstanceID: "inst1", Value: "secret"},
+			stub:    &stubInstances{},
+			wantErr: "name is required",
+		},
+		{
+			name:    "missing value",
+			input:   SetInstanceSecretInput{InstanceID: "inst1", Name: "DB_PASS"},
+			stub:    &stubInstances{},
+			wantErr: "value is required",
+		},
+		{
+			name:  "success returns secret JSON",
+			input: SetInstanceSecretInput{InstanceID: "inst1", Name: "DB_PASS", Value: "secret"},
+			stub: &stubInstances{
+				setSecretFn: func(_ context.Context, _, name, _ string) (*instances.Secret, error) {
+					return &instances.Secret{Name: name}, nil
+				},
+			},
+			wantText: "DB_PASS",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: SetInstanceSecretInput{InstanceID: "inst1", Name: "DB_PASS", Value: "secret"},
+			stub: &stubInstances{
+				setSecretFn: func(context.Context, string, string, string) (*instances.Secret, error) {
+					return nil, mutationFailedErr("set secret", "name", "invalid characters")
+				},
+			},
+			wantText: "set_instance_secret failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Instances: tt.stub}
+			handler := HandleSetInstanceSecret(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleRemoveInstanceSecret(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    RemoveInstanceSecretInput
+		stub     *stubInstances
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing instance_id",
+			input:   RemoveInstanceSecretInput{Name: "DB_PASS"},
+			stub:    &stubInstances{},
+			wantErr: "instance_id is required",
+		},
+		{
+			name:    "missing name",
+			input:   RemoveInstanceSecretInput{InstanceID: "inst1"},
+			stub:    &stubInstances{},
+			wantErr: "name is required",
+		},
+		{
+			name:  "success returns secret JSON",
+			input: RemoveInstanceSecretInput{InstanceID: "inst1", Name: "DB_PASS"},
+			stub: &stubInstances{
+				removeSecretFn: func(_ context.Context, _, name string) (*instances.Secret, error) {
+					return &instances.Secret{Name: name}, nil
+				},
+			},
+			wantText: "DB_PASS",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Instances: tt.stub}
+			handler := HandleRemoveInstanceSecret(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleListAlarms(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ListAlarmsInput
+		stub     *stubInstances
+		wantErr  bool
+		wantText string
+	}{
+		{
+			name:  "returns alarms",
+			input: ListAlarmsInput{InstanceID: "inst1"},
+			stub: &stubInstances{
+				listAlarmsFn: func(_ context.Context, _ instances.ListAlarmsInput) ([]instances.Alarm, error) {
+					return []instances.Alarm{{ID: "alarm1", DisplayName: "High CPU"}}, nil
+				},
+			},
+			wantText: "High CPU",
+		},
+		{
+			name:  "returns null for empty list",
+			input: ListAlarmsInput{},
+			stub: &stubInstances{
+				listAlarmsFn: func(context.Context, instances.ListAlarmsInput) ([]instances.Alarm, error) {
+					return nil, nil
+				},
+			},
+			wantText: "null",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Instances: tt.stub}
+			handler := HandleListAlarms(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleUpdateInstance(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    UpdateInstanceInput
+		stub     *stubInstances
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing id",
+			input:   UpdateInstanceInput{Version: "~1.2"},
+			stub:    &stubInstances{},
+			wantErr: "id is required",
+		},
+		{
+			name:    "missing version",
+			input:   UpdateInstanceInput{ID: "inst1"},
+			stub:    &stubInstances{},
+			wantErr: "version is required",
+		},
+		{
+			name:  "success returns instance JSON",
+			input: UpdateInstanceInput{ID: "inst1", Version: "~1.2"},
+			stub: &stubInstances{
+				updateFn: func(_ context.Context, id string, _ instances.UpdateInput) (*instances.Instance, error) {
+					return &instances.Instance{ID: id, Name: "Database"}, nil
+				},
+			},
+			wantText: "inst1",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: UpdateInstanceInput{ID: "inst1", Version: "~1.2"},
+			stub: &stubInstances{
+				updateFn: func(context.Context, string, instances.UpdateInput) (*instances.Instance, error) {
+					return nil, mutationFailedErr("update instance", "version", "invalid constraint")
+				},
+			},
+			wantText: "update_instance failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Instances: tt.stub}
+			handler := HandleUpdateInstance(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

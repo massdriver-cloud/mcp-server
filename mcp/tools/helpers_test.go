@@ -3,15 +3,9 @@ package tools
 import (
 	"testing"
 
-	mdclient "github.com/massdriver-cloud/massdriver-sdk-go/massdriver/client"
-	"github.com/massdriver-cloud/mcp-server/internal/gqlmock"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/gql"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
-
-// newToolClient creates a *client.Client backed by an in-order mock GQL response sequence.
-func newToolClient(responses []any) *mdclient.Client {
-	return &mdclient.Client{GQL: gqlmock.NewClientWithJSONResponseArray(responses)}
-}
 
 // resultText extracts the text from the first TextContent item in a CallToolResult.
 func resultText(t *testing.T, result *mcpsdk.CallToolResult) string {
@@ -27,4 +21,11 @@ func resultText(t *testing.T, result *mcpsdk.CallToolResult) string {
 		t.Fatalf("content[0] is %T, not *mcpsdk.TextContent", result.Content[0])
 	}
 	return tc.Text
+}
+
+// mutationFailedErr creates a *gql.MutationFailedError for testing.
+func mutationFailedErr(op, field, msg string) error {
+	return gql.NewMutationFailedError(op, []gql.MutationMessage{
+		{Code: "invalid", Field: field, Message: msg},
+	})
 }

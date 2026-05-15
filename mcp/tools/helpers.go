@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/massdriver-cloud/mcp-server/internal/api"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/gql"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -27,13 +27,14 @@ func jsonResult(v any) (*mcpsdk.CallToolResult, error) {
 	return textResult(string(data)), nil
 }
 
-// payloadMessages formats mutation validation messages into a human-readable string.
-func payloadMessages(messages []api.ValidationMessage) string {
-	if len(messages) == 0 {
-		return ""
+// mutationErr formats a MutationFailedError into a human-readable string.
+func mutationErr(err error) string {
+	mf, ok := gql.AsMutationFailedError(err)
+	if !ok {
+		return err.Error()
 	}
-	parts := make([]string, 0, len(messages))
-	for _, m := range messages {
+	parts := make([]string, 0, len(mf.Messages))
+	for _, m := range mf.Messages {
 		text := m.Code
 		if m.Message != "" {
 			text = m.Message
@@ -44,4 +45,10 @@ func payloadMessages(messages []api.ValidationMessage) string {
 		parts = append(parts, text)
 	}
 	return strings.Join(parts, "; ")
+}
+
+// isMutationFailed returns true if err is a mutation validation failure.
+func isMutationFailed(err error) bool {
+	_, ok := gql.AsMutationFailedError(err)
+	return ok
 }
