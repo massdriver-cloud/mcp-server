@@ -9,28 +9,37 @@ import (
 )
 
 var ListServiceAccountsTool = &mcpsdk.Tool{
-	Name:        "list_service_accounts",
-	Description: "Lists all service accounts in the organization.",
+	Name: "list_service_accounts",
+	Description: "Lists service accounts in the organization, one page at a time. " +
+		"Returns up to `page_size` accounts (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Use `search` to narrow by name when looking for a specific account. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for every account.",
 }
 
 type ListServiceAccountsInput struct {
-	Search string `json:"search" jsonschema:"Optional. Search term to filter service accounts by name."`
+	Search   string `json:"search,omitempty"    jsonschema:"Optional. Search term to filter service accounts by name."`
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListServiceAccounts(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListServiceAccountsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListServiceAccountsInput) (*mcpsdk.CallToolResult, any, error) {
-		list, err := c.ServiceAccounts.List(ctx, serviceaccounts.ListInput{
-			Search: args.Search,
+		page, err := c.ServiceAccounts.ListPage(ctx, serviceaccounts.ListInput{
+			Search:   args.Search,
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_service_accounts: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 

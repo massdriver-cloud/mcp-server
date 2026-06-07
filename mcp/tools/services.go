@@ -18,6 +18,7 @@ import (
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resources"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/server"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/serviceaccounts"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/urls"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/viewer"
 )
@@ -46,7 +47,7 @@ type Client struct {
 
 // ProjectsService defines the project operations used by tool handlers.
 type ProjectsService interface {
-	List(ctx context.Context, input projects.ListInput) ([]projects.Project, error)
+	ListPage(ctx context.Context, input projects.ListInput) (types.Page[projects.Project], error)
 	Get(ctx context.Context, id string) (*projects.Project, error)
 	Create(ctx context.Context, input projects.CreateInput) (*projects.Project, error)
 	Update(ctx context.Context, id string, input projects.UpdateInput) (*projects.Project, error)
@@ -55,7 +56,7 @@ type ProjectsService interface {
 
 // EnvironmentsService defines the environment operations used by tool handlers.
 type EnvironmentsService interface {
-	List(ctx context.Context, input environments.ListInput) ([]environments.Environment, error)
+	ListPage(ctx context.Context, input environments.ListInput) (types.Page[environments.Environment], error)
 	Get(ctx context.Context, id string) (*environments.Environment, error)
 	Create(ctx context.Context, projectID string, input environments.CreateInput) (*environments.Environment, error)
 	Update(ctx context.Context, id string, input environments.UpdateInput) (*environments.Environment, error)
@@ -66,17 +67,17 @@ type EnvironmentsService interface {
 
 // InstancesService defines the instance operations used by tool handlers.
 type InstancesService interface {
-	List(ctx context.Context, input instances.ListInput) ([]instances.Instance, error)
+	ListPage(ctx context.Context, input instances.ListInput) (types.Page[instances.Instance], error)
 	Get(ctx context.Context, id string) (*instances.Instance, error)
 	Update(ctx context.Context, id string, input instances.UpdateInput) (*instances.Instance, error)
 	SetSecret(ctx context.Context, instanceID, name, value string) (*instances.Secret, error)
 	RemoveSecret(ctx context.Context, instanceID, name string) (*instances.Secret, error)
-	ListAlarms(ctx context.Context, input instances.ListAlarmsInput) ([]instances.Alarm, error)
+	ListAlarmsPage(ctx context.Context, input instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
 }
 
 // DeploymentsService defines the deployment operations used by tool handlers.
 type DeploymentsService interface {
-	List(ctx context.Context, input deployments.ListInput) ([]deployments.Deployment, error)
+	ListPage(ctx context.Context, input deployments.ListInput) (types.Page[deployments.Deployment], error)
 	Get(ctx context.Context, id string) (*deployments.Deployment, error)
 	GetLogs(ctx context.Context, id string) (string, error)
 	Create(ctx context.Context, instanceID string, input deployments.CreateInput) (*deployments.Deployment, error)
@@ -99,13 +100,13 @@ type ComponentsService interface {
 
 // BundlesService defines the bundle operations used by tool handlers.
 type BundlesService interface {
-	List(ctx context.Context, input bundles.ListInput) ([]bundles.Bundle, error)
+	ListPage(ctx context.Context, input bundles.ListInput) (types.Page[bundles.Bundle], error)
 	Get(ctx context.Context, id string) (*bundles.Bundle, error)
 }
 
 // ResourcesService defines the resource operations used by tool handlers.
 type ResourcesService interface {
-	List(ctx context.Context, input resources.ListInput) ([]resources.Resource, error)
+	ListPage(ctx context.Context, input resources.ListInput) (types.Page[resources.Resource], error)
 	Get(ctx context.Context, id string) (*resources.Resource, error)
 	Create(ctx context.Context, resourceTypeID string, input resources.CreateInput) (*resources.Resource, error)
 	Update(ctx context.Context, id string, input resources.UpdateInput) (*resources.Resource, error)
@@ -131,13 +132,13 @@ type ViewerService interface {
 // AuditLogsService defines the audit log operations used by tool handlers.
 type AuditLogsService interface {
 	Get(ctx context.Context, id string) (*auditlogs.AuditLog, error)
-	List(ctx context.Context, input auditlogs.ListInput) ([]auditlogs.AuditLog, error)
+	ListPage(ctx context.Context, input auditlogs.ListInput) (types.Page[auditlogs.AuditLog], error)
 	ListEventTypes(ctx context.Context) ([]string, error)
 }
 
 // GroupsService defines the group operations used by tool handlers.
 type GroupsService interface {
-	List(ctx context.Context, input groups.ListInput) ([]groups.Group, error)
+	ListPage(ctx context.Context, input groups.ListInput) (types.Page[groups.Group], error)
 	Get(ctx context.Context, id string) (*groups.Group, error)
 	Create(ctx context.Context, input groups.CreateInput) (*groups.Group, error)
 	Update(ctx context.Context, id string, input groups.UpdateInput) (*groups.Group, error)
@@ -151,7 +152,7 @@ type GroupsService interface {
 
 // ServiceAccountsService defines the service account operations used by tool handlers.
 type ServiceAccountsService interface {
-	List(ctx context.Context, input serviceaccounts.ListInput) ([]serviceaccounts.ServiceAccount, error)
+	ListPage(ctx context.Context, input serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error)
 	Get(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error)
 	Create(ctx context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.Created, error)
 	Update(ctx context.Context, id string, input serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error)
@@ -160,7 +161,7 @@ type ServiceAccountsService interface {
 
 // OciReposService defines the OCI repository operations used by tool handlers.
 type OciReposService interface {
-	List(ctx context.Context, input ocirepos.ListInput) ([]ocirepos.OciRepo, error)
+	ListPage(ctx context.Context, input ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error)
 	Get(ctx context.Context, id string) (*ocirepos.OciRepo, error)
 	Create(ctx context.Context, input ocirepos.CreateInput) (*ocirepos.OciRepo, error)
 	Update(ctx context.Context, id string, input ocirepos.UpdateInput) (*ocirepos.OciRepo, error)

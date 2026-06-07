@@ -9,31 +9,37 @@ import (
 )
 
 var ListEnvironmentsTool = &mcpsdk.Tool{
-	Name:        "list_environments",
-	Description: "Lists all environments in the organization. Optionally filter by project ID.",
+	Name: "list_environments",
+	Description: "Lists environments in the organization, one page at a time. " +
+		"PREFER filtering by `project_id` — unfiltered lists span every project. " +
+		"Returns up to `page_size` environments (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for every environment.",
 }
 
 type ListEnvironmentsInput struct {
-	ProjectID string `json:"project_id" jsonschema:"Optional. Filter to environments belonging to this project ID. Leave empty to list all environments across all projects."`
+	ProjectID string `json:"project_id,omitempty" jsonschema:"Optional. Filter to environments belonging to this project ID. Leave empty to list across all projects."`
+	Cursor    string `json:"cursor,omitempty"     jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize  int    `json:"page_size,omitempty"  jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListEnvironments(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListEnvironmentsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListEnvironmentsInput) (*mcpsdk.CallToolResult, any, error) {
-		input := environments.ListInput{}
-		if args.ProjectID != "" {
-			input.ProjectID = args.ProjectID
-		}
-
-		envs, err := c.Environments.List(ctx, input)
+		page, err := c.Environments.ListPage(ctx, environments.ListInput{
+			ProjectID: args.ProjectID,
+			PageSize:  clampPageSize(args.PageSize),
+			After:     args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_environments: %w", err)
 		}
 
-		result, err := jsonResult(envs)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, envs, nil
+		return result, out, nil
 	}
 }
 

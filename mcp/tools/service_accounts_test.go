@@ -6,18 +6,19 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/serviceaccounts"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubServiceAccounts struct {
-	listFn   func(context.Context, serviceaccounts.ListInput) ([]serviceaccounts.ServiceAccount, error)
-	getFn    func(context.Context, string) (*serviceaccounts.ServiceAccount, error)
-	createFn func(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.Created, error)
-	updateFn func(context.Context, string, serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error)
-	deleteFn func(context.Context, string) (*serviceaccounts.ServiceAccount, error)
+	listPageFn func(context.Context, serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error)
+	getFn      func(context.Context, string) (*serviceaccounts.ServiceAccount, error)
+	createFn   func(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.Created, error)
+	updateFn   func(context.Context, string, serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error)
+	deleteFn   func(context.Context, string) (*serviceaccounts.ServiceAccount, error)
 }
 
-func (s *stubServiceAccounts) List(ctx context.Context, input serviceaccounts.ListInput) ([]serviceaccounts.ServiceAccount, error) {
-	return s.listFn(ctx, input)
+func (s *stubServiceAccounts) ListPage(ctx context.Context, input serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubServiceAccounts) Get(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error) {
 	return s.getFn(ctx, id)
@@ -41,24 +42,26 @@ func TestHandleListServiceAccounts(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:  "returns service accounts",
+			name:  "returns service accounts page",
 			input: ListServiceAccountsInput{},
 			stub: &stubServiceAccounts{
-				listFn: func(_ context.Context, _ serviceaccounts.ListInput) ([]serviceaccounts.ServiceAccount, error) {
-					return []serviceaccounts.ServiceAccount{{ID: "sa1", Name: "CI Bot"}}, nil
+				listPageFn: func(_ context.Context, _ serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error) {
+					return types.Page[serviceaccounts.ServiceAccount]{
+						Items: []serviceaccounts.ServiceAccount{{ID: "sa1", Name: "CI Bot"}},
+					}, nil
 				},
 			},
 			wantText: "CI Bot",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty page surfaces has_more false",
 			input: ListServiceAccountsInput{},
 			stub: &stubServiceAccounts{
-				listFn: func(context.Context, serviceaccounts.ListInput) ([]serviceaccounts.ServiceAccount, error) {
-					return nil, nil
+				listPageFn: func(context.Context, serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error) {
+					return types.Page[serviceaccounts.ServiceAccount]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

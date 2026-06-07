@@ -9,24 +9,34 @@ import (
 )
 
 var ListGroupsTool = &mcpsdk.Tool{
-	Name:        "list_groups",
-	Description: "Lists all access control groups in the organization.",
+	Name: "list_groups",
+	Description: "Lists access control groups in the organization, one page at a time. " +
+		"Returns up to `page_size` groups (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Stop once you have what you need — do NOT paginate to exhaustion unless the user explicitly asked for every group.",
 }
 
-type ListGroupsInput struct{}
+type ListGroupsInput struct {
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
 
 func HandleListGroups(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListGroupsInput) (*mcpsdk.CallToolResult, any, error) {
-	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, _ ListGroupsInput) (*mcpsdk.CallToolResult, any, error) {
-		list, err := c.Groups.List(ctx, groups.ListInput{})
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListGroupsInput) (*mcpsdk.CallToolResult, any, error) {
+		page, err := c.Groups.ListPage(ctx, groups.ListInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_groups: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 

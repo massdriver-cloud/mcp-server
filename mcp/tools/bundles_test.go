@@ -6,15 +6,16 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/bundles"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubBundles struct {
-	listFn func(context.Context, bundles.ListInput) ([]bundles.Bundle, error)
-	getFn  func(context.Context, string) (*bundles.Bundle, error)
+	listPageFn func(context.Context, bundles.ListInput) (types.Page[bundles.Bundle], error)
+	getFn      func(context.Context, string) (*bundles.Bundle, error)
 }
 
-func (s *stubBundles) List(ctx context.Context, input bundles.ListInput) ([]bundles.Bundle, error) {
-	return s.listFn(ctx, input)
+func (s *stubBundles) ListPage(ctx context.Context, input bundles.ListInput) (types.Page[bundles.Bundle], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubBundles) Get(ctx context.Context, id string) (*bundles.Bundle, error) {
 	return s.getFn(ctx, id)
@@ -29,24 +30,26 @@ func TestHandleListBundles(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:  "returns bundles",
+			name:  "returns bundle page",
 			input: ListBundlesInput{},
 			stub: &stubBundles{
-				listFn: func(_ context.Context, _ bundles.ListInput) ([]bundles.Bundle, error) {
-					return []bundles.Bundle{{ID: "aws-aurora-postgres", Name: "Aurora PostgreSQL"}}, nil
+				listPageFn: func(_ context.Context, _ bundles.ListInput) (types.Page[bundles.Bundle], error) {
+					return types.Page[bundles.Bundle]{
+						Items: []bundles.Bundle{{ID: "aws-aurora-postgres", Name: "Aurora PostgreSQL"}},
+					}, nil
 				},
 			},
 			wantText: "aws-aurora-postgres",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty page surfaces has_more false",
 			input: ListBundlesInput{},
 			stub: &stubBundles{
-				listFn: func(context.Context, bundles.ListInput) ([]bundles.Bundle, error) {
-					return nil, nil
+				listPageFn: func(context.Context, bundles.ListInput) (types.Page[bundles.Bundle], error) {
+					return types.Page[bundles.Bundle]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

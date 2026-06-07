@@ -6,21 +6,22 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/deployments"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubDeployments struct {
-	listFn    func(context.Context, deployments.ListInput) ([]deployments.Deployment, error)
-	getFn     func(context.Context, string) (*deployments.Deployment, error)
-	getLogsFn func(context.Context, string) (string, error)
-	createFn  func(context.Context, string, deployments.CreateInput) (*deployments.Deployment, error)
-	proposeFn func(context.Context, string, deployments.ProposeInput) (*deployments.Deployment, error)
-	approveFn func(context.Context, string) (*deployments.Deployment, error)
-	rejectFn  func(context.Context, string) (*deployments.Deployment, error)
-	abortFn   func(context.Context, string) (*deployments.Deployment, error)
+	listPageFn func(context.Context, deployments.ListInput) (types.Page[deployments.Deployment], error)
+	getFn      func(context.Context, string) (*deployments.Deployment, error)
+	getLogsFn  func(context.Context, string) (string, error)
+	createFn   func(context.Context, string, deployments.CreateInput) (*deployments.Deployment, error)
+	proposeFn  func(context.Context, string, deployments.ProposeInput) (*deployments.Deployment, error)
+	approveFn  func(context.Context, string) (*deployments.Deployment, error)
+	rejectFn   func(context.Context, string) (*deployments.Deployment, error)
+	abortFn    func(context.Context, string) (*deployments.Deployment, error)
 }
 
-func (s *stubDeployments) List(ctx context.Context, input deployments.ListInput) ([]deployments.Deployment, error) {
-	return s.listFn(ctx, input)
+func (s *stubDeployments) ListPage(ctx context.Context, input deployments.ListInput) (types.Page[deployments.Deployment], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubDeployments) Get(ctx context.Context, id string) (*deployments.Deployment, error) {
 	return s.getFn(ctx, id)
@@ -53,24 +54,26 @@ func TestHandleListDeployments(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:  "returns all deployments",
+			name:  "returns page of deployments",
 			input: ListDeploymentsInput{},
 			stub: &stubDeployments{
-				listFn: func(_ context.Context, _ deployments.ListInput) ([]deployments.Deployment, error) {
-					return []deployments.Deployment{{ID: "dep1", Status: "COMPLETED"}}, nil
+				listPageFn: func(_ context.Context, _ deployments.ListInput) (types.Page[deployments.Deployment], error) {
+					return types.Page[deployments.Deployment]{
+						Items: []deployments.Deployment{{ID: "dep1", Status: "COMPLETED"}},
+					}, nil
 				},
 			},
 			wantText: "dep1",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty page surfaces has_more false",
 			input: ListDeploymentsInput{},
 			stub: &stubDeployments{
-				listFn: func(context.Context, deployments.ListInput) ([]deployments.Deployment, error) {
-					return nil, nil
+				listPageFn: func(context.Context, deployments.ListInput) (types.Page[deployments.Deployment], error) {
+					return types.Page[deployments.Deployment]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

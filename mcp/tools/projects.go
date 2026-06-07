@@ -9,24 +9,34 @@ import (
 )
 
 var ListProjectsTool = &mcpsdk.Tool{
-	Name:        "list_projects",
-	Description: "Lists all projects in the Massdriver organization, including their environments.",
+	Name: "list_projects",
+	Description: "Lists projects in the Massdriver organization, one page at a time. " +
+		"Returns up to `page_size` projects (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Stop once you have what you need — do NOT paginate to exhaustion unless the user explicitly asked for every project.",
 }
 
-type ListProjectsInput struct{}
+type ListProjectsInput struct {
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
 
 func HandleListProjects(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
-	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, _ ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
-		list, err := c.Projects.List(ctx, projects.ListInput{})
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
+		page, err := c.Projects.ListPage(ctx, projects.ListInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_projects: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 

@@ -6,17 +6,18 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/ocirepos"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubOciRepos struct {
-	listFn   func(context.Context, ocirepos.ListInput) ([]ocirepos.OciRepo, error)
-	getFn    func(context.Context, string) (*ocirepos.OciRepo, error)
-	createFn func(context.Context, ocirepos.CreateInput) (*ocirepos.OciRepo, error)
-	updateFn func(context.Context, string, ocirepos.UpdateInput) (*ocirepos.OciRepo, error)
+	listPageFn func(context.Context, ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error)
+	getFn      func(context.Context, string) (*ocirepos.OciRepo, error)
+	createFn   func(context.Context, ocirepos.CreateInput) (*ocirepos.OciRepo, error)
+	updateFn   func(context.Context, string, ocirepos.UpdateInput) (*ocirepos.OciRepo, error)
 }
 
-func (s *stubOciRepos) List(ctx context.Context, input ocirepos.ListInput) ([]ocirepos.OciRepo, error) {
-	return s.listFn(ctx, input)
+func (s *stubOciRepos) ListPage(ctx context.Context, input ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubOciRepos) Get(ctx context.Context, id string) (*ocirepos.OciRepo, error) {
 	return s.getFn(ctx, id)
@@ -37,20 +38,22 @@ func TestHandleListOciRepos(t *testing.T) {
 		{
 			name: "success",
 			stub: &stubOciRepos{
-				listFn: func(context.Context, ocirepos.ListInput) ([]ocirepos.OciRepo, error) {
-					return []ocirepos.OciRepo{{ID: "repo1", Name: "my-repo"}}, nil
+				listPageFn: func(context.Context, ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error) {
+					return types.Page[ocirepos.OciRepo]{
+						Items: []ocirepos.OciRepo{{ID: "repo1", Name: "my-repo"}},
+					}, nil
 				},
 			},
 			wantText: "repo1",
 		},
 		{
-			name: "empty list",
+			name: "empty page surfaces has_more false",
 			stub: &stubOciRepos{
-				listFn: func(context.Context, ocirepos.ListInput) ([]ocirepos.OciRepo, error) {
-					return nil, nil
+				listPageFn: func(context.Context, ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error) {
+					return types.Page[ocirepos.OciRepo]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

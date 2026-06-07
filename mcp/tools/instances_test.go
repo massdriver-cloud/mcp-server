@@ -6,19 +6,20 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/instances"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubInstances struct {
-	listFn         func(context.Context, instances.ListInput) ([]instances.Instance, error)
-	getFn          func(context.Context, string) (*instances.Instance, error)
-	updateFn       func(context.Context, string, instances.UpdateInput) (*instances.Instance, error)
-	setSecretFn    func(context.Context, string, string, string) (*instances.Secret, error)
-	removeSecretFn func(context.Context, string, string) (*instances.Secret, error)
-	listAlarmsFn   func(context.Context, instances.ListAlarmsInput) ([]instances.Alarm, error)
+	listPageFn       func(context.Context, instances.ListInput) (types.Page[instances.Instance], error)
+	getFn            func(context.Context, string) (*instances.Instance, error)
+	updateFn         func(context.Context, string, instances.UpdateInput) (*instances.Instance, error)
+	setSecretFn      func(context.Context, string, string, string) (*instances.Secret, error)
+	removeSecretFn   func(context.Context, string, string) (*instances.Secret, error)
+	listAlarmsPageFn func(context.Context, instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
 }
 
-func (s *stubInstances) List(ctx context.Context, input instances.ListInput) ([]instances.Instance, error) {
-	return s.listFn(ctx, input)
+func (s *stubInstances) ListPage(ctx context.Context, input instances.ListInput) (types.Page[instances.Instance], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubInstances) Get(ctx context.Context, id string) (*instances.Instance, error) {
 	return s.getFn(ctx, id)
@@ -32,8 +33,8 @@ func (s *stubInstances) SetSecret(ctx context.Context, instanceID, name, value s
 func (s *stubInstances) RemoveSecret(ctx context.Context, instanceID, name string) (*instances.Secret, error) {
 	return s.removeSecretFn(ctx, instanceID, name)
 }
-func (s *stubInstances) ListAlarms(ctx context.Context, input instances.ListAlarmsInput) ([]instances.Alarm, error) {
-	return s.listAlarmsFn(ctx, input)
+func (s *stubInstances) ListAlarmsPage(ctx context.Context, input instances.ListAlarmsInput) (types.Page[instances.Alarm], error) {
+	return s.listAlarmsPageFn(ctx, input)
 }
 
 func TestHandleListInstances(t *testing.T) {
@@ -45,24 +46,26 @@ func TestHandleListInstances(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:  "returns all instances",
+			name:  "returns page of instances",
 			input: ListInstancesInput{},
 			stub: &stubInstances{
-				listFn: func(_ context.Context, _ instances.ListInput) ([]instances.Instance, error) {
-					return []instances.Instance{{ID: "proj1-staging-db", Name: "Database"}}, nil
+				listPageFn: func(_ context.Context, _ instances.ListInput) (types.Page[instances.Instance], error) {
+					return types.Page[instances.Instance]{
+						Items: []instances.Instance{{ID: "proj1-staging-db", Name: "Database"}},
+					}, nil
 				},
 			},
 			wantText: "proj1-staging-db",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty page surfaces has_more false",
 			input: ListInstancesInput{},
 			stub: &stubInstances{
-				listFn: func(context.Context, instances.ListInput) ([]instances.Instance, error) {
-					return nil, nil
+				listPageFn: func(context.Context, instances.ListInput) (types.Page[instances.Instance], error) {
+					return types.Page[instances.Instance]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 
@@ -265,24 +268,26 @@ func TestHandleListAlarms(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:  "returns alarms",
+			name:  "returns alarms page",
 			input: ListAlarmsInput{InstanceID: "inst1"},
 			stub: &stubInstances{
-				listAlarmsFn: func(_ context.Context, _ instances.ListAlarmsInput) ([]instances.Alarm, error) {
-					return []instances.Alarm{{ID: "alarm1", DisplayName: "High CPU"}}, nil
+				listAlarmsPageFn: func(_ context.Context, _ instances.ListAlarmsInput) (types.Page[instances.Alarm], error) {
+					return types.Page[instances.Alarm]{
+						Items: []instances.Alarm{{ID: "alarm1", DisplayName: "High CPU"}},
+					}, nil
 				},
 			},
 			wantText: "High CPU",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty page surfaces has_more false",
 			input: ListAlarmsInput{},
 			stub: &stubInstances{
-				listAlarmsFn: func(context.Context, instances.ListAlarmsInput) ([]instances.Alarm, error) {
-					return nil, nil
+				listAlarmsPageFn: func(context.Context, instances.ListAlarmsInput) (types.Page[instances.Alarm], error) {
+					return types.Page[instances.Alarm]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

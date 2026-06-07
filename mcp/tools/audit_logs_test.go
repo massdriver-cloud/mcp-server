@@ -6,16 +6,17 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/auditlogs"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubAuditLogs struct {
-	listFn           func(context.Context, auditlogs.ListInput) ([]auditlogs.AuditLog, error)
+	listPageFn       func(context.Context, auditlogs.ListInput) (types.Page[auditlogs.AuditLog], error)
 	listEventTypesFn func(context.Context) ([]string, error)
 	getFn            func(context.Context, string) (*auditlogs.AuditLog, error)
 }
 
-func (s *stubAuditLogs) List(ctx context.Context, input auditlogs.ListInput) ([]auditlogs.AuditLog, error) {
-	return s.listFn(ctx, input)
+func (s *stubAuditLogs) ListPage(ctx context.Context, input auditlogs.ListInput) (types.Page[auditlogs.AuditLog], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubAuditLogs) ListEventTypes(ctx context.Context) ([]string, error) {
 	return s.listEventTypesFn(ctx)
@@ -33,24 +34,26 @@ func TestHandleListAuditLogs(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:  "returns audit logs",
+			name:  "returns audit logs page",
 			input: ListAuditLogsInput{},
 			stub: &stubAuditLogs{
-				listFn: func(_ context.Context, _ auditlogs.ListInput) ([]auditlogs.AuditLog, error) {
-					return []auditlogs.AuditLog{{ID: "log1", Type: "deployment.created"}}, nil
+				listPageFn: func(_ context.Context, _ auditlogs.ListInput) (types.Page[auditlogs.AuditLog], error) {
+					return types.Page[auditlogs.AuditLog]{
+						Items: []auditlogs.AuditLog{{ID: "log1", Type: "deployment.created"}},
+					}, nil
 				},
 			},
 			wantText: "deployment.created",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty page surfaces has_more false",
 			input: ListAuditLogsInput{},
 			stub: &stubAuditLogs{
-				listFn: func(context.Context, auditlogs.ListInput) ([]auditlogs.AuditLog, error) {
-					return nil, nil
+				listPageFn: func(context.Context, auditlogs.ListInput) (types.Page[auditlogs.AuditLog], error) {
+					return types.Page[auditlogs.AuditLog]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

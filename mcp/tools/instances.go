@@ -9,34 +9,41 @@ import (
 )
 
 var ListInstancesTool = &mcpsdk.Tool{
-	Name:        "list_instances",
-	Description: "Lists all instances in the organization. Optionally filter by project ID, environment ID, or status.",
+	Name: "list_instances",
+	Description: "Lists instances in the organization, one page at a time. " +
+		"STRONGLY PREFER filtering by `project_id`, `environment_id`, or `status` — unfiltered lists can span thousands of instances. " +
+		"Returns up to `page_size` instances (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for every instance.",
 }
 
 type ListInstancesInput struct {
-	ProjectID     string `json:"project_id"     jsonschema:"Optional. Filter to instances belonging to this project ID."`
-	EnvironmentID string `json:"environment_id" jsonschema:"Optional. Filter to instances belonging to this environment ID."`
-	Status        string `json:"status"         jsonschema:"Optional. Filter by status: INITIALIZED, PROVISIONED, DECOMMISSIONED, or FAILED."`
+	ProjectID     string `json:"project_id,omitempty"     jsonschema:"Optional. Filter to instances belonging to this project ID."`
+	EnvironmentID string `json:"environment_id,omitempty" jsonschema:"Optional. Filter to instances belonging to this environment ID."`
+	Status        string `json:"status,omitempty"         jsonschema:"Optional. Filter by status: INITIALIZED, PROVISIONED, DECOMMISSIONED, or FAILED."`
+	Cursor        string `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListInstances(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListInstancesInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListInstancesInput) (*mcpsdk.CallToolResult, any, error) {
-		input := instances.ListInput{
+		page, err := c.Instances.ListPage(ctx, instances.ListInput{
 			ProjectID:     args.ProjectID,
 			EnvironmentID: args.EnvironmentID,
 			Status:        instances.Status(args.Status),
-		}
-
-		list, err := c.Instances.List(ctx, input)
+			PageSize:      clampPageSize(args.PageSize),
+			After:         args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_instances: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 
@@ -143,38 +150,45 @@ func HandleRemoveInstanceSecret(c *Client) func(context.Context, *mcpsdk.CallToo
 }
 
 var ListAlarmsTool = &mcpsdk.Tool{
-	Name:        "list_alarms",
-	Description: "Lists alarms across instances. Optionally filter by project, environment, component, instance, or bundle.",
+	Name: "list_alarms",
+	Description: "Lists alarms across instances, one page at a time. " +
+		"PREFER filtering by `project_id`, `environment_id`, `component_id`, `instance_id`, or `oci_repo_name` to keep the result set focused. " +
+		"Returns up to `page_size` alarms (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for every alarm.",
 }
 
 type ListAlarmsInput struct {
-	ProjectID     string `json:"project_id"     jsonschema:"Optional. Filter alarms to this project."`
-	EnvironmentID string `json:"environment_id" jsonschema:"Optional. Filter alarms to this environment."`
-	ComponentID   string `json:"component_id"   jsonschema:"Optional. Filter alarms to this component."`
-	InstanceID    string `json:"instance_id"    jsonschema:"Optional. Filter alarms to this instance."`
-	OciRepoName   string `json:"oci_repo_name"  jsonschema:"Optional. Filter alarms to instances of this bundle."`
+	ProjectID     string `json:"project_id,omitempty"     jsonschema:"Optional. Filter alarms to this project."`
+	EnvironmentID string `json:"environment_id,omitempty" jsonschema:"Optional. Filter alarms to this environment."`
+	ComponentID   string `json:"component_id,omitempty"   jsonschema:"Optional. Filter alarms to this component."`
+	InstanceID    string `json:"instance_id,omitempty"    jsonschema:"Optional. Filter alarms to this instance."`
+	OciRepoName   string `json:"oci_repo_name,omitempty"  jsonschema:"Optional. Filter alarms to instances of this bundle."`
+	Cursor        string `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListAlarms(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListAlarmsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListAlarmsInput) (*mcpsdk.CallToolResult, any, error) {
-		input := instances.ListAlarmsInput{
+		page, err := c.Instances.ListAlarmsPage(ctx, instances.ListAlarmsInput{
 			ProjectID:     args.ProjectID,
 			EnvironmentID: args.EnvironmentID,
 			ComponentID:   args.ComponentID,
 			InstanceID:    args.InstanceID,
 			OciRepoName:   args.OciRepoName,
-		}
-
-		alarms, err := c.Instances.ListAlarms(ctx, input)
+			PageSize:      clampPageSize(args.PageSize),
+			After:         args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_alarms: %w", err)
 		}
 
-		result, err := jsonResult(alarms)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, alarms, nil
+		return result, out, nil
 	}
 }
 

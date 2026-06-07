@@ -9,34 +9,41 @@ import (
 )
 
 var ListAuditLogsTool = &mcpsdk.Tool{
-	Name:        "list_audit_logs",
-	Description: "Lists audit log entries for the organization. Optionally filter by event type, actor, or time range.",
+	Name: "list_audit_logs",
+	Description: "Lists audit log entries for the organization, newest first, one page at a time. " +
+		"STRONGLY PREFER filtering by `type`, `actor_id`, or `actor_search` — audit logs grow unboundedly. " +
+		"Returns up to `page_size` entries (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for the full history.",
 }
 
 type ListAuditLogsInput struct {
-	Type        string `json:"type"         jsonschema:"Optional. Filter by event type (e.g., 'deployment.created')."`
-	ActorID     string `json:"actor_id"     jsonschema:"Optional. Filter by actor ID."`
-	ActorSearch string `json:"actor_search" jsonschema:"Optional. Search by actor name or email."`
+	Type        string `json:"type,omitempty"         jsonschema:"Optional. Filter by event type (e.g., 'deployment.created')."`
+	ActorID     string `json:"actor_id,omitempty"     jsonschema:"Optional. Filter by actor ID."`
+	ActorSearch string `json:"actor_search,omitempty" jsonschema:"Optional. Search by actor name or email."`
+	Cursor      string `json:"cursor,omitempty"       jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize    int    `json:"page_size,omitempty"    jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListAuditLogs(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListAuditLogsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListAuditLogsInput) (*mcpsdk.CallToolResult, any, error) {
-		input := auditlogs.ListInput{
+		page, err := c.AuditLogs.ListPage(ctx, auditlogs.ListInput{
 			Type:        args.Type,
 			ActorID:     args.ActorID,
 			ActorSearch: args.ActorSearch,
-		}
-
-		logs, err := c.AuditLogs.List(ctx, input)
+			PageSize:    clampPageSize(args.PageSize),
+			After:       args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_audit_logs: %w", err)
 		}
 
-		result, err := jsonResult(logs)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, logs, nil
+		return result, out, nil
 	}
 }
 

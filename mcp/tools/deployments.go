@@ -9,34 +9,41 @@ import (
 )
 
 var ListDeploymentsTool = &mcpsdk.Tool{
-	Name:        "list_deployments",
-	Description: "Lists deployments in the organization, newest first. Optionally filter by instance ID, status, or action.",
+	Name: "list_deployments",
+	Description: "Lists deployments in the organization, newest first, one page at a time. " +
+		"STRONGLY PREFER filtering by `instance_id`, `status`, or `action` — unfiltered lists span the entire org history. " +
+		"Returns up to `page_size` deployments (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for every deployment.",
 }
 
 type ListDeploymentsInput struct {
-	InstanceID string `json:"instance_id" jsonschema:"Optional. Filter to deployments for this instance ID."`
-	Status     string `json:"status"      jsonschema:"Optional. Filter by status: PROPOSED, APPROVED, PENDING, RUNNING, COMPLETED, FAILED, REJECTED, or ABORTED."`
-	Action     string `json:"action"      jsonschema:"Optional. Filter by action: PROVISION, DECOMMISSION, or PLAN."`
+	InstanceID string `json:"instance_id,omitempty" jsonschema:"Optional. Filter to deployments for this instance ID."`
+	Status     string `json:"status,omitempty"      jsonschema:"Optional. Filter by status: PROPOSED, APPROVED, PENDING, RUNNING, COMPLETED, FAILED, REJECTED, or ABORTED."`
+	Action     string `json:"action,omitempty"      jsonschema:"Optional. Filter by action: PROVISION, DECOMMISSION, or PLAN."`
+	Cursor     string `json:"cursor,omitempty"      jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize   int    `json:"page_size,omitempty"   jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListDeployments(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListDeploymentsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListDeploymentsInput) (*mcpsdk.CallToolResult, any, error) {
-		input := deployments.ListInput{
+		page, err := c.Deployments.ListPage(ctx, deployments.ListInput{
 			InstanceID: args.InstanceID,
 			Status:     deployments.Status(args.Status),
 			Action:     deployments.Action(args.Action),
-		}
-
-		list, err := c.Deployments.List(ctx, input)
+			PageSize:   clampPageSize(args.PageSize),
+			After:      args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_deployments: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 

@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/environments"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubEnvironments struct {
-	listFn          func(context.Context, environments.ListInput) ([]environments.Environment, error)
+	listPageFn      func(context.Context, environments.ListInput) (types.Page[environments.Environment], error)
 	getFn           func(context.Context, string) (*environments.Environment, error)
 	createFn        func(context.Context, string, environments.CreateInput) (*environments.Environment, error)
 	updateFn        func(context.Context, string, environments.UpdateInput) (*environments.Environment, error)
@@ -18,8 +19,8 @@ type stubEnvironments struct {
 	removeDefaultFn func(context.Context, string) (*environments.EnvironmentDefault, error)
 }
 
-func (s *stubEnvironments) List(ctx context.Context, input environments.ListInput) ([]environments.Environment, error) {
-	return s.listFn(ctx, input)
+func (s *stubEnvironments) ListPage(ctx context.Context, input environments.ListInput) (types.Page[environments.Environment], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubEnvironments) Get(ctx context.Context, id string) (*environments.Environment, error) {
 	return s.getFn(ctx, id)
@@ -49,24 +50,26 @@ func TestHandleListEnvironments(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:  "returns all environments",
+			name:  "returns page of environments",
 			input: ListEnvironmentsInput{},
 			stub: &stubEnvironments{
-				listFn: func(_ context.Context, _ environments.ListInput) ([]environments.Environment, error) {
-					return []environments.Environment{{ID: "myproj-staging", Name: "Staging"}}, nil
+				listPageFn: func(_ context.Context, _ environments.ListInput) (types.Page[environments.Environment], error) {
+					return types.Page[environments.Environment]{
+						Items: []environments.Environment{{ID: "myproj-staging", Name: "Staging"}},
+					}, nil
 				},
 			},
 			wantText: "myproj-staging",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty page surfaces has_more false",
 			input: ListEnvironmentsInput{},
 			stub: &stubEnvironments{
-				listFn: func(context.Context, environments.ListInput) ([]environments.Environment, error) {
-					return nil, nil
+				listPageFn: func(context.Context, environments.ListInput) (types.Page[environments.Environment], error) {
+					return types.Page[environments.Environment]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

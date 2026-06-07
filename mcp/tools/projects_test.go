@@ -6,18 +6,19 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/projects"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubProjects struct {
-	listFn   func(context.Context, projects.ListInput) ([]projects.Project, error)
-	getFn    func(context.Context, string) (*projects.Project, error)
-	createFn func(context.Context, projects.CreateInput) (*projects.Project, error)
-	updateFn func(context.Context, string, projects.UpdateInput) (*projects.Project, error)
-	deleteFn func(context.Context, string) (*projects.Project, error)
+	listPageFn func(context.Context, projects.ListInput) (types.Page[projects.Project], error)
+	getFn      func(context.Context, string) (*projects.Project, error)
+	createFn   func(context.Context, projects.CreateInput) (*projects.Project, error)
+	updateFn   func(context.Context, string, projects.UpdateInput) (*projects.Project, error)
+	deleteFn   func(context.Context, string) (*projects.Project, error)
 }
 
-func (s *stubProjects) List(ctx context.Context, input projects.ListInput) ([]projects.Project, error) {
-	return s.listFn(ctx, input)
+func (s *stubProjects) ListPage(ctx context.Context, input projects.ListInput) (types.Page[projects.Project], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubProjects) Get(ctx context.Context, id string) (*projects.Project, error) {
 	return s.getFn(ctx, id)
@@ -40,22 +41,25 @@ func TestHandleListProjects(t *testing.T) {
 		wantText string
 	}{
 		{
-			name: "returns all projects as JSON",
+			name: "returns page of projects as JSON",
 			stub: &stubProjects{
-				listFn: func(context.Context, projects.ListInput) ([]projects.Project, error) {
-					return []projects.Project{{ID: "myproj", Name: "My Project"}}, nil
+				listPageFn: func(context.Context, projects.ListInput) (types.Page[projects.Project], error) {
+					return types.Page[projects.Project]{
+						Items: []projects.Project{{ID: "myproj", Name: "My Project"}},
+						Next:  "cursor-2",
+					}, nil
 				},
 			},
 			wantText: "myproj",
 		},
 		{
-			name: "returns null for empty list",
+			name: "empty page surfaces empty items and has_more false",
 			stub: &stubProjects{
-				listFn: func(context.Context, projects.ListInput) ([]projects.Project, error) {
-					return nil, nil
+				listPageFn: func(context.Context, projects.ListInput) (types.Page[projects.Project], error) {
+					return types.Page[projects.Project]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

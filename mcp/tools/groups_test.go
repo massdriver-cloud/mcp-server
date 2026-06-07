@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/groups"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubGroups struct {
-	listFn                 func(context.Context, groups.ListInput) ([]groups.Group, error)
+	listPageFn             func(context.Context, groups.ListInput) (types.Page[groups.Group], error)
 	getFn                  func(context.Context, string) (*groups.Group, error)
 	createFn               func(context.Context, groups.CreateInput) (*groups.Group, error)
 	updateFn               func(context.Context, string, groups.UpdateInput) (*groups.Group, error)
@@ -21,8 +22,8 @@ type stubGroups struct {
 	removeServiceAccountFn func(context.Context, string, string) error
 }
 
-func (s *stubGroups) List(ctx context.Context, input groups.ListInput) ([]groups.Group, error) {
-	return s.listFn(ctx, input)
+func (s *stubGroups) ListPage(ctx context.Context, input groups.ListInput) (types.Page[groups.Group], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubGroups) Get(ctx context.Context, id string) (*groups.Group, error) {
 	return s.getFn(ctx, id)
@@ -60,22 +61,24 @@ func TestHandleListGroups(t *testing.T) {
 		wantText string
 	}{
 		{
-			name: "returns groups",
+			name: "returns groups page",
 			stub: &stubGroups{
-				listFn: func(_ context.Context, _ groups.ListInput) ([]groups.Group, error) {
-					return []groups.Group{{ID: "grp1", Name: "Admins"}}, nil
+				listPageFn: func(_ context.Context, _ groups.ListInput) (types.Page[groups.Group], error) {
+					return types.Page[groups.Group]{
+						Items: []groups.Group{{ID: "grp1", Name: "Admins"}},
+					}, nil
 				},
 			},
 			wantText: "Admins",
 		},
 		{
-			name: "returns null for empty list",
+			name: "empty page surfaces has_more false",
 			stub: &stubGroups{
-				listFn: func(context.Context, groups.ListInput) ([]groups.Group, error) {
-					return nil, nil
+				listPageFn: func(context.Context, groups.ListInput) (types.Page[groups.Group], error) {
+					return types.Page[groups.Group]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

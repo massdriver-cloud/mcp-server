@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resources"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubResources struct {
-	listFn        func(context.Context, resources.ListInput) ([]resources.Resource, error)
+	listPageFn    func(context.Context, resources.ListInput) (types.Page[resources.Resource], error)
 	getFn         func(context.Context, string) (*resources.Resource, error)
 	createFn      func(context.Context, string, resources.CreateInput) (*resources.Resource, error)
 	updateFn      func(context.Context, string, resources.UpdateInput) (*resources.Resource, error)
@@ -19,8 +20,8 @@ type stubResources struct {
 	deleteGrantFn func(context.Context, string) error
 }
 
-func (s *stubResources) List(ctx context.Context, input resources.ListInput) ([]resources.Resource, error) {
-	return s.listFn(ctx, input)
+func (s *stubResources) ListPage(ctx context.Context, input resources.ListInput) (types.Page[resources.Resource], error) {
+	return s.listPageFn(ctx, input)
 }
 func (s *stubResources) Get(ctx context.Context, id string) (*resources.Resource, error) {
 	return s.getFn(ctx, id)
@@ -53,24 +54,26 @@ func TestHandleListResources(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:  "returns resources",
+			name:  "returns resources page",
 			input: ListResourcesInput{},
 			stub: &stubResources{
-				listFn: func(_ context.Context, _ resources.ListInput) ([]resources.Resource, error) {
-					return []resources.Resource{{ID: "res1", Name: "My Database"}}, nil
+				listPageFn: func(_ context.Context, _ resources.ListInput) (types.Page[resources.Resource], error) {
+					return types.Page[resources.Resource]{
+						Items: []resources.Resource{{ID: "res1", Name: "My Database"}},
+					}, nil
 				},
 			},
 			wantText: "My Database",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty page surfaces has_more false",
 			input: ListResourcesInput{},
 			stub: &stubResources{
-				listFn: func(context.Context, resources.ListInput) ([]resources.Resource, error) {
-					return nil, nil
+				listPageFn: func(context.Context, resources.ListInput) (types.Page[resources.Resource], error) {
+					return types.Page[resources.Resource]{}, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"has_more\": false",
 		},
 	}
 

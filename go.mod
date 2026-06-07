@@ -5,7 +5,7 @@ go 1.24.2
 toolchain go1.24.5
 
 require (
-	github.com/massdriver-cloud/massdriver-sdk-go v0.2.1
+	github.com/massdriver-cloud/massdriver-sdk-go v0.2.6-0.20260607015114-bd84927e89cf
 	github.com/modelcontextprotocol/go-sdk v1.0.0
 )
 

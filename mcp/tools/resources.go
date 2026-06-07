@@ -10,36 +10,43 @@ import (
 )
 
 var ListResourcesTool = &mcpsdk.Tool{
-	Name:        "list_resources",
-	Description: "Lists resources (provisioned or imported). Optionally filter by origin, resource type, environment, or search term.",
+	Name: "list_resources",
+	Description: "Lists resources (provisioned or imported), one page at a time. " +
+		"STRONGLY PREFER filtering by `environment_id`, `resource_type`, `origin`, or `search` — unfiltered lists can span thousands of resources across an org. " +
+		"Returns up to `page_size` resources (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for every resource.",
 }
 
 type ListResourcesInput struct {
-	Origin        string `json:"origin"         jsonschema:"Optional. Filter by origin: IMPORTED or PROVISIONED."`
-	ResourceType  string `json:"resource_type"  jsonschema:"Optional. Filter by resource type."`
-	EnvironmentID string `json:"environment_id" jsonschema:"Optional. Filter to resources in this environment."`
-	Search        string `json:"search"         jsonschema:"Optional. Search term to filter resources."`
+	Origin        string `json:"origin,omitempty"         jsonschema:"Optional. Filter by origin: IMPORTED or PROVISIONED."`
+	ResourceType  string `json:"resource_type,omitempty"  jsonschema:"Optional. Filter by resource type."`
+	EnvironmentID string `json:"environment_id,omitempty" jsonschema:"Optional. Filter to resources in this environment."`
+	Search        string `json:"search,omitempty"         jsonschema:"Optional. Search term to filter resources."`
+	Cursor        string `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListResources(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListResourcesInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListResourcesInput) (*mcpsdk.CallToolResult, any, error) {
-		input := resources.ListInput{
+		page, err := c.Resources.ListPage(ctx, resources.ListInput{
 			Origin:        resources.Origin(args.Origin),
 			ResourceType:  args.ResourceType,
 			EnvironmentID: args.EnvironmentID,
 			Search:        args.Search,
-		}
-
-		list, err := c.Resources.List(ctx, input)
+			PageSize:      clampPageSize(args.PageSize),
+			After:         args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_resources: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 

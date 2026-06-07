@@ -9,36 +9,43 @@ import (
 )
 
 var ListBundlesTool = &mcpsdk.Tool{
-	Name:        "list_bundles",
-	Description: "Lists available bundles in the catalog. Optionally filter by OCI repo name, resource type, or search term.",
+	Name: "list_bundles",
+	Description: "Lists bundles in the catalog, one page at a time. " +
+		"PREFER filtering by `search`, `oci_repo_name`, `resource_type`, or `dependency_type` to narrow the catalog. " +
+		"Returns up to `page_size` bundles (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for every bundle.",
 }
 
 type ListBundlesInput struct {
-	Search         string `json:"search"          jsonschema:"Optional. Search term to filter bundles by name or description."`
-	OciRepoName    string `json:"oci_repo_name"   jsonschema:"Optional. Filter to bundles from this OCI repository."`
-	ResourceType   string `json:"resource_type"   jsonschema:"Optional. Filter by resource type (e.g., 'aws-rds-instance')."`
-	DependencyType string `json:"dependency_type" jsonschema:"Optional. Filter by dependency type."`
+	Search         string `json:"search,omitempty"          jsonschema:"Optional. Search term to filter bundles by name or description."`
+	OciRepoName    string `json:"oci_repo_name,omitempty"   jsonschema:"Optional. Filter to bundles from this OCI repository."`
+	ResourceType   string `json:"resource_type,omitempty"   jsonschema:"Optional. Filter by resource type (e.g., 'aws-rds-instance')."`
+	DependencyType string `json:"dependency_type,omitempty" jsonschema:"Optional. Filter by dependency type."`
+	Cursor         string `json:"cursor,omitempty"          jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize       int    `json:"page_size,omitempty"       jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListBundles(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListBundlesInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListBundlesInput) (*mcpsdk.CallToolResult, any, error) {
-		input := bundles.ListInput{
+		page, err := c.Bundles.ListPage(ctx, bundles.ListInput{
 			Search:         args.Search,
 			OciRepoName:    args.OciRepoName,
 			ResourceType:   args.ResourceType,
 			DependencyType: args.DependencyType,
-		}
-
-		list, err := c.Bundles.List(ctx, input)
+			PageSize:       clampPageSize(args.PageSize),
+			After:          args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_bundles: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 

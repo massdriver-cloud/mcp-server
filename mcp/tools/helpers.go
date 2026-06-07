@@ -6,8 +6,46 @@ import (
 	"strings"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/gql"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+const (
+	// defaultPageSize is the page size used when a List tool caller omits page_size.
+	defaultPageSize = 25
+	// maxPageSize matches the SDK's per-request upper bound.
+	maxPageSize = 100
+)
+
+// clampPageSize maps a user-supplied page size onto the SDK's accepted range,
+// substituting the default when zero/negative and capping the upper bound.
+func clampPageSize(n int) int {
+	if n <= 0 {
+		return defaultPageSize
+	}
+	if n > maxPageSize {
+		return maxPageSize
+	}
+	return n
+}
+
+// PageResult is the JSON shape every paginated List tool returns. Keeping the
+// fields flat and consistent across tools means the model only has to learn the
+// pattern once.
+type PageResult[T any] struct {
+	Items      []T    `json:"items"`
+	NextCursor string `json:"next_cursor,omitempty"`
+	HasMore    bool   `json:"has_more"`
+}
+
+// pageResult wraps an SDK page into the tool-facing PageResult shape.
+func pageResult[T any](p types.Page[T]) PageResult[T] {
+	return PageResult[T]{
+		Items:      p.Items,
+		NextCursor: p.Next,
+		HasMore:    p.Next != "",
+	}
+}
 
 // textResult builds a CallToolResult with a single text content item.
 func textResult(text string) *mcpsdk.CallToolResult {

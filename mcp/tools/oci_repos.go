@@ -9,32 +9,39 @@ import (
 )
 
 var ListOciReposTool = &mcpsdk.Tool{
-	Name:        "list_oci_repos",
-	Description: "Lists OCI repositories in the organization. Optionally filter by name or artifact type.",
+	Name: "list_oci_repos",
+	Description: "Lists OCI repositories in the organization, one page at a time. " +
+		"PREFER filtering by `search` or `artifact_type` to focus the catalog. " +
+		"Returns up to `page_size` repositories (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Do NOT paginate to exhaustion unless the user explicitly asked for every repository.",
 }
 
 type ListOciReposInput struct {
-	Search       string `json:"search"         jsonschema:"Optional. Search term to filter repositories."`
-	ArtifactType string `json:"artifact_type"  jsonschema:"Optional. Filter by artifact type (e.g., 'BUNDLE')."`
+	Search       string `json:"search,omitempty"        jsonschema:"Optional. Search term to filter repositories."`
+	ArtifactType string `json:"artifact_type,omitempty" jsonschema:"Optional. Filter by artifact type (e.g., 'BUNDLE')."`
+	Cursor       string `json:"cursor,omitempty"        jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize     int    `json:"page_size,omitempty"     jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListOciRepos(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListOciReposInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListOciReposInput) (*mcpsdk.CallToolResult, any, error) {
-		input := ocirepos.ListInput{
+		page, err := c.OciRepos.ListPage(ctx, ocirepos.ListInput{
 			Search:       args.Search,
 			ArtifactType: ocirepos.ArtifactType(args.ArtifactType),
-		}
-
-		list, err := c.OciRepos.List(ctx, input)
+			PageSize:     clampPageSize(args.PageSize),
+			After:        args.Cursor,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_oci_repos: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := pageResult(page)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 
