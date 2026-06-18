@@ -84,8 +84,8 @@ var ExportResourceTool = &mcpsdk.Tool{
 }
 
 type ExportResourceInput struct {
-	ID     string `json:"id"     jsonschema:"The resource ID to export."`
-	Format string `json:"format" jsonschema:"Optional. Export format, defaults to 'json'."`
+	ID     string `json:"id"               jsonschema:"The resource ID to export."`
+	Format string `json:"format,omitempty" jsonschema:"Optional. Export format, defaults to 'json'."`
 }
 
 func HandleExportResource(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ExportResourceInput) (*mcpsdk.CallToolResult, any, error) {
@@ -118,9 +118,9 @@ var CreateResourceTool = &mcpsdk.Tool{
 }
 
 type CreateResourceInput struct {
-	ResourceTypeID string         `json:"resource_type_id" jsonschema:"The resource type ID."`
-	Name           string         `json:"name"             jsonschema:"Display name for the resource."`
-	Payload        map[string]any `json:"payload"          jsonschema:"Resource payload data."`
+	ResourceTypeID string         `json:"resource_type_id"  jsonschema:"The resource type ID."`
+	Name           string         `json:"name"              jsonschema:"Display name for the resource."`
+	Payload        map[string]any `json:"payload,omitempty" jsonschema:"Optional. Resource payload data."`
 }
 
 func HandleCreateResource(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateResourceInput) (*mcpsdk.CallToolResult, any, error) {
@@ -157,9 +157,9 @@ var UpdateResourceTool = &mcpsdk.Tool{
 }
 
 type UpdateResourceInput struct {
-	ID      string         `json:"id"      jsonschema:"The resource ID."`
-	Name    string         `json:"name"    jsonschema:"Display name for the resource."`
-	Payload map[string]any `json:"payload" jsonschema:"Resource payload data."`
+	ID      string         `json:"id"                jsonschema:"The resource ID."`
+	Name    string         `json:"name"              jsonschema:"Display name for the resource."`
+	Payload map[string]any `json:"payload,omitempty" jsonschema:"Optional. Resource payload data."`
 }
 
 func HandleUpdateResource(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateResourceInput) (*mcpsdk.CallToolResult, any, error) {
@@ -224,8 +224,8 @@ var CreateResourceGrantTool = &mcpsdk.Tool{
 
 type CreateResourceGrantInput struct {
 	ResourceID          string                 `json:"resource_id"          jsonschema:"The resource ID to grant access to."`
-	Action              string                 `json:"action"               jsonschema:"The action to grant, e.g. resource:export."`
-	RecipientConditions types.PolicyConditions `json:"recipient_conditions" jsonschema:"Optional. Attribute conditions restricting grant recipients."`
+	Action              string                 `json:"action"                         jsonschema:"The action to grant, e.g. resource:export."`
+	RecipientConditions types.PolicyConditions `json:"recipient_conditions,omitempty" jsonschema:"Optional. Attribute conditions restricting grant recipients."`
 }
 
 func HandleCreateResourceGrant(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateResourceGrantInput) (*mcpsdk.CallToolResult, any, error) {

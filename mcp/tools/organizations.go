@@ -38,8 +38,8 @@ var CreateCustomAttributeTool = &mcpsdk.Tool{
 type CreateCustomAttributeInput struct {
 	Key      string   `json:"key"      jsonschema:"Attribute key name."`
 	Scope    string   `json:"scope"    jsonschema:"Attribute scope: PROJECT, ENVIRONMENT, COMPONENT, or REPO."`
-	Required *bool    `json:"required" jsonschema:"Optional. Whether the attribute is required."`
-	Values   []string `json:"values"   jsonschema:"Optional. Allowed values for the attribute."`
+	Required *bool    `json:"required,omitempty" jsonschema:"Optional. Whether the attribute is required."`
+	Values   []string `json:"values,omitempty"   jsonschema:"Optional. Allowed values for the attribute."`
 }
 
 func HandleCreateCustomAttribute(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateCustomAttributeInput) (*mcpsdk.CallToolResult, any, error) {
@@ -78,9 +78,9 @@ var UpdateCustomAttributeTool = &mcpsdk.Tool{
 }
 
 type UpdateCustomAttributeInput struct {
-	ID       string   `json:"id"       jsonschema:"The custom attribute ID to update."`
-	Required *bool    `json:"required" jsonschema:"Optional. Whether the attribute is required."`
-	Values   []string `json:"values"   jsonschema:"Optional. Allowed values for the attribute."`
+	ID       string   `json:"id"                 jsonschema:"The custom attribute ID to update."`
+	Required *bool    `json:"required,omitempty" jsonschema:"Optional. Whether the attribute is required."`
+	Values   []string `json:"values,omitempty"   jsonschema:"Optional. Allowed values for the attribute."`
 }
 
 func HandleUpdateCustomAttribute(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateCustomAttributeInput) (*mcpsdk.CallToolResult, any, error) {

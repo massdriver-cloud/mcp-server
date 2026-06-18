@@ -77,9 +77,9 @@ var CreateServiceAccountTool = &mcpsdk.Tool{
 }
 
 type CreateServiceAccountInput struct {
-	Name                                  string `json:"name"                                      jsonschema:"The name of the service account."`
-	Description                           string `json:"description"                               jsonschema:"Optional. A description of the service account."`
-	DefaultAccessTokenExpirationInMinutes int    `json:"default_access_token_expiration_in_minutes" jsonschema:"Optional. Default expiration time for access tokens in minutes."`
+	Name                                  string `json:"name"                                                 jsonschema:"The name of the service account."`
+	Description                           string `json:"description,omitempty"                                jsonschema:"Optional. A description of the service account."`
+	DefaultAccessTokenExpirationInMinutes int    `json:"default_access_token_expiration_in_minutes,omitempty" jsonschema:"Optional. Default expiration time for access tokens in minutes."`
 }
 
 func HandleCreateServiceAccount(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateServiceAccountInput) (*mcpsdk.CallToolResult, any, error) {
@@ -114,9 +114,9 @@ var UpdateServiceAccountTool = &mcpsdk.Tool{
 }
 
 type UpdateServiceAccountInput struct {
-	ID          string `json:"id"          jsonschema:"The service account ID to update."`
-	Name        string `json:"name"        jsonschema:"Optional. New name for the service account."`
-	Description string `json:"description" jsonschema:"Optional. New description for the service account."`
+	ID          string `json:"id"                    jsonschema:"The service account ID to update."`
+	Name        string `json:"name,omitempty"        jsonschema:"Optional. New name for the service account."`
+	Description string `json:"description,omitempty" jsonschema:"Optional. New description for the service account."`
 }
 
 func HandleUpdateServiceAccount(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateServiceAccountInput) (*mcpsdk.CallToolResult, any, error) {

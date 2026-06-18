@@ -74,8 +74,8 @@ var CreateGroupTool = &mcpsdk.Tool{
 }
 
 type CreateGroupInput struct {
-	Name        string `json:"name"        jsonschema:"The name of the group."`
-	Description string `json:"description" jsonschema:"Optional. A description of the group."`
+	Name        string `json:"name"                  jsonschema:"The name of the group."`
+	Description string `json:"description,omitempty" jsonschema:"Optional. A description of the group."`
 }
 
 func HandleCreateGroup(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateGroupInput) (*mcpsdk.CallToolResult, any, error) {
@@ -109,9 +109,9 @@ var UpdateGroupTool = &mcpsdk.Tool{
 }
 
 type UpdateGroupInput struct {
-	ID          string `json:"id"          jsonschema:"The group ID to update."`
-	Name        string `json:"name"        jsonschema:"Optional. New name for the group."`
-	Description string `json:"description" jsonschema:"Optional. New description for the group."`
+	ID          string `json:"id"                    jsonschema:"The group ID to update."`
+	Name        string `json:"name,omitempty"        jsonschema:"Optional. New name for the group."`
+	Description string `json:"description,omitempty" jsonschema:"Optional. New description for the group."`
 }
 
 func HandleUpdateGroup(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateGroupInput) (*mcpsdk.CallToolResult, any, error) {

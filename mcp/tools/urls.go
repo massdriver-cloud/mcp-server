@@ -13,9 +13,9 @@ var GetURLTool = &mcpsdk.Tool{
 }
 
 type GetURLInput struct {
-	Type    string `json:"type"    jsonschema:"URL type: organization, projects, project, environment, instance, bundle, or repo_instances."`
-	ID      string `json:"id"     jsonschema:"Optional. Resource ID (required for project, environment, instance, bundle, repo_instances)."`
-	Version string `json:"version" jsonschema:"Optional. Version string (required for bundle, repo_instances)."`
+	Type    string `json:"type"              jsonschema:"URL type: organization, projects, project, environment, instance, bundle, or repo_instances."`
+	ID      string `json:"id,omitempty"      jsonschema:"Optional. Resource ID (required for project, environment, instance, bundle, repo_instances)."`
+	Version string `json:"version,omitempty" jsonschema:"Optional. Version string (required for bundle, repo_instances)."`
 }
 
 func HandleGetURL(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetURLInput) (*mcpsdk.CallToolResult, any, error) {

@@ -70,11 +70,12 @@ var AddComponentTool = &mcpsdk.Tool{
 }
 
 type AddComponentInput struct {
-	ProjectID   string `json:"project_id"   jsonschema:"The project ID to add the component to."`
-	BundleName  string `json:"bundle_name"  jsonschema:"Name of the bundle to add (e.g., 'aws-aurora-postgres')."`
-	ID          string `json:"id"           jsonschema:"Short identifier for this component, max 20 lowercase alphanumeric characters. Immutable after creation."`
-	Name        string `json:"name"         jsonschema:"Display name for this component (e.g., 'Billing Database')."`
-	Description string `json:"description"  jsonschema:"Optional description of this component's purpose."`
+	ProjectID   string         `json:"project_id"   jsonschema:"The project ID to add the component to."`
+	BundleName  string         `json:"bundle_name"  jsonschema:"Name of the bundle to add (e.g., 'aws-aurora-postgres')."`
+	ID          string         `json:"id"           jsonschema:"Short identifier for this component, max 20 lowercase alphanumeric characters. Immutable after creation."`
+	Name        string         `json:"name"                  jsonschema:"Display name for this component (e.g., 'Billing Database')."`
+	Description string         `json:"description,omitempty" jsonschema:"Optional description of this component's purpose."`
+	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Custom attribute tags at the component scope. Must conform to the organization's custom-attribute schema; some may be required."`
 }
 
 func HandleAddComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequest, AddComponentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -97,6 +98,7 @@ func HandleAddComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 			ID:          args.ID,
 			Name:        args.Name,
 			Description: args.Description,
+			Attributes:  args.Attributes,
 		})
 		if err != nil {
 			if isMutationFailed(err) {
@@ -119,9 +121,10 @@ var UpdateComponentTool = &mcpsdk.Tool{
 }
 
 type UpdateComponentInput struct {
-	ID          string `json:"id"          jsonschema:"The component ID to update."`
-	Name        string `json:"name"        jsonschema:"Optional. New display name."`
-	Description string `json:"description" jsonschema:"Optional. New description."`
+	ID          string         `json:"id"                    jsonschema:"The component ID to update."`
+	Name        string         `json:"name,omitempty"        jsonschema:"Optional. New display name."`
+	Description string         `json:"description,omitempty" jsonschema:"Optional. New description."`
+	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Replacement custom attribute tags at the component scope. Must conform to the organization's custom-attribute schema."`
 }
 
 func HandleUpdateComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateComponentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -133,6 +136,7 @@ func HandleUpdateComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 		component, err := c.Components.Update(ctx, args.ID, components.UpdateInput{
 			Name:        args.Name,
 			Description: args.Description,
+			Attributes:  args.Attributes,
 		})
 		if err != nil {
 			if isMutationFailed(err) {

@@ -139,6 +139,13 @@ Tool handlers depend on service interfaces defined in `services.go`. In producti
 3. Register the tool in `mcp/server.go`
 4. Add stub method and tests in the `*_test.go` file
 5. Add the tool name to the expected list in `main_test.go`
+6. Add the input type to `allToolInputs` (and bump `wantTools`) in `mcp/tools/schema_required_test.go`
+
+> **Optional fields:** any input field that the handler does not enforce as
+> required must carry `,omitempty` in its json tag. The go-sdk infers a property
+> as *required* whenever `,omitempty` is absent, so a missing tag silently
+> advertises an optional field as required and MCP clients will reject valid
+> calls. `TestOptionalFieldsAreNotRequired` guards this invariant.
 
 ## License
 

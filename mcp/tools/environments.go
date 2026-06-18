@@ -77,10 +77,11 @@ var CreateEnvironmentTool = &mcpsdk.Tool{
 }
 
 type CreateEnvironmentInput struct {
-	ProjectID   string `json:"project_id"   jsonschema:"The ID of the project to create the environment in."`
-	ID          string `json:"id"           jsonschema:"Unique identifier for the environment within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
-	Name        string `json:"name"         jsonschema:"Human-readable name shown in the UI."`
-	Description string `json:"description"  jsonschema:"Optional description of the environment."`
+	ProjectID   string         `json:"project_id"   jsonschema:"The ID of the project to create the environment in."`
+	ID          string         `json:"id"           jsonschema:"Unique identifier for the environment within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
+	Name        string         `json:"name"                  jsonschema:"Human-readable name shown in the UI."`
+	Description string         `json:"description,omitempty" jsonschema:"Optional description of the environment."`
+	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Custom attribute tags at the environment scope (e.g., {\"env\":\"prod\"}). Must conform to the organization's custom-attribute schema; some may be required."`
 }
 
 func HandleCreateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -99,6 +100,7 @@ func HandleCreateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 			ID:          args.ID,
 			Name:        args.Name,
 			Description: args.Description,
+			Attributes:  args.Attributes,
 		})
 		if err != nil {
 			if isMutationFailed(err) {
@@ -121,9 +123,10 @@ var UpdateEnvironmentTool = &mcpsdk.Tool{
 }
 
 type UpdateEnvironmentInput struct {
-	ID          string `json:"id"          jsonschema:"The environment identifier (e.g., 'myproj-staging')."`
-	Name        string `json:"name"        jsonschema:"Optional. New human-readable name for the environment."`
-	Description string `json:"description" jsonschema:"Optional. New description for the environment."`
+	ID          string         `json:"id"                    jsonschema:"The environment identifier (e.g., 'myproj-staging')."`
+	Name        string         `json:"name,omitempty"        jsonschema:"Optional. New human-readable name for the environment."`
+	Description string         `json:"description,omitempty" jsonschema:"Optional. New description for the environment."`
+	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Replacement custom attribute tags at the environment scope. Must conform to the organization's custom-attribute schema."`
 }
 
 func HandleUpdateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -135,6 +138,7 @@ func HandleUpdateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		env, err := c.Environments.Update(ctx, args.ID, environments.UpdateInput{
 			Name:        args.Name,
 			Description: args.Description,
+			Attributes:  args.Attributes,
 		})
 		if err != nil {
 			if isMutationFailed(err) {

@@ -45,9 +45,9 @@ var CreatePolicyTool = &mcpsdk.Tool{
 
 type CreatePolicyInput struct {
 	GroupID    string                 `json:"group_id"   jsonschema:"The group ID to attach the policy to."`
-	Effect     string                 `json:"effect"     jsonschema:"Policy effect: ALLOW or DENY."`
-	Actions    []string               `json:"actions"    jsonschema:"Actions the policy applies to (e.g., 'deployment:create')."`
-	Conditions types.PolicyConditions `json:"conditions" jsonschema:"Optional. Attribute conditions scoping the policy (map of attribute key to allowed values)."`
+	Effect     string                 `json:"effect"               jsonschema:"Policy effect: ALLOW or DENY."`
+	Actions    []string               `json:"actions,omitempty"    jsonschema:"Optional. Actions the policy applies to (e.g., 'deployment:create'). Empty means all actions."`
+	Conditions types.PolicyConditions `json:"conditions,omitempty" jsonschema:"Optional. Attribute conditions scoping the policy (map of attribute key to allowed values)."`
 }
 
 func HandleCreatePolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreatePolicyInput) (*mcpsdk.CallToolResult, any, error) {
@@ -85,10 +85,10 @@ var UpdatePolicyTool = &mcpsdk.Tool{
 }
 
 type UpdatePolicyInput struct {
-	ID         string                  `json:"id"         jsonschema:"The policy ID to update."`
-	Effect     string                  `json:"effect"     jsonschema:"Policy effect: ALLOW or DENY."`
-	Actions    []string                `json:"actions"    jsonschema:"Actions the policy applies to."`
-	Conditions *types.PolicyConditions `json:"conditions" jsonschema:"Optional. Attribute conditions scoping the policy. Pass null to leave unchanged."`
+	ID         string                  `json:"id"                   jsonschema:"The policy ID to update."`
+	Effect     string                  `json:"effect"               jsonschema:"Policy effect: ALLOW or DENY."`
+	Actions    []string                `json:"actions,omitempty"    jsonschema:"Optional. Actions the policy applies to."`
+	Conditions *types.PolicyConditions `json:"conditions,omitempty" jsonschema:"Optional. Attribute conditions scoping the policy. Pass null to leave unchanged."`
 }
 
 func HandleUpdatePolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdatePolicyInput) (*mcpsdk.CallToolResult, any, error) {
@@ -264,9 +264,9 @@ var ExplainPolicyTool = &mcpsdk.Tool{
 }
 
 type ExplainPolicyInput struct {
-	Effect     string                 `json:"effect"     jsonschema:"Policy effect: ALLOW or DENY."`
-	Actions    []string               `json:"actions"    jsonschema:"Actions the policy applies to."`
-	Conditions types.PolicyConditions `json:"conditions" jsonschema:"Optional. Attribute conditions scoping the policy."`
+	Effect     string                 `json:"effect"               jsonschema:"Policy effect: ALLOW or DENY."`
+	Actions    []string               `json:"actions,omitempty"    jsonschema:"Optional. Actions the policy applies to."`
+	Conditions types.PolicyConditions `json:"conditions,omitempty" jsonschema:"Optional. Attribute conditions scoping the policy."`
 }
 
 func HandleExplainPolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ExplainPolicyInput) (*mcpsdk.CallToolResult, any, error) {

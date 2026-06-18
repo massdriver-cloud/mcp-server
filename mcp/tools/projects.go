@@ -74,9 +74,10 @@ var CreateProjectTool = &mcpsdk.Tool{
 }
 
 type CreateProjectInput struct {
-	ID          string `json:"id"          jsonschema:"Unique identifier for the project, max 12 lowercase alphanumeric characters. Cannot be changed after creation."`
-	Name        string `json:"name"        jsonschema:"Human-readable name shown in the UI."`
-	Description string `json:"description" jsonschema:"Optional description of the project."`
+	ID          string         `json:"id"                    jsonschema:"Unique identifier for the project, max 12 lowercase alphanumeric characters. Cannot be changed after creation."`
+	Name        string         `json:"name"                  jsonschema:"Human-readable name shown in the UI."`
+	Description string         `json:"description,omitempty" jsonschema:"Optional description of the project."`
+	Attributes  map[string]any `json:"attributes,omitempty"  jsonschema:"Optional. Custom attribute tags at the project scope (e.g., {\"team\":\"eng\"}). Must conform to the organization's custom-attribute schema; some may be required. Use get_organization to discover defined attributes."`
 }
 
 func HandleCreateProject(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateProjectInput) (*mcpsdk.CallToolResult, any, error) {
@@ -92,6 +93,7 @@ func HandleCreateProject(c *Client) func(context.Context, *mcpsdk.CallToolReques
 			ID:          args.ID,
 			Name:        args.Name,
 			Description: args.Description,
+			Attributes:  args.Attributes,
 		})
 		if err != nil {
 			if isMutationFailed(err) {
@@ -114,9 +116,10 @@ var UpdateProjectTool = &mcpsdk.Tool{
 }
 
 type UpdateProjectInput struct {
-	ID          string `json:"id"          jsonschema:"The project ID to update."`
-	Name        string `json:"name"        jsonschema:"Optional. New human-readable name for the project."`
-	Description string `json:"description" jsonschema:"Optional. New description for the project."`
+	ID          string         `json:"id"                    jsonschema:"The project ID to update."`
+	Name        string         `json:"name,omitempty"        jsonschema:"Optional. New human-readable name for the project."`
+	Description string         `json:"description,omitempty" jsonschema:"Optional. New description for the project."`
+	Attributes  map[string]any `json:"attributes,omitempty"  jsonschema:"Optional. Replacement custom attribute tags at the project scope. Must conform to the organization's custom-attribute schema."`
 }
 
 func HandleUpdateProject(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateProjectInput) (*mcpsdk.CallToolResult, any, error) {
@@ -128,6 +131,7 @@ func HandleUpdateProject(c *Client) func(context.Context, *mcpsdk.CallToolReques
 		project, err := c.Projects.Update(ctx, args.ID, projects.UpdateInput{
 			Name:        args.Name,
 			Description: args.Description,
+			Attributes:  args.Attributes,
 		})
 		if err != nil {
 			if isMutationFailed(err) {

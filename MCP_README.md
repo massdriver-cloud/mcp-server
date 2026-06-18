@@ -8,8 +8,8 @@ This document describes all 83 tools available in the Massdriver MCP server.
 |------|-------------|
 | `list_projects` | Lists all projects in the organization, including their environments. |
 | `get_project` | Gets a specific project by ID, including its environments. |
-| `create_project` | Creates a new project. Requires `id` and `name`. |
-| `update_project` | Updates a project's name or description. |
+| `create_project` | Creates a new project. Requires `id` and `name`; accepts optional `description` and custom `attributes` (required by orgs that define required project attributes). |
+| `update_project` | Updates a project's name, description, or custom `attributes`. |
 | `delete_project` | Deletes a project. All environments must be empty first. |
 
 ## Environments
@@ -18,8 +18,8 @@ This document describes all 83 tools available in the Massdriver MCP server.
 |------|-------------|
 | `list_environments` | Lists all environments. Optionally filter by `project_id`. |
 | `get_environment` | Gets an environment by its identifier (e.g., `myproj-staging`). |
-| `create_environment` | Creates an environment within a project. Requires `project_id`, `id`, `name`. |
-| `update_environment` | Updates an environment's name or description. |
+| `create_environment` | Creates an environment within a project. Requires `project_id`, `id`, `name`; accepts optional `description` and custom `attributes`. |
+| `update_environment` | Updates an environment's name, description, or custom `attributes`. |
 | `delete_environment` | Deletes an environment. All instances must be decommissioned first. |
 | `set_environment_default` | Sets a default resource binding for an environment. |
 | `remove_environment_default` | Removes a default resource binding. |
@@ -54,8 +54,8 @@ This document describes all 83 tools available in the Massdriver MCP server.
 |------|-------------|
 | `list_components` | Lists all components in a project's blueprint. Requires `project_id`. |
 | `get_component` | Gets a component by ID. |
-| `add_component` | Adds a component to a project blueprint. Requires `project_id`, `bundle_name`, `id`, `name`. |
-| `update_component` | Updates a component's name or description. |
+| `add_component` | Adds a component to a project blueprint. Requires `project_id`, `bundle_name`, `id`, `name`; accepts optional `description` and custom `attributes`. |
+| `update_component` | Updates a component's name, description, or custom `attributes`. |
 | `remove_component` | Removes a component from a blueprint. |
 | `link_components` | Links two components (source output field to destination input field). |
 | `unlink_components` | Removes a link between components. |
@@ -163,4 +163,4 @@ This document describes all 83 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `get_url` | Generates a deep link URL into the Massdriver web UI. Supported types: `organization`, `projects`, `project`, `environment`, `instance`, `bundle`, `repo_instances`. |
+| `get_url` | Generates a deep link URL into the Massdriver web UI. Supported types: `organization`, `projects`, `project`, `environment`, `instance`, `bundle`, `repo_instances`. `id` is required for all types except `organization`/`projects`; `version` is additionally required for `bundle`/`repo_instances`. |

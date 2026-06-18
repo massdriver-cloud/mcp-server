@@ -80,8 +80,8 @@ var CreateOciRepoTool = &mcpsdk.Tool{
 
 type CreateOciRepoInput struct {
 	ID           string         `json:"id"            jsonschema:"Repository name (immutable after creation)."`
-	ArtifactType string         `json:"artifact_type" jsonschema:"Artifact type (e.g., 'BUNDLE')."`
-	Attributes   map[string]any `json:"attributes"    jsonschema:"Optional. Custom attributes for the repository."`
+	ArtifactType string         `json:"artifact_type"        jsonschema:"Artifact type (e.g., 'BUNDLE')."`
+	Attributes   map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Custom attributes for the repository."`
 }
 
 func HandleCreateOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
@@ -119,8 +119,8 @@ var UpdateOciRepoTool = &mcpsdk.Tool{
 }
 
 type UpdateOciRepoInput struct {
-	ID         string         `json:"id"         jsonschema:"The OCI repository ID to update."`
-	Attributes map[string]any `json:"attributes" jsonschema:"New attributes for the repository."`
+	ID         string         `json:"id"                   jsonschema:"The OCI repository ID to update."`
+	Attributes map[string]any `json:"attributes,omitempty" jsonschema:"Optional. New attributes for the repository."`
 }
 
 func HandleUpdateOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateOciRepoInput) (*mcpsdk.CallToolResult, any, error) {

@@ -109,9 +109,9 @@ var CreateDeploymentTool = &mcpsdk.Tool{
 
 type CreateDeploymentInput struct {
 	InstanceID string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
-	Action     string         `json:"action"      jsonschema:"Deployment action: PROVISION, DECOMMISSION, or PLAN."`
-	Params     map[string]any `json:"params"      jsonschema:"Optional. Parameter overrides for the deployment."`
-	Message    string         `json:"message"     jsonschema:"Optional. Deployment message or reason."`
+	Action     string         `json:"action"            jsonschema:"Deployment action: PROVISION, DECOMMISSION, or PLAN."`
+	Params     map[string]any `json:"params,omitempty"  jsonschema:"Optional. Parameter overrides for the deployment."`
+	Message    string         `json:"message,omitempty" jsonschema:"Optional. Deployment message or reason."`
 }
 
 func HandleCreateDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -181,9 +181,9 @@ var ProposeDeploymentTool = &mcpsdk.Tool{
 
 type ProposeDeploymentInput struct {
 	InstanceID string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
-	Action     string         `json:"action"      jsonschema:"Deployment action: PROVISION or DECOMMISSION."`
-	Params     map[string]any `json:"params"      jsonschema:"Optional. Parameter overrides for the deployment."`
-	Message    string         `json:"message"     jsonschema:"Optional. Deployment message or reason."`
+	Action     string         `json:"action"            jsonschema:"Deployment action: PROVISION or DECOMMISSION."`
+	Params     map[string]any `json:"params,omitempty"  jsonschema:"Optional. Parameter overrides for the deployment."`
+	Message    string         `json:"message,omitempty" jsonschema:"Optional. Deployment message or reason."`
 }
 
 func HandleProposeDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ProposeDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
