@@ -130,7 +130,7 @@ func HandleCreateDeployment(c *Client) func(context.Context, *mcpsdk.CallToolReq
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_deployment failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_deployment failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_deployment: %w", err)
 		}
@@ -161,7 +161,7 @@ func HandleAbortDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 		deployment, err := c.Deployments.Abort(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("abort_deployment failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("abort_deployment failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("abort_deployment: %w", err)
 		}
@@ -202,7 +202,7 @@ func HandleProposeDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("propose_deployment failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("propose_deployment failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("propose_deployment: %w", err)
 		}
@@ -233,7 +233,7 @@ func HandleApproveDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		deployment, err := c.Deployments.Approve(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("approve_deployment failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("approve_deployment failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("approve_deployment: %w", err)
 		}
@@ -264,7 +264,7 @@ func HandleRejectDeployment(c *Client) func(context.Context, *mcpsdk.CallToolReq
 		deployment, err := c.Deployments.Reject(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("reject_deployment failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("reject_deployment failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("reject_deployment: %w", err)
 		}

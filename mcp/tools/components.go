@@ -102,7 +102,7 @@ func HandleAddComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("add_component failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("add_component failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("add_component: %w", err)
 		}
@@ -140,7 +140,7 @@ func HandleUpdateComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_component failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_component failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_component: %w", err)
 		}
@@ -171,7 +171,7 @@ func HandleRemoveComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 		_, err := c.Components.Remove(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("remove_component failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("remove_component failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("remove_component: %w", err)
 		}
@@ -225,7 +225,7 @@ func HandleLinkComponents(c *Client) func(context.Context, *mcpsdk.CallToolReque
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("link_components failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("link_components failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("link_components: %w", err)
 		}
@@ -256,7 +256,7 @@ func HandleUnlinkComponents(c *Client) func(context.Context, *mcpsdk.CallToolReq
 		_, err := c.Components.RemoveLink(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("unlink_components failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("unlink_components failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("unlink_components: %w", err)
 		}

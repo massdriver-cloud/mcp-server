@@ -90,7 +90,7 @@ func HandleCreateGroup(c *Client) func(context.Context, *mcpsdk.CallToolRequest,
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_group failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_group failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_group: %w", err)
 		}
@@ -126,7 +126,7 @@ func HandleUpdateGroup(c *Client) func(context.Context, *mcpsdk.CallToolRequest,
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_group failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_group failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_group: %w", err)
 		}
@@ -157,7 +157,7 @@ func HandleDeleteGroup(c *Client) func(context.Context, *mcpsdk.CallToolRequest,
 		_, err := c.Groups.Delete(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("delete_group failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("delete_group failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("delete_group: %w", err)
 		}
@@ -188,7 +188,7 @@ func HandleAddGroupUser(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		addResult, err := c.Groups.AddUser(ctx, args.GroupID, args.Email)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("add_group_user failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("add_group_user failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("add_group_user: %w", err)
 		}
@@ -223,7 +223,7 @@ func HandleRemoveGroupUser(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 		err := c.Groups.RemoveUser(ctx, args.GroupID, args.Email)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("remove_group_user failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("remove_group_user failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("remove_group_user: %w", err)
 		}
@@ -254,7 +254,7 @@ func HandleRevokeGroupInvitation(c *Client) func(context.Context, *mcpsdk.CallTo
 		err := c.Groups.RevokeInvitation(ctx, args.GroupID, args.Email)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("revoke_group_invitation failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("revoke_group_invitation failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("revoke_group_invitation: %w", err)
 		}
@@ -285,7 +285,7 @@ func HandleAddGroupServiceAccount(c *Client) func(context.Context, *mcpsdk.CallT
 		err := c.Groups.AddServiceAccount(ctx, args.GroupID, args.ServiceAccountID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("add_group_service_account failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("add_group_service_account failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("add_group_service_account: %w", err)
 		}
@@ -316,7 +316,7 @@ func HandleRemoveGroupServiceAccount(c *Client) func(context.Context, *mcpsdk.Ca
 		err := c.Groups.RemoveServiceAccount(ctx, args.GroupID, args.ServiceAccountID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("remove_group_service_account failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("remove_group_service_account failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("remove_group_service_account: %w", err)
 		}

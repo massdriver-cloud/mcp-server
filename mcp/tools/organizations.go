@@ -59,7 +59,7 @@ func HandleCreateCustomAttribute(c *Client) func(context.Context, *mcpsdk.CallTo
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_custom_attribute failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_custom_attribute failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_custom_attribute: %w", err)
 		}
@@ -95,7 +95,7 @@ func HandleUpdateCustomAttribute(c *Client) func(context.Context, *mcpsdk.CallTo
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_custom_attribute failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_custom_attribute failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_custom_attribute: %w", err)
 		}
@@ -126,7 +126,7 @@ func HandleDeleteCustomAttribute(c *Client) func(context.Context, *mcpsdk.CallTo
 		_, err := c.Organizations.DeleteCustomAttribute(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("delete_custom_attribute failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("delete_custom_attribute failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("delete_custom_attribute: %w", err)
 		}

@@ -95,7 +95,7 @@ func HandleCreateServiceAccount(c *Client) func(context.Context, *mcpsdk.CallToo
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_service_account failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_service_account failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_service_account: %w", err)
 		}
@@ -131,7 +131,7 @@ func HandleUpdateServiceAccount(c *Client) func(context.Context, *mcpsdk.CallToo
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_service_account failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_service_account failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_service_account: %w", err)
 		}
@@ -162,7 +162,7 @@ func HandleDeleteServiceAccount(c *Client) func(context.Context, *mcpsdk.CallToo
 		_, err := c.ServiceAccounts.Delete(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("delete_service_account failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("delete_service_account failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("delete_service_account: %w", err)
 		}

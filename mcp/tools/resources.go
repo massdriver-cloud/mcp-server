@@ -138,7 +138,7 @@ func HandleCreateResource(c *Client) func(context.Context, *mcpsdk.CallToolReque
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_resource failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_resource failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_resource: %w", err)
 		}
@@ -177,7 +177,7 @@ func HandleUpdateResource(c *Client) func(context.Context, *mcpsdk.CallToolReque
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_resource failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_resource failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_resource: %w", err)
 		}
@@ -208,7 +208,7 @@ func HandleDeleteResource(c *Client) func(context.Context, *mcpsdk.CallToolReque
 		_, err := c.Resources.Delete(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("delete_resource failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("delete_resource failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("delete_resource: %w", err)
 		}
@@ -243,7 +243,7 @@ func HandleCreateResourceGrant(c *Client) func(context.Context, *mcpsdk.CallTool
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_resource_grant failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_resource_grant failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_resource_grant: %w", err)
 		}
@@ -274,7 +274,7 @@ func HandleDeleteResourceGrant(c *Client) func(context.Context, *mcpsdk.CallTool
 		err := c.Resources.DeleteGrant(ctx, args.GrantID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("delete_resource_grant failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("delete_resource_grant failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("delete_resource_grant: %w", err)
 		}

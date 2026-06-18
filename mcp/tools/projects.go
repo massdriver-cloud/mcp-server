@@ -97,7 +97,7 @@ func HandleCreateProject(c *Client) func(context.Context, *mcpsdk.CallToolReques
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_project failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_project failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_project: %w", err)
 		}
@@ -135,7 +135,7 @@ func HandleUpdateProject(c *Client) func(context.Context, *mcpsdk.CallToolReques
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_project failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_project failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_project: %w", err)
 		}
@@ -166,7 +166,7 @@ func HandleDeleteProject(c *Client) func(context.Context, *mcpsdk.CallToolReques
 		_, err := c.Projects.Delete(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("delete_project failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("delete_project failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("delete_project: %w", err)
 		}

@@ -101,7 +101,7 @@ func HandleSetInstanceSecret(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		secret, err := c.Instances.SetSecret(ctx, args.InstanceID, args.Name, args.Value)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("set_instance_secret failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("set_instance_secret failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("set_instance_secret: %w", err)
 		}
@@ -136,7 +136,7 @@ func HandleRemoveInstanceSecret(c *Client) func(context.Context, *mcpsdk.CallToo
 		secret, err := c.Instances.RemoveSecret(ctx, args.InstanceID, args.Name)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("remove_instance_secret failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("remove_instance_secret failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("remove_instance_secret: %w", err)
 		}
@@ -216,7 +216,7 @@ func HandleUpdateInstance(c *Client) func(context.Context, *mcpsdk.CallToolReque
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_instance failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_instance failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_instance: %w", err)
 		}

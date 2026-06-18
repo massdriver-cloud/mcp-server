@@ -66,7 +66,7 @@ func HandleCreatePolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_policy failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_policy failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_policy: %w", err)
 		}
@@ -104,7 +104,7 @@ func HandleUpdatePolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_policy failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_policy failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_policy: %w", err)
 		}
@@ -135,7 +135,7 @@ func HandleDeletePolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		_, err := c.Policies.Delete(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("delete_policy failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("delete_policy failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("delete_policy: %w", err)
 		}

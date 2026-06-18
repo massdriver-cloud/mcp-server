@@ -41,11 +41,7 @@ func HandleListBundles(c *Client) func(context.Context, *mcpsdk.CallToolRequest,
 		}
 
 		out := pageResult(page)
-		result, err := jsonResult(out)
-		if err != nil {
-			return nil, nil, err
-		}
-		return result, out, nil
+		return jsonResultStripping(out, "icon")
 	}
 }
 
@@ -69,10 +65,6 @@ func HandleGetBundle(c *Client) func(context.Context, *mcpsdk.CallToolRequest, G
 			return nil, nil, fmt.Errorf("get_bundle: %w", err)
 		}
 
-		result, err := jsonResult(bundle)
-		if err != nil {
-			return nil, nil, err
-		}
-		return result, bundle, nil
+		return jsonResultStripping(bundle, "icon")
 	}
 }

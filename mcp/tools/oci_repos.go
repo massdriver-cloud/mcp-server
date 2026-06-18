@@ -37,11 +37,7 @@ func HandleListOciRepos(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		}
 
 		out := pageResult(page)
-		result, err := jsonResult(out)
-		if err != nil {
-			return nil, nil, err
-		}
-		return result, out, nil
+		return jsonResultStripping(out, "icon")
 	}
 }
 
@@ -65,11 +61,7 @@ func HandleGetOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolRequest, 
 			return nil, nil, fmt.Errorf("get_oci_repo: %w", err)
 		}
 
-		result, err := jsonResult(repo)
-		if err != nil {
-			return nil, nil, err
-		}
-		return result, repo, nil
+		return jsonResultStripping(repo, "icon")
 	}
 }
 
@@ -100,16 +92,12 @@ func HandleCreateOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolReques
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_oci_repo failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_oci_repo failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_oci_repo: %w", err)
 		}
 
-		result, err := jsonResult(repo)
-		if err != nil {
-			return nil, nil, err
-		}
-		return result, repo, nil
+		return jsonResultStripping(repo, "icon")
 	}
 }
 
@@ -134,15 +122,11 @@ func HandleUpdateOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolReques
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_oci_repo failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_oci_repo failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_oci_repo: %w", err)
 		}
 
-		result, err := jsonResult(repo)
-		if err != nil {
-			return nil, nil, err
-		}
-		return result, repo, nil
+		return jsonResultStripping(repo, "icon")
 	}
 }

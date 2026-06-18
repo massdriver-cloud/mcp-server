@@ -2,6 +2,14 @@
 
 This document describes all 83 tools available in the Massdriver MCP server.
 
+## Conventions
+
+- **Behavioral annotations.** Every tool advertises MCP hints: read-only tools set `readOnlyHint`; mutating tools set `destructiveHint`/`idempotentHint` so clients can gate or auto-approve calls appropriately.
+- **Enum validation.** Fields with a closed set of values (e.g. `effect`, `scope`, deployment `action`/`status`, resource `origin`, `get_url` `type`) are constrained with JSON Schema enums and rejected client-side if invalid.
+- **Handled failures.** When the API rejects a mutation (e.g. a missing required attribute), the tool returns a result with `isError: true` and a human-readable message rather than appearing to succeed.
+- **Trimmed payloads.** Bundle and OCI-repo responses omit the inline SVG `icon` field to keep responses compact.
+- **Pagination.** List tools return `{ items, has_more, next_cursor }` and accept `cursor`/`page_size` (default 25, max 100). `list_components` is unpaginated (a project's blueprint is bounded).
+
 ## Projects
 
 | Tool | Description |

@@ -104,7 +104,7 @@ func HandleCreateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("create_environment failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("create_environment failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_environment: %w", err)
 		}
@@ -142,7 +142,7 @@ func HandleUpdateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		})
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("update_environment failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("update_environment failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("update_environment: %w", err)
 		}
@@ -173,7 +173,7 @@ func HandleDeleteEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		_, err := c.Environments.Delete(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("delete_environment failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("delete_environment failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("delete_environment: %w", err)
 		}
@@ -204,7 +204,7 @@ func HandleSetEnvironmentDefault(c *Client) func(context.Context, *mcpsdk.CallTo
 		envDefault, err := c.Environments.SetDefault(ctx, args.EnvironmentID, args.ResourceID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("set_environment_default failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("set_environment_default failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("set_environment_default: %w", err)
 		}
@@ -235,7 +235,7 @@ func HandleRemoveEnvironmentDefault(c *Client) func(context.Context, *mcpsdk.Cal
 		envDefault, err := c.Environments.RemoveDefault(ctx, args.ID)
 		if err != nil {
 			if isMutationFailed(err) {
-				return textResult(fmt.Sprintf("remove_environment_default failed: %s", mutationErr(err))), nil, nil
+				return errorResult(fmt.Sprintf("remove_environment_default failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("remove_environment_default: %w", err)
 		}

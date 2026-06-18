@@ -12,13 +12,16 @@ func resultText(t *testing.T, result *mcpsdk.CallToolResult) string {
 	t.Helper()
 	if result == nil {
 		t.Fatal("result is nil")
+		return ""
 	}
 	if len(result.Content) == 0 {
 		t.Fatal("result.Content is empty")
+		return ""
 	}
 	tc, ok := result.Content[0].(*mcpsdk.TextContent)
 	if !ok {
 		t.Fatalf("content[0] is %T, not *mcpsdk.TextContent", result.Content[0])
+		return ""
 	}
 	return tc.Text
 }
