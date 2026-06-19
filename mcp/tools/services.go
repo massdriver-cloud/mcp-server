@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"io"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/auditlogs"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/bundles"
@@ -80,6 +81,7 @@ type DeploymentsService interface {
 	ListPage(ctx context.Context, input deployments.ListInput) (types.Page[deployments.Deployment], error)
 	Get(ctx context.Context, id string) (*deployments.Deployment, error)
 	GetLogs(ctx context.Context, id string) (string, error)
+	TailLogs(ctx context.Context, id string, w io.Writer) error
 	Create(ctx context.Context, instanceID string, input deployments.CreateInput) (*deployments.Deployment, error)
 	Propose(ctx context.Context, instanceID string, input deployments.ProposeInput) (*deployments.Deployment, error)
 	Approve(ctx context.Context, id string) (*deployments.Deployment, error)
@@ -165,6 +167,7 @@ type OciReposService interface {
 	Get(ctx context.Context, id string) (*ocirepos.OciRepo, error)
 	Create(ctx context.Context, input ocirepos.CreateInput) (*ocirepos.OciRepo, error)
 	Update(ctx context.Context, id string, input ocirepos.UpdateInput) (*ocirepos.OciRepo, error)
+	Delete(ctx context.Context, id string) (*ocirepos.OciRepo, error)
 }
 
 // PoliciesService defines the policy operations used by tool handlers.

@@ -45,7 +45,7 @@ func HandleListEnvironments(c *Client) func(context.Context, *mcpsdk.CallToolReq
 
 var GetEnvironmentTool = &mcpsdk.Tool{
 	Name:        "get_environment",
-	Description: "Gets a specific environment by its full identifier (e.g., 'myproject-staging').",
+	Description: "Gets a specific environment by its full identifier (e.g., 'myproject-staging'), including its default resource bindings (the `defaults` field — the default resource bound per type for instances in this environment).",
 }
 
 type GetEnvironmentInput struct {
@@ -183,8 +183,9 @@ func HandleDeleteEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 }
 
 var SetEnvironmentDefaultTool = &mcpsdk.Tool{
-	Name:        "set_environment_default",
-	Description: "Sets a default resource binding for an environment.",
+	Name: "set_environment_default",
+	Description: "Sets a resource as the default of its type for an environment — new instances bind to it for that dependency type. " +
+		"The resource must first be shared to the environment with create_resource_grant (whose recipient_conditions match the environment, or are omitted for all environments), otherwise this fails with \"not granted to this environment\". Only one default per resource type.",
 }
 
 type SetEnvironmentDefaultInput struct {

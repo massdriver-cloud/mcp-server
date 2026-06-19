@@ -181,8 +181,9 @@ func HandleRemoveComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 }
 
 var LinkComponentsTool = &mcpsdk.Tool{
-	Name:        "link_components",
-	Description: "Creates a link between two components in a project's blueprint, connecting an output field on the source to an input field on the destination.",
+	Name: "link_components",
+	Description: "Creates a link between two components in a project's blueprint, connecting a source component's output to a destination component's input slot of the same resource type. " +
+		"from_field/to_field are the named connection slots; their resource types must match (use get_bundle to see a component's resources and dependencies).",
 }
 
 type LinkComponentsInput struct {

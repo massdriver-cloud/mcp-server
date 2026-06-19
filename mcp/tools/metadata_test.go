@@ -36,8 +36,8 @@ func TestMutationFailureSetsIsError(t *testing.T) {
 // registered tool. The list mirrors mcp/server.go's registration.
 func TestEveryToolHasAnnotations(t *testing.T) {
 	tools := registeredTools()
-	if len(tools) != 83 {
-		t.Fatalf("registeredTools lists %d tools, want 83 (keep in sync with registerTools)", len(tools))
+	if len(tools) != 84 {
+		t.Fatalf("registeredTools lists %d tools, want 84 (keep in sync with registerTools)", len(tools))
 	}
 	seen := make(map[string]bool, len(tools))
 	for _, tool := range tools {
@@ -158,7 +158,7 @@ func registeredTools() []*mcpsdk.Tool {
 		GetAuditLogTool, ListAuditLogsTool, ListAuditLogEventTypesTool,
 		ListGroupsTool, GetGroupTool, CreateGroupTool, UpdateGroupTool, DeleteGroupTool, AddGroupUserTool, RemoveGroupUserTool, RevokeGroupInvitationTool, AddGroupServiceAccountTool, RemoveGroupServiceAccountTool,
 		ListServiceAccountsTool, GetServiceAccountTool, CreateServiceAccountTool, UpdateServiceAccountTool, DeleteServiceAccountTool,
-		ListOciReposTool, GetOciRepoTool, CreateOciRepoTool, UpdateOciRepoTool,
+		ListOciReposTool, GetOciRepoTool, CreateOciRepoTool, UpdateOciRepoTool, DeleteOciRepoTool,
 		GetPolicyTool, CreatePolicyTool, UpdatePolicyTool, DeletePolicyTool, ListPolicyActionsTool, ListPolicyEntitiesTool, EvaluatePolicyTool, EvaluatePoliciesBatchTool, ExplainPolicyTool, GetPolicyAttributeSchemaTool, ListPolicyAttributeValuesTool,
 		GetServerTool,
 		GetURLTool,

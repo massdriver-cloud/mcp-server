@@ -27,6 +27,29 @@ make build
 ./bin/mcp-server
 ```
 
+### Transports
+
+By default the server speaks MCP over **stdio** (for local tool integrations like
+Claude Desktop). To serve the **Streamable HTTP** transport instead, pass `-http`
+(or set `MASSDRIVER_MCP_HTTP_ADDR`):
+
+```bash
+./bin/mcp-server -http 127.0.0.1:8080
+```
+
+The HTTP endpoint is stateless and returns `application/json`, so a single tool
+call is a plain POST (no session handshake required):
+
+```bash
+curl -s 127.0.0.1:8080 \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_viewer","arguments":{}}}'
+```
+
+> The HTTP endpoint is unauthenticated and exposes infrastructure-mutating tools.
+> Bind it to localhost or place it behind an authenticating proxy.
+
 ### Docker
 
 ```bash
@@ -58,7 +81,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (83)
+## Available Tools (84)
 
 ### Projects (5)
 `list_projects` `get_project` `create_project` `update_project` `delete_project`
@@ -96,8 +119,8 @@ The server uses stdio transport, compatible with any MCP client.
 ### Service Accounts (5)
 `list_service_accounts` `get_service_account` `create_service_account` `update_service_account` `delete_service_account`
 
-### OCI Repos (4)
-`list_oci_repos` `get_oci_repo` `create_oci_repo` `update_oci_repo`
+### OCI Repos (5)
+`list_oci_repos` `get_oci_repo` `create_oci_repo` `update_oci_repo` `delete_oci_repo`
 
 ### Policies (11)
 `get_policy` `create_policy` `update_policy` `delete_policy` `list_policy_actions` `list_policy_entities` `evaluate_policy` `evaluate_policies_batch` `explain_policy` `get_policy_attribute_schema` `list_policy_attribute_values`

@@ -94,6 +94,7 @@ func applyAnnotations() {
 		DeleteResourceTool, DeleteResourceGrantTool, DeleteCustomAttributeTool,
 		DeleteGroupTool, RemoveGroupUserTool, RevokeGroupInvitationTool,
 		RemoveGroupServiceAccountTool, DeleteServiceAccountTool, DeletePolicyTool,
+		DeleteOciRepoTool,
 	}
 	for _, t := range destructiveIdempotent {
 		t.Annotations = writeHints(true, true)

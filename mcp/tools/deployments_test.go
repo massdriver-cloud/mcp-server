@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 
@@ -13,6 +14,7 @@ type stubDeployments struct {
 	listPageFn func(context.Context, deployments.ListInput) (types.Page[deployments.Deployment], error)
 	getFn      func(context.Context, string) (*deployments.Deployment, error)
 	getLogsFn  func(context.Context, string) (string, error)
+	tailLogsFn func(context.Context, string, io.Writer) error
 	createFn   func(context.Context, string, deployments.CreateInput) (*deployments.Deployment, error)
 	proposeFn  func(context.Context, string, deployments.ProposeInput) (*deployments.Deployment, error)
 	approveFn  func(context.Context, string) (*deployments.Deployment, error)
@@ -28,6 +30,12 @@ func (s *stubDeployments) Get(ctx context.Context, id string) (*deployments.Depl
 }
 func (s *stubDeployments) GetLogs(ctx context.Context, id string) (string, error) {
 	return s.getLogsFn(ctx, id)
+}
+func (s *stubDeployments) TailLogs(ctx context.Context, id string, w io.Writer) error {
+	if s.tailLogsFn == nil {
+		return nil
+	}
+	return s.tailLogsFn(ctx, id, w)
 }
 func (s *stubDeployments) Create(ctx context.Context, instanceID string, input deployments.CreateInput) (*deployments.Deployment, error) {
 	return s.createFn(ctx, instanceID, input)

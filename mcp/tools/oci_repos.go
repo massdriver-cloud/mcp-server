@@ -130,3 +130,30 @@ func HandleUpdateOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolReques
 		return jsonResultStripping(repo, "icon")
 	}
 }
+
+var DeleteOciRepoTool = &mcpsdk.Tool{
+	Name:        "delete_oci_repo",
+	Description: "Deletes an OCI repository.",
+}
+
+type DeleteOciRepoInput struct {
+	ID string `json:"id" jsonschema:"The OCI repository ID to delete."`
+}
+
+func HandleDeleteOciRepo(c *Client) func(context.Context, *mcpsdk.CallToolRequest, DeleteOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args DeleteOciRepoInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("delete_oci_repo: id is required")
+		}
+
+		_, err := c.OciRepos.Delete(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("delete_oci_repo failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("delete_oci_repo: %w", err)
+		}
+
+		return textResult(fmt.Sprintf("OCI repository %q deleted successfully", args.ID)), nil, nil
+	}
+}

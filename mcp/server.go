@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver"
 	"github.com/massdriver-cloud/mcp-server/mcp/tools"
@@ -158,6 +159,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.GetOciRepoTool, tools.HandleGetOciRepo(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CreateOciRepoTool, tools.HandleCreateOciRepo(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateOciRepoTool, tools.HandleUpdateOciRepo(c))
+	mcpsdk.AddTool(s.mcpServer, tools.DeleteOciRepoTool, tools.HandleDeleteOciRepo(c))
 
 	// Policies
 	mcpsdk.AddTool(s.mcpServer, tools.GetPolicyTool, tools.HandleGetPolicy(c))
@@ -188,4 +190,17 @@ func (s *Server) Run(ctx context.Context, transport mcpsdk.Transport) error {
 // Primarily used for testing.
 func (s *Server) Connect(ctx context.Context, transport mcpsdk.Transport) (*mcpsdk.ServerSession, error) {
 	return s.mcpServer.Connect(ctx, transport, nil)
+}
+
+// HTTPHandler returns an http.Handler that serves this server over the MCP
+// Streamable HTTP transport. The handler is stateless (no Mcp-Session-Id
+// affinity, which suits horizontal scaling since all state lives in the
+// Massdriver API) and replies with application/json rather than SSE, since
+// every tool is a simple request/response. The same underlying server instance
+// is reused for all requests.
+func (s *Server) HTTPHandler() http.Handler {
+	return mcpsdk.NewStreamableHTTPHandler(
+		func(*http.Request) *mcpsdk.Server { return s.mcpServer },
+		&mcpsdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true},
+	)
 }

@@ -5,7 +5,8 @@ go 1.24.2
 toolchain go1.24.5
 
 require (
-	github.com/massdriver-cloud/massdriver-sdk-go v0.2.6
+	github.com/google/jsonschema-go v0.3.0
+	github.com/massdriver-cloud/massdriver-sdk-go v0.2.7
 	github.com/modelcontextprotocol/go-sdk v1.0.0
 )
 
@@ -17,7 +18,6 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/go-resty/resty/v2 v2.16.5 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/google/jsonschema-go v0.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect

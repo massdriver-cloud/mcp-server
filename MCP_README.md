@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 83 tools available in the Massdriver MCP server.
+This document describes all 84 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -29,7 +29,7 @@ This document describes all 83 tools available in the Massdriver MCP server.
 | `create_environment` | Creates an environment within a project. Requires `project_id`, `id`, `name`; accepts optional `description` and custom `attributes`. |
 | `update_environment` | Updates an environment's name, description, or custom `attributes`. |
 | `delete_environment` | Deletes an environment. All instances must be decommissioned first. |
-| `set_environment_default` | Sets a default resource binding for an environment. |
+| `set_environment_default` | Sets a resource as the default of its type for an environment. The resource must first be shared to the environment via `create_resource_grant`. |
 | `remove_environment_default` | Removes a default resource binding. |
 
 ## Instances
@@ -49,7 +49,7 @@ This document describes all 83 tools available in the Massdriver MCP server.
 |------|-------------|
 | `list_deployments` | Lists deployments (newest first). Optionally filter by `instance_id`, `status`, or `action`. |
 | `get_deployment` | Gets a deployment by ID. |
-| `get_deployment_logs` | Gets concatenated logs for a deployment. |
+| `get_deployment_logs` | Gets a deployment's logs. With `follow: true`, blocks until the deployment reaches a terminal status and returns the final status plus complete logs (optional `timeout_seconds`, default 300, max 600). |
 | `create_deployment` | Creates and starts a deployment. Actions: `PROVISION`, `DECOMMISSION`, `PLAN`. |
 | `propose_deployment` | Proposes a deployment for approval (enters `PROPOSED` status). Actions: `PROVISION`, `DECOMMISSION`. |
 | `approve_deployment` | Approves a proposed deployment. |
@@ -144,6 +144,7 @@ This document describes all 83 tools available in the Massdriver MCP server.
 | `get_oci_repo` | Gets an OCI repository by ID. |
 | `create_oci_repo` | Creates an OCI repository. Requires `id` and `artifact_type`. |
 | `update_oci_repo` | Updates an OCI repository's attributes. |
+| `delete_oci_repo` | Deletes an OCI repository. |
 
 ## Policies
 

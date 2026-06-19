@@ -46,8 +46,9 @@ func HandleListBundles(c *Client) func(context.Context, *mcpsdk.CallToolRequest,
 }
 
 var GetBundleTool = &mcpsdk.Tool{
-	Name:        "get_bundle",
-	Description: "Gets a specific bundle by ID. Supports version constraints like 'aws-aurora-postgres@1.2.3', 'aws-aurora-postgres@~1', or 'aws-aurora-postgres@latest'.",
+	Name: "get_bundle",
+	Description: "Gets a specific bundle by ID. Supports version constraints like 'aws-aurora-postgres@1.2.3', 'aws-aurora-postgres@~1', or 'aws-aurora-postgres@latest'. " +
+		"Returns resources (outputs the bundle produces) and dependencies (inputs it requires), each tagged with a resourceType — components connect when a producer's resource type matches a consumer's dependency type.",
 }
 
 type GetBundleInput struct {

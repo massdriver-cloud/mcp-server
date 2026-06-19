@@ -1,8 +1,11 @@
 package tools
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/deployments"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -76,12 +79,16 @@ func HandleGetDeployment(c *Client) func(context.Context, *mcpsdk.CallToolReques
 }
 
 var GetDeploymentLogsTool = &mcpsdk.Tool{
-	Name:        "get_deployment_logs",
-	Description: "Gets the concatenated logs for a specific deployment.",
+	Name: "get_deployment_logs",
+	Description: "Gets the logs for a specific deployment. By default returns a snapshot of the logs so far. " +
+		"Set follow=true to block until the deployment reaches a terminal status (COMPLETED, FAILED, ABORTED, or REJECTED), then return the final status plus the complete logs — " +
+		"use this after create_deployment or approve_deployment to deploy and see the result in a single call.",
 }
 
 type GetDeploymentLogsInput struct {
-	ID string `json:"id" jsonschema:"The deployment ID to fetch logs for."`
+	ID             string `json:"id"                        jsonschema:"The deployment ID to fetch logs for."`
+	Follow         bool   `json:"follow,omitempty"          jsonschema:"Optional. If true, wait until the deployment finishes and return the final status plus complete logs. Default false (snapshot of logs so far)."`
+	TimeoutSeconds int    `json:"timeout_seconds,omitempty" jsonschema:"Optional. When follow is true, maximum seconds to wait (default 300, max 600)."`
 }
 
 func HandleGetDeploymentLogs(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetDeploymentLogsInput) (*mcpsdk.CallToolResult, any, error) {
@@ -90,21 +97,74 @@ func HandleGetDeploymentLogs(c *Client) func(context.Context, *mcpsdk.CallToolRe
 			return nil, nil, fmt.Errorf("get_deployment_logs: id is required")
 		}
 
-		logs, err := c.Deployments.GetLogs(ctx, args.ID)
-		if err != nil {
+		// Snapshot mode: return whatever logs exist right now.
+		if !args.Follow {
+			logs, err := c.Deployments.GetLogs(ctx, args.ID)
+			if err != nil {
+				return nil, nil, fmt.Errorf("get_deployment_logs: %w", err)
+			}
+			if logs == "" {
+				return textResult("no logs available"), nil, nil
+			}
+			return textResult(logs), nil, nil
+		}
+
+		// Follow mode: tail until the deployment terminates (or we time out),
+		// then return the final status with the aggregated logs.
+		timeout := args.TimeoutSeconds
+		if timeout <= 0 {
+			timeout = 300
+		}
+		if timeout > 600 {
+			timeout = 600
+		}
+		waitCtx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		defer cancel()
+
+		var buf bytes.Buffer
+		err := c.Deployments.TailLogs(waitCtx, args.ID, &buf)
+		switch {
+		case err == nil, errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
+			// Streamed to terminal, or timed out with partial logs — both fine.
+		case errors.Is(err, deployments.ErrStreamingRequiresPAT):
+			// Live streaming needs bearer auth we don't have; fall back to polling
+			// the status to terminal, then take a one-shot log snapshot.
+			if _, perr := pollUntilTerminal(waitCtx, c, args.ID); perr != nil {
+				return nil, nil, fmt.Errorf("get_deployment_logs: %w", perr)
+			}
+			logs, lerr := c.Deployments.GetLogs(ctx, args.ID)
+			if lerr != nil {
+				return nil, nil, fmt.Errorf("get_deployment_logs: %w", lerr)
+			}
+			buf.Reset()
+			buf.WriteString(logs)
+		default:
 			return nil, nil, fmt.Errorf("get_deployment_logs: %w", err)
 		}
 
-		if logs == "" {
-			return textResult("no logs available"), nil, nil
+		status := "UNKNOWN"
+		if dep, derr := c.Deployments.Get(ctx, args.ID); derr == nil {
+			status = dep.Status
 		}
-		return textResult(logs), nil, nil
+
+		var header string
+		if isTerminalDeploymentStatus(status) {
+			header = fmt.Sprintf("deployment %s finished with status: %s\n\n", args.ID, status)
+		} else {
+			header = fmt.Sprintf("deployment %s did not finish within %ds (current status: %s)\n\n", args.ID, timeout, status)
+		}
+		logs := buf.String()
+		if logs == "" {
+			logs = "(no logs)"
+		}
+		return textResult(header + logs), nil, nil
 	}
 }
 
 var CreateDeploymentTool = &mcpsdk.Tool{
-	Name:        "create_deployment",
-	Description: "Creates and starts a deployment for an instance. Use action PROVISION to deploy, DECOMMISSION to tear down, or PLAN to preview changes.",
+	Name: "create_deployment",
+	Description: "Creates and starts a deployment for an instance. Use action PROVISION to deploy, DECOMMISSION to tear down, or PLAN to preview changes. " +
+		"The params map must conform to the instance's params schema (see get_instance.paramsSchema). Use get_deployment_logs with follow=true to block until it finishes and see the result.",
 }
 
 type CreateDeploymentInput struct {
@@ -123,9 +183,17 @@ func HandleCreateDeployment(c *Client) func(context.Context, *mcpsdk.CallToolReq
 			return nil, nil, fmt.Errorf("create_deployment: action is required")
 		}
 
+		// The API requires a non-null params map; default an omitted value to an
+		// empty map so callers get a clear "required property" validation error
+		// rather than a cryptic GraphQL "Expected type Map!, found null".
+		params := args.Params
+		if params == nil {
+			params = map[string]any{}
+		}
+
 		deployment, err := c.Deployments.Create(ctx, args.InstanceID, deployments.CreateInput{
 			Action:  deployments.Action(args.Action),
-			Params:  args.Params,
+			Params:  params,
 			Message: args.Message,
 		})
 		if err != nil {
@@ -175,8 +243,9 @@ func HandleAbortDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 }
 
 var ProposeDeploymentTool = &mcpsdk.Tool{
-	Name:        "propose_deployment",
-	Description: "Proposes a deployment for approval. Only supports PROVISION and DECOMMISSION actions. The deployment enters PROPOSED status and must be approved or rejected.",
+	Name: "propose_deployment",
+	Description: "Proposes a deployment for approval. Only supports PROVISION and DECOMMISSION actions. The deployment enters PROPOSED status and must be approved or rejected. " +
+		"The params map must conform to the instance's params schema (see get_instance.paramsSchema).",
 }
 
 type ProposeDeploymentInput struct {
@@ -195,9 +264,15 @@ func HandleProposeDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 			return nil, nil, fmt.Errorf("propose_deployment: action is required")
 		}
 
+		// See HandleCreateDeployment: the API requires a non-null params map.
+		params := args.Params
+		if params == nil {
+			params = map[string]any{}
+		}
+
 		deployment, err := c.Deployments.Propose(ctx, args.InstanceID, deployments.ProposeInput{
 			Action:  deployments.Action(args.Action),
-			Params:  args.Params,
+			Params:  params,
 			Message: args.Message,
 		})
 		if err != nil {
@@ -274,5 +349,37 @@ func HandleRejectDeployment(c *Client) func(context.Context, *mcpsdk.CallToolReq
 			return nil, nil, err
 		}
 		return result, deployment, nil
+	}
+}
+
+// isTerminalDeploymentStatus reports whether a deployment is done and its
+// status will not change further.
+func isTerminalDeploymentStatus(s string) bool {
+	switch deployments.Status(s) {
+	case deployments.StatusCompleted, deployments.StatusFailed, deployments.StatusAborted, deployments.StatusRejected:
+		return true
+	default:
+		return false
+	}
+}
+
+// pollUntilTerminal polls a deployment until it reaches a terminal status or
+// ctx is done, returning the last observed deployment. It is the fallback for
+// follow mode when live log streaming is unavailable.
+func pollUntilTerminal(ctx context.Context, c *Client, id string) (*deployments.Deployment, error) {
+	const pollInterval = 3 * time.Second
+	for {
+		dep, err := c.Deployments.Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if isTerminalDeploymentStatus(dep.Status) {
+			return dep, nil
+		}
+		select {
+		case <-ctx.Done():
+			return dep, nil
+		case <-time.After(pollInterval):
+		}
 	}
 }

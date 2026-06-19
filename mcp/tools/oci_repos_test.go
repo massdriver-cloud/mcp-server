@@ -14,6 +14,7 @@ type stubOciRepos struct {
 	getFn      func(context.Context, string) (*ocirepos.OciRepo, error)
 	createFn   func(context.Context, ocirepos.CreateInput) (*ocirepos.OciRepo, error)
 	updateFn   func(context.Context, string, ocirepos.UpdateInput) (*ocirepos.OciRepo, error)
+	deleteFn   func(context.Context, string) (*ocirepos.OciRepo, error)
 }
 
 func (s *stubOciRepos) ListPage(ctx context.Context, input ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error) {
@@ -27,6 +28,9 @@ func (s *stubOciRepos) Create(ctx context.Context, input ocirepos.CreateInput) (
 }
 func (s *stubOciRepos) Update(ctx context.Context, id string, input ocirepos.UpdateInput) (*ocirepos.OciRepo, error) {
 	return s.updateFn(ctx, id, input)
+}
+func (s *stubOciRepos) Delete(ctx context.Context, id string) (*ocirepos.OciRepo, error) {
+	return s.deleteFn(ctx, id)
 }
 
 func TestHandleListOciRepos(t *testing.T) {

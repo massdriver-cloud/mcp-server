@@ -36,6 +36,7 @@ var allToolInputs = []any{
 	UnlinkComponentsInput{}, UpdateComponentInput{}, UpdateCustomAttributeInput{}, UpdateEnvironmentInput{},
 	UpdateGroupInput{}, UpdateInstanceInput{}, UpdateOciRepoInput{}, UpdatePolicyInput{},
 	UpdateProjectInput{}, UpdateResourceInput{}, UpdateServiceAccountInput{},
+	DeleteOciRepoInput{},
 }
 
 // TestOptionalFieldsAreNotRequired guards against a subtle schema bug: the
@@ -75,7 +76,7 @@ func TestOptionalFieldsAreNotRequired(t *testing.T) {
 // remove a tool, update wantTools to match. The dedup check catches copy/paste
 // mistakes in the list above.
 func TestInputCoverageMatchesRegisteredTools(t *testing.T) {
-	const wantTools = 83 // must equal the number of AddTool calls in mcp/server.go
+	const wantTools = 84 // must equal the number of AddTool calls in mcp/server.go
 
 	covered := make(map[string]bool, len(allToolInputs))
 	for _, in := range allToolInputs {

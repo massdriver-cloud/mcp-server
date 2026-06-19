@@ -48,8 +48,9 @@ func HandleListInstances(c *Client) func(context.Context, *mcpsdk.CallToolReques
 }
 
 var GetInstanceTool = &mcpsdk.Tool{
-	Name:        "get_instance",
-	Description: "Gets a specific instance by ID, including its environment, project, and current bundle release.",
+	Name: "get_instance",
+	Description: "Gets a specific instance by ID, including its environment, project, and current bundle release. " +
+		"Returns paramsSchema (the JSON Schema for this instance's deploy params, resolved for its pinned bundle version) and params (values from the most recent deployment — empty until first deployed).",
 }
 
 type GetInstanceInput struct {
