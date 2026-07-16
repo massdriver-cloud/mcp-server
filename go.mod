@@ -1,8 +1,6 @@
 module github.com/massdriver-cloud/mcp-server
 
-go 1.24.2
-
-toolchain go1.24.5
+go 1.25
 
 require (
 	github.com/google/jsonschema-go v0.3.0
