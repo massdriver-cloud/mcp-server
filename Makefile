@@ -1,10 +1,13 @@
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -X github.com/massdriver-cloud/mcp-server/mcp.Version=$(VERSION)
+
 .PHONY: test
 test:
 	go test ./... -cover -count=1
 
 .PHONY: build
 build:
-	go build -o bin/mcp-server .
+	go build -ldflags "$(LDFLAGS)" -o bin/mcp-server .
 
 .PHONY: lint
 lint:
@@ -17,4 +20,4 @@ tidy:
 
 .PHONY: docker.build
 docker.build:
-	docker build -t massdrivercloud/mcp-server .
+	docker build --build-arg VERSION=$(VERSION) -t massdrivercloud/mcp-server .

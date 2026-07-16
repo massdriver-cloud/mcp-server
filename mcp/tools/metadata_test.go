@@ -36,8 +36,8 @@ func TestMutationFailureSetsIsError(t *testing.T) {
 // registered tool. The list mirrors mcp/server.go's registration.
 func TestEveryToolHasAnnotations(t *testing.T) {
 	tools := registeredTools()
-	if len(tools) != 84 {
-		t.Fatalf("registeredTools lists %d tools, want 84 (keep in sync with registerTools)", len(tools))
+	if len(tools) != 88 {
+		t.Fatalf("registeredTools lists %d tools, want 88 (keep in sync with registerTools)", len(tools))
 	}
 	seen := make(map[string]bool, len(tools))
 	for _, tool := range tools {
@@ -47,6 +47,23 @@ func TestEveryToolHasAnnotations(t *testing.T) {
 		seen[tool.Name] = true
 		if tool.Annotations == nil {
 			t.Errorf("tool %q is missing behavioral annotations", tool.Name)
+		}
+		if tool.Title == "" {
+			t.Errorf("tool %q is missing a display title", tool.Name)
+		}
+	}
+}
+
+func TestHumanTitle(t *testing.T) {
+	cases := map[string]string{
+		"list_projects":              "List Projects",
+		"list_oci_repos":             "List OCI Repos",
+		"get_url":                    "Get URL",
+		"list_audit_log_event_types": "List Audit Log Event Types",
+	}
+	for name, want := range cases {
+		if got := humanTitle(name); got != want {
+			t.Errorf("humanTitle(%q) = %q, want %q", name, got, want)
 		}
 	}
 }
@@ -152,13 +169,13 @@ func registeredTools() []*mcpsdk.Tool {
 		ListDeploymentsTool, GetDeploymentTool, GetDeploymentLogsTool, CreateDeploymentTool, ProposeDeploymentTool, ApproveDeploymentTool, RejectDeploymentTool, AbortDeploymentTool,
 		ListComponentsTool, GetComponentTool, AddComponentTool, UpdateComponentTool, RemoveComponentTool, LinkComponentsTool, UnlinkComponentsTool,
 		ListBundlesTool, GetBundleTool,
-		ListResourcesTool, GetResourceTool, CreateResourceTool, UpdateResourceTool, DeleteResourceTool, ExportResourceTool, CreateResourceGrantTool, DeleteResourceGrantTool,
+		ListResourcesTool, GetResourceTool, CreateResourceTool, UpdateResourceTool, DeleteResourceTool, ExportResourceTool, CreateResourceGrantTool, DeleteResourceGrantTool, ListResourceGrantsTool,
 		GetOrganizationTool, CreateCustomAttributeTool, UpdateCustomAttributeTool, DeleteCustomAttributeTool,
 		GetViewerTool,
 		GetAuditLogTool, ListAuditLogsTool, ListAuditLogEventTypesTool,
 		ListGroupsTool, GetGroupTool, CreateGroupTool, UpdateGroupTool, DeleteGroupTool, AddGroupUserTool, RemoveGroupUserTool, RevokeGroupInvitationTool, AddGroupServiceAccountTool, RemoveGroupServiceAccountTool,
 		ListServiceAccountsTool, GetServiceAccountTool, CreateServiceAccountTool, UpdateServiceAccountTool, DeleteServiceAccountTool,
-		ListOciReposTool, GetOciRepoTool, CreateOciRepoTool, UpdateOciRepoTool, DeleteOciRepoTool,
+		ListOciReposTool, GetOciRepoTool, CreateOciRepoTool, UpdateOciRepoTool, DeleteOciRepoTool, CreateOciRepoGrantTool, DeleteOciRepoGrantTool, ListOciRepoGrantsTool,
 		GetPolicyTool, CreatePolicyTool, UpdatePolicyTool, DeletePolicyTool, ListPolicyActionsTool, ListPolicyEntitiesTool, EvaluatePolicyTool, EvaluatePoliciesBatchTool, ExplainPolicyTool, GetPolicyAttributeSchemaTool, ListPolicyAttributeValuesTool,
 		GetServerTool,
 		GetURLTool,

@@ -116,6 +116,7 @@ type ResourcesService interface {
 	Export(ctx context.Context, id, format string) (*resources.Exported, error)
 	CreateGrant(ctx context.Context, resourceID string, input resources.CreateGrantInput) (*resources.Grant, error)
 	DeleteGrant(ctx context.Context, grantID string) error
+	ListGrantsPage(ctx context.Context, resourceID string, input resources.ListGrantsInput) (types.Page[resources.Grant], error)
 }
 
 // OrganizationsService defines the organization operations used by tool handlers.
@@ -168,6 +169,9 @@ type OciReposService interface {
 	Create(ctx context.Context, input ocirepos.CreateInput) (*ocirepos.OciRepo, error)
 	Update(ctx context.Context, id string, input ocirepos.UpdateInput) (*ocirepos.OciRepo, error)
 	Delete(ctx context.Context, id string) (*ocirepos.OciRepo, error)
+	CreateGrant(ctx context.Context, repoID string, input ocirepos.CreateGrantInput) (*ocirepos.Grant, error)
+	DeleteGrant(ctx context.Context, grantID string) error
+	ListGrantsPage(ctx context.Context, repoID string, input ocirepos.ListGrantsInput) (types.Page[ocirepos.Grant], error)
 }
 
 // PoliciesService defines the policy operations used by tool handlers.

@@ -1,25 +1,33 @@
-name: Generate release-artifacts
+name: Release
+
 on:
-  release:
-    types:
-      - created
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+
 jobs:
-  generate:
-    name: Generate cross-platform builds
+  release:
+    name: Build and publish release binaries
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
-      - name: Generate build files
-        uses: thatisuday/go-cross-build@v1
         with:
-          platforms: "linux/amd64, darwin/amd64"
-          name: "mcp-server"
-          compress: "false"
-          dest: "dist"
-      - name: Upload build-artifacts
-        uses: skx/github-action-publish-binaries@master
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: "./dist/*"

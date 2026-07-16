@@ -256,6 +256,42 @@ func HandleCreateResourceGrant(c *Client) func(context.Context, *mcpsdk.CallTool
 	}
 }
 
+var ListResourceGrantsTool = &mcpsdk.Tool{
+	Name: "list_resource_grants",
+	Description: "Lists sharing grants on a resource, one page at a time. " +
+		"Returns up to `page_size` grants (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`.",
+}
+
+type ListResourceGrantsInput struct {
+	ResourceID string `json:"resource_id"         jsonschema:"The resource ID whose grants to list."`
+	Cursor     string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize   int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
+
+func HandleListResourceGrants(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListResourceGrantsInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListResourceGrantsInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ResourceID == "" {
+			return nil, nil, fmt.Errorf("list_resource_grants: resource_id is required")
+		}
+
+		page, err := c.Resources.ListGrantsPage(ctx, args.ResourceID, resources.ListGrantsInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_resource_grants: %w", err)
+		}
+
+		out := pageResult(page)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
 var DeleteResourceGrantTool = &mcpsdk.Tool{
 	Name:        "delete_resource_grant",
 	Description: "Deletes a sharing grant by ID.",

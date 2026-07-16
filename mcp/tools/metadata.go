@@ -3,6 +3,7 @@ package tools
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -38,6 +39,30 @@ func writeHints(destructive, idempotent bool) *mcpsdk.ToolAnnotations {
 	return &mcpsdk.ToolAnnotations{DestructiveHint: &d, IdempotentHint: idempotent}
 }
 
+// humanTitle derives a display title from a snake_case tool name, e.g.
+// "list_oci_repos" -> "List OCI Repos". MCP clients (and the Claude
+// connectors directory) use Title for human-facing tool listings.
+func humanTitle(name string) string {
+	words := strings.Split(name, "_")
+	for i, w := range words {
+		switch w {
+		case "oci", "url", "id":
+			words[i] = strings.ToUpper(w)
+		default:
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+// annotate assigns the given annotations and a derived display title to each tool.
+func annotate(tools []*mcpsdk.Tool, annotations func() *mcpsdk.ToolAnnotations) {
+	for _, t := range tools {
+		t.Title = humanTitle(t.Name)
+		t.Annotations = annotations()
+	}
+}
+
 func applyAnnotations() {
 	readers := []*mcpsdk.Tool{
 		GetProjectTool, ListProjectsTool,
@@ -46,33 +71,29 @@ func applyAnnotations() {
 		GetDeploymentTool, ListDeploymentsTool, GetDeploymentLogsTool,
 		GetComponentTool, ListComponentsTool,
 		GetBundleTool, ListBundlesTool,
-		GetResourceTool, ListResourcesTool, ExportResourceTool,
+		GetResourceTool, ListResourcesTool, ExportResourceTool, ListResourceGrantsTool,
 		GetOrganizationTool,
 		GetViewerTool,
 		GetAuditLogTool, ListAuditLogsTool, ListAuditLogEventTypesTool,
 		GetGroupTool, ListGroupsTool,
 		GetServiceAccountTool, ListServiceAccountsTool,
-		GetOciRepoTool, ListOciReposTool,
+		GetOciRepoTool, ListOciReposTool, ListOciRepoGrantsTool,
 		GetPolicyTool, ListPolicyActionsTool, ListPolicyEntitiesTool,
 		EvaluatePolicyTool, EvaluatePoliciesBatchTool, ExplainPolicyTool,
 		GetPolicyAttributeSchemaTool, ListPolicyAttributeValuesTool,
 		GetServerTool, GetURLTool,
 	}
-	for _, t := range readers {
-		t.Annotations = readOnly()
-	}
+	annotate(readers, readOnly)
 
 	// Additive creators: not destructive, not idempotent (a second identical
 	// call creates a duplicate or fails).
 	additive := []*mcpsdk.Tool{
 		CreateProjectTool, CreateEnvironmentTool, AddComponentTool, LinkComponentsTool,
-		CreateResourceTool, CreateResourceGrantTool, CreateCustomAttributeTool,
+		CreateResourceTool, CreateResourceGrantTool, CreateOciRepoGrantTool, CreateCustomAttributeTool,
 		CreateGroupTool, CreateServiceAccountTool, CreateOciRepoTool, CreatePolicyTool,
 		ProposeDeploymentTool, RejectDeploymentTool,
 	}
-	for _, t := range additive {
-		t.Annotations = writeHints(false, false)
-	}
+	annotate(additive, func() *mcpsdk.ToolAnnotations { return writeHints(false, false) })
 
 	// In-place mutations: not destructive in the data-loss sense, and idempotent
 	// (re-applying the same values is a no-op).
@@ -83,9 +104,7 @@ func applyAnnotations() {
 		UpdateGroupTool, AddGroupUserTool, AddGroupServiceAccountTool,
 		UpdateServiceAccountTool, UpdateOciRepoTool, UpdatePolicyTool,
 	}
-	for _, t := range updates {
-		t.Annotations = writeHints(false, true)
-	}
+	annotate(updates, func() *mcpsdk.ToolAnnotations { return writeHints(false, true) })
 
 	// Destructive removals: idempotent (the target ends up absent either way).
 	destructiveIdempotent := []*mcpsdk.Tool{
@@ -94,20 +113,16 @@ func applyAnnotations() {
 		DeleteResourceTool, DeleteResourceGrantTool, DeleteCustomAttributeTool,
 		DeleteGroupTool, RemoveGroupUserTool, RevokeGroupInvitationTool,
 		RemoveGroupServiceAccountTool, DeleteServiceAccountTool, DeletePolicyTool,
-		DeleteOciRepoTool,
+		DeleteOciRepoTool, DeleteOciRepoGrantTool,
 	}
-	for _, t := range destructiveIdempotent {
-		t.Annotations = writeHints(true, true)
-	}
+	annotate(destructiveIdempotent, func() *mcpsdk.ToolAnnotations { return writeHints(true, true) })
 
 	// Deployment lifecycle actions that execute or interrupt infrastructure
 	// changes: potentially destructive and not idempotent.
 	destructiveNonIdempotent := []*mcpsdk.Tool{
 		CreateDeploymentTool, ApproveDeploymentTool, AbortDeploymentTool,
 	}
-	for _, t := range destructiveNonIdempotent {
-		t.Annotations = writeHints(true, false)
-	}
+	annotate(destructiveNonIdempotent, func() *mcpsdk.ToolAnnotations { return writeHints(true, false) })
 }
 
 // applyEnums attaches JSON Schema enum constraints to fields whose valid values

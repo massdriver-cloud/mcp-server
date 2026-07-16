@@ -2,29 +2,46 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for [Massdriver](https://massdriver.cloud), providing AI assistants with tools to manage your infrastructure platform — projects, environments, deployments, policies, and more.
 
-## Quick Start
+## Installation
 
-### Prerequisites
+This server is published to the [official MCP Registry](https://registry.modelcontextprotocol.io) as **`cloud.massdriver/mcp-server`** — MCP clients with registry support can discover and install it by that name.
 
-- Go 1.24+
-- A Massdriver account with API credentials
+To install manually, pick whichever suits your setup:
 
-### Configuration
+**Download a release binary** — grab the archive for your platform (Linux, macOS, or Windows; amd64 and arm64) from [GitHub Releases](https://github.com/massdriver-cloud/mcp-server/releases) and put `mcp-server` on your `PATH`.
 
-The server reads credentials from environment variables or `~/.config/massdriver/config.yaml`:
+**Go install** (requires Go 1.24+):
+
+```bash
+go install github.com/massdriver-cloud/mcp-server@latest
+```
+
+**Docker**:
+
+```bash
+docker pull massdrivercloud/mcp-server
+```
+
+**Build from source**:
+
+```bash
+git clone https://github.com/massdriver-cloud/mcp-server.git
+cd mcp-server
+make build   # outputs ./bin/mcp-server
+```
+
+## Configuration
+
+You'll need a Massdriver API key and your organization ID — see the [Massdriver docs](https://docs.massdriver.cloud/) for creating API credentials.
+
+The server reads configuration from environment variables, or from a profile in `~/.config/massdriver/config.yaml`:
 
 ```bash
 export MASSDRIVER_API_KEY="your-api-key"
 export MASSDRIVER_ORGANIZATION_ID="your-org-id"
 # Optional:
-export MASSDRIVER_URL="https://api.massdriver.cloud"
-```
-
-### Build & Run
-
-```bash
-make build
-./bin/mcp-server
+export MASSDRIVER_URL="https://api.massdriver.cloud"  # set this if you run a self-hosted Massdriver instance
+export MASSDRIVER_PROFILE="default"                   # named profile in ~/.config/massdriver/config.yaml
 ```
 
 ### Transports
@@ -52,12 +69,40 @@ curl -s 127.0.0.1:8080 \
 
 ### Docker
 
+The stdio transport needs an interactive stdin, so pass `-i`:
+
 ```bash
-make docker.build
-docker run -e MASSDRIVER_API_KEY -e MASSDRIVER_ORGANIZATION_ID massdrivercloud/mcp-server
+docker run --rm -i \
+  -e MASSDRIVER_API_KEY \
+  -e MASSDRIVER_ORGANIZATION_ID \
+  massdrivercloud/mcp-server
 ```
 
+On a self-hosted Massdriver instance, also pass `-e MASSDRIVER_URL`.
+
+> **Using a profile?** `MASSDRIVER_PROFILE` reads credentials from
+> `~/.config/massdriver/config.yaml`, which doesn't exist inside the container.
+> Either pass the credentials as environment variables as shown above, or mount
+> your config directory and point `XDG_CONFIG_HOME` at it:
+>
+> ```bash
+> docker run --rm -i \
+>   -e MASSDRIVER_PROFILE \
+>   -e XDG_CONFIG_HOME=/config \
+>   -v ~/.config/massdriver:/config/massdriver:ro \
+>   massdrivercloud/mcp-server
+> ```
+
 ## MCP Client Configuration
+
+### Claude Code
+
+```bash
+claude mcp add massdriver \
+  --env MASSDRIVER_API_KEY=your-api-key \
+  --env MASSDRIVER_ORGANIZATION_ID=your-org-id \
+  -- /path/to/mcp-server
+```
 
 ### Claude Desktop
 
@@ -81,7 +126,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (84)
+## Available Tools (88)
+
+See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
 ### Projects (5)
 `list_projects` `get_project` `create_project` `update_project` `delete_project`
@@ -101,8 +148,8 @@ The server uses stdio transport, compatible with any MCP client.
 ### Bundles (2)
 `list_bundles` `get_bundle`
 
-### Resources (8)
-`list_resources` `get_resource` `create_resource` `update_resource` `delete_resource` `export_resource` `create_resource_grant` `delete_resource_grant`
+### Resources (9)
+`list_resources` `get_resource` `create_resource` `update_resource` `delete_resource` `export_resource` `create_resource_grant` `delete_resource_grant` `list_resource_grants`
 
 ### Organization (4)
 `get_organization` `create_custom_attribute` `update_custom_attribute` `delete_custom_attribute`
@@ -119,8 +166,8 @@ The server uses stdio transport, compatible with any MCP client.
 ### Service Accounts (5)
 `list_service_accounts` `get_service_account` `create_service_account` `update_service_account` `delete_service_account`
 
-### OCI Repos (5)
-`list_oci_repos` `get_oci_repo` `create_oci_repo` `update_oci_repo` `delete_oci_repo`
+### OCI Repos (8)
+`list_oci_repos` `get_oci_repo` `create_oci_repo` `update_oci_repo` `delete_oci_repo` `create_oci_repo_grant` `delete_oci_repo_grant` `list_oci_repo_grants`
 
 ### Policies (11)
 `get_policy` `create_policy` `update_policy` `delete_policy` `list_policy_actions` `list_policy_entities` `evaluate_policy` `evaluate_policies_batch` `explain_policy` `get_policy_attribute_schema` `list_policy_attribute_values`
@@ -131,45 +178,10 @@ The server uses stdio transport, compatible with any MCP client.
 ### URLs (1)
 `get_url`
 
-## Development
+## Contributing
 
-```bash
-make test     # Run tests
-make lint     # Run linters (go vet + golangci-lint)
-make build    # Build binary
-make tidy     # go mod tidy
-```
-
-### Architecture
-
-```
-main.go              # Entrypoint — initializes SDK client, starts stdio server
-mcp/
-  server.go          # MCP server setup, tool registration, SDK wiring
-  tools/
-    services.go      # Service interfaces + Client struct (DI)
-    helpers.go       # textResult, jsonResult, mutationErr helpers
-    projects.go      # One file per service domain
-    ...
-```
-
-Tool handlers depend on service interfaces defined in `services.go`. In production, `server.go` wires real SDK services. In tests, stub structs with func fields are injected directly.
-
-### Adding a Tool
-
-1. Add the method to the appropriate interface in `mcp/tools/services.go`
-2. Add the tool definition and handler in the corresponding `mcp/tools/<service>.go`
-3. Register the tool in `mcp/server.go`
-4. Add stub method and tests in the `*_test.go` file
-5. Add the tool name to the expected list in `main_test.go`
-6. Add the input type to `allToolInputs` (and bump `wantTools`) in `mcp/tools/schema_required_test.go`
-
-> **Optional fields:** any input field that the handler does not enforce as
-> required must carry `,omitempty` in its json tag. The go-sdk infers a property
-> as *required* whenever `,omitempty` is absent, so a missing tag silently
-> advertises an optional field as required and MCP clients will reject valid
-> calls. `TestOptionalFieldsAreNotRequired` guards this invariant.
+Development, architecture, and release documentation lives in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-This project follows the same license as the broader Massdriver ecosystem.
+[MIT](LICENSE)

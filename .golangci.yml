@@ -8,12 +8,11 @@ linters:
     - staticcheck
     - unused
     - gocritic
+  exclusions:
+    paths:
+      - vendor
 
 formatters:
   enable:
     - gofmt
     - goimports
-
-issues:
-  exclude-dirs:
-    - vendor

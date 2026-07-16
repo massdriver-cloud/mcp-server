@@ -18,6 +18,7 @@ type stubResources struct {
 	exportFn      func(context.Context, string, string) (*resources.Exported, error)
 	createGrantFn func(context.Context, string, resources.CreateGrantInput) (*resources.Grant, error)
 	deleteGrantFn func(context.Context, string) error
+	listGrantsFn  func(context.Context, string, resources.ListGrantsInput) (types.Page[resources.Grant], error)
 }
 
 func (s *stubResources) ListPage(ctx context.Context, input resources.ListInput) (types.Page[resources.Resource], error) {
@@ -43,6 +44,9 @@ func (s *stubResources) CreateGrant(ctx context.Context, resourceID string, inpu
 }
 func (s *stubResources) DeleteGrant(ctx context.Context, grantID string) error {
 	return s.deleteGrantFn(ctx, grantID)
+}
+func (s *stubResources) ListGrantsPage(ctx context.Context, resourceID string, input resources.ListGrantsInput) (types.Page[resources.Grant], error) {
+	return s.listGrantsFn(ctx, resourceID, input)
 }
 
 func TestHandleListResources(t *testing.T) {
@@ -437,6 +441,65 @@ func TestHandleCreateResourceGrant(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Resources: tt.stub}
 			handler := HandleCreateResourceGrant(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleListResourceGrants(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ListResourceGrantsInput
+		stub     *stubResources
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing resource_id",
+			input:   ListResourceGrantsInput{},
+			stub:    &stubResources{},
+			wantErr: "resource_id is required",
+		},
+		{
+			name:  "success returns grants page",
+			input: ListResourceGrantsInput{ResourceID: "res1"},
+			stub: &stubResources{
+				listGrantsFn: func(_ context.Context, _ string, _ resources.ListGrantsInput) (types.Page[resources.Grant], error) {
+					return types.Page[resources.Grant]{
+						Items: []resources.Grant{{ID: "grant1", Action: "resource:export"}},
+					}, nil
+				},
+			},
+			wantText: "grant1",
+		},
+		{
+			name:  "empty page surfaces has_more false",
+			input: ListResourceGrantsInput{ResourceID: "res1"},
+			stub: &stubResources{
+				listGrantsFn: func(_ context.Context, _ string, _ resources.ListGrantsInput) (types.Page[resources.Grant], error) {
+					return types.Page[resources.Grant]{}, nil
+				},
+			},
+			wantText: "\"has_more\": false",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Resources: tt.stub}
+			handler := HandleListResourceGrants(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
