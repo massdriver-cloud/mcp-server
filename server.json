@@ -7,7 +7,7 @@
     "url": "https://github.com/massdriver-cloud/mcp-server",
     "source": "github"
   },
-  "version": "1.0.0",
+  "version": "0.1.0",
   "packages": [
     {
       "registryType": "oci",
