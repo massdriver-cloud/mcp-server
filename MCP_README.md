@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 84 tools available in the Massdriver MCP server.
+This document describes all 88 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -87,6 +87,7 @@ This document describes all 84 tools available in the Massdriver MCP server.
 | `export_resource` | Exports a resource with unmasked payload (audit-logged). |
 | `create_resource_grant` | Creates a sharing grant on a resource. |
 | `delete_resource_grant` | Deletes a sharing grant. |
+| `list_resource_grants` | Lists sharing grants on a resource. |
 
 ## Organization
 
@@ -145,6 +146,9 @@ This document describes all 84 tools available in the Massdriver MCP server.
 | `create_oci_repo` | Creates an OCI repository. Requires `id` and `artifact_type`. |
 | `update_oci_repo` | Updates an OCI repository's attributes. |
 | `delete_oci_repo` | Deletes an OCI repository. |
+| `create_oci_repo_grant` | Creates a sharing grant on an OCI repository. |
+| `delete_oci_repo_grant` | Deletes an OCI repository sharing grant. |
+| `list_oci_repo_grants` | Lists sharing grants on an OCI repository. |
 
 ## Policies
 

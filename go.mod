@@ -6,7 +6,7 @@ toolchain go1.24.5
 
 require (
 	github.com/google/jsonschema-go v0.3.0
-	github.com/massdriver-cloud/massdriver-sdk-go v0.2.7
+	github.com/massdriver-cloud/massdriver-sdk-go v0.2.8
 	github.com/modelcontextprotocol/go-sdk v1.0.0
 )
 

@@ -70,7 +70,7 @@ func TestMCPServerTools(t *testing.T) {
 		"list_bundles", "get_bundle",
 		// Resources
 		"list_resources", "get_resource", "create_resource", "update_resource", "delete_resource", "export_resource",
-		"create_resource_grant", "delete_resource_grant",
+		"create_resource_grant", "delete_resource_grant", "list_resource_grants",
 		// Organization
 		"get_organization", "create_custom_attribute", "update_custom_attribute", "delete_custom_attribute",
 		// Viewer
@@ -85,6 +85,7 @@ func TestMCPServerTools(t *testing.T) {
 		"list_service_accounts", "get_service_account", "create_service_account", "update_service_account", "delete_service_account",
 		// OCI Repos
 		"list_oci_repos", "get_oci_repo", "create_oci_repo", "update_oci_repo", "delete_oci_repo",
+		"create_oci_repo_grant", "delete_oci_repo_grant", "list_oci_repo_grants",
 		// Policies
 		"get_policy", "create_policy", "update_policy", "delete_policy",
 		"list_policy_actions", "list_policy_entities",

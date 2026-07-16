@@ -9,6 +9,11 @@ import (
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// Version is the server version reported to MCP clients. It is overridden at
+// build time via -ldflags "-X github.com/massdriver-cloud/mcp-server/mcp.Version=v1.2.3"
+// (see Makefile, .goreleaser.yaml, and the Dockerfile).
+var Version = "dev"
+
 // Server wraps the MCP server with Massdriver-specific functionality.
 type Server struct {
 	mcpServer *mcpsdk.Server
@@ -19,7 +24,7 @@ type Server struct {
 func NewServer(client *massdriver.Client) *Server {
 	impl := &mcpsdk.Implementation{
 		Name:    "massdriver-mcp-server",
-		Version: "1.0.0",
+		Version: Version,
 	}
 
 	mcpServer := mcpsdk.NewServer(impl, nil)
@@ -120,6 +125,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.ExportResourceTool, tools.HandleExportResource(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CreateResourceGrantTool, tools.HandleCreateResourceGrant(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteResourceGrantTool, tools.HandleDeleteResourceGrant(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListResourceGrantsTool, tools.HandleListResourceGrants(c))
 
 	// Organization
 	mcpsdk.AddTool(s.mcpServer, tools.GetOrganizationTool, tools.HandleGetOrganization(c))
@@ -160,6 +166,9 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.CreateOciRepoTool, tools.HandleCreateOciRepo(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateOciRepoTool, tools.HandleUpdateOciRepo(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteOciRepoTool, tools.HandleDeleteOciRepo(c))
+	mcpsdk.AddTool(s.mcpServer, tools.CreateOciRepoGrantTool, tools.HandleCreateOciRepoGrant(c))
+	mcpsdk.AddTool(s.mcpServer, tools.DeleteOciRepoGrantTool, tools.HandleDeleteOciRepoGrant(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListOciRepoGrantsTool, tools.HandleListOciRepoGrants(c))
 
 	// Policies
 	mcpsdk.AddTool(s.mcpServer, tools.GetPolicyTool, tools.HandleGetPolicy(c))

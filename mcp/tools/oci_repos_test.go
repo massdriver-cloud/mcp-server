@@ -10,11 +10,14 @@ import (
 )
 
 type stubOciRepos struct {
-	listPageFn func(context.Context, ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error)
-	getFn      func(context.Context, string) (*ocirepos.OciRepo, error)
-	createFn   func(context.Context, ocirepos.CreateInput) (*ocirepos.OciRepo, error)
-	updateFn   func(context.Context, string, ocirepos.UpdateInput) (*ocirepos.OciRepo, error)
-	deleteFn   func(context.Context, string) (*ocirepos.OciRepo, error)
+	listPageFn    func(context.Context, ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error)
+	getFn         func(context.Context, string) (*ocirepos.OciRepo, error)
+	createFn      func(context.Context, ocirepos.CreateInput) (*ocirepos.OciRepo, error)
+	updateFn      func(context.Context, string, ocirepos.UpdateInput) (*ocirepos.OciRepo, error)
+	deleteFn      func(context.Context, string) (*ocirepos.OciRepo, error)
+	createGrantFn func(context.Context, string, ocirepos.CreateGrantInput) (*ocirepos.Grant, error)
+	deleteGrantFn func(context.Context, string) error
+	listGrantsFn  func(context.Context, string, ocirepos.ListGrantsInput) (types.Page[ocirepos.Grant], error)
 }
 
 func (s *stubOciRepos) ListPage(ctx context.Context, input ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error) {
@@ -31,6 +34,15 @@ func (s *stubOciRepos) Update(ctx context.Context, id string, input ocirepos.Upd
 }
 func (s *stubOciRepos) Delete(ctx context.Context, id string) (*ocirepos.OciRepo, error) {
 	return s.deleteFn(ctx, id)
+}
+func (s *stubOciRepos) CreateGrant(ctx context.Context, repoID string, input ocirepos.CreateGrantInput) (*ocirepos.Grant, error) {
+	return s.createGrantFn(ctx, repoID, input)
+}
+func (s *stubOciRepos) DeleteGrant(ctx context.Context, grantID string) error {
+	return s.deleteGrantFn(ctx, grantID)
+}
+func (s *stubOciRepos) ListGrantsPage(ctx context.Context, repoID string, input ocirepos.ListGrantsInput) (types.Page[ocirepos.Grant], error) {
+	return s.listGrantsFn(ctx, repoID, input)
 }
 
 func TestHandleListOciRepos(t *testing.T) {
@@ -226,6 +238,185 @@ func TestHandleUpdateOciRepo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{OciRepos: tt.stub}
 			handler := HandleUpdateOciRepo(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleCreateOciRepoGrant(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    CreateOciRepoGrantInput
+		stub     *stubOciRepos
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing repo_id",
+			input:   CreateOciRepoGrantInput{Action: "repo:pull"},
+			stub:    &stubOciRepos{},
+			wantErr: "repo_id is required",
+		},
+		{
+			name:    "missing action",
+			input:   CreateOciRepoGrantInput{RepoID: "repo1"},
+			stub:    &stubOciRepos{},
+			wantErr: "action is required",
+		},
+		{
+			name:  "success returns grant JSON",
+			input: CreateOciRepoGrantInput{RepoID: "repo1", Action: "repo:pull"},
+			stub: &stubOciRepos{
+				createGrantFn: func(_ context.Context, _ string, input ocirepos.CreateGrantInput) (*ocirepos.Grant, error) {
+					return &ocirepos.Grant{ID: "grant1", Action: input.Action}, nil
+				},
+			},
+			wantText: "grant1",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: CreateOciRepoGrantInput{RepoID: "repo1", Action: "repo:pull"},
+			stub: &stubOciRepos{
+				createGrantFn: func(context.Context, string, ocirepos.CreateGrantInput) (*ocirepos.Grant, error) {
+					return nil, mutationFailedErr("create repo grant", "action", "invalid action")
+				},
+			},
+			wantText: "create_oci_repo_grant failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{OciRepos: tt.stub}
+			handler := HandleCreateOciRepoGrant(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleDeleteOciRepoGrant(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    DeleteOciRepoGrantInput
+		stub     *stubOciRepos
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing grant_id",
+			input:   DeleteOciRepoGrantInput{},
+			stub:    &stubOciRepos{},
+			wantErr: "grant_id is required",
+		},
+		{
+			name:  "success returns confirmation message",
+			input: DeleteOciRepoGrantInput{GrantID: "grant1"},
+			stub: &stubOciRepos{
+				deleteGrantFn: func(_ context.Context, _ string) error {
+					return nil
+				},
+			},
+			wantText: "deleted successfully",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: DeleteOciRepoGrantInput{GrantID: "grant1"},
+			stub: &stubOciRepos{
+				deleteGrantFn: func(context.Context, string) error {
+					return mutationFailedErr("delete grant", "", "not found")
+				},
+			},
+			wantText: "delete_oci_repo_grant failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{OciRepos: tt.stub}
+			handler := HandleDeleteOciRepoGrant(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleListOciRepoGrants(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ListOciRepoGrantsInput
+		stub     *stubOciRepos
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing repo_id",
+			input:   ListOciRepoGrantsInput{},
+			stub:    &stubOciRepos{},
+			wantErr: "repo_id is required",
+		},
+		{
+			name:  "success returns grants page",
+			input: ListOciRepoGrantsInput{RepoID: "repo1"},
+			stub: &stubOciRepos{
+				listGrantsFn: func(_ context.Context, _ string, _ ocirepos.ListGrantsInput) (types.Page[ocirepos.Grant], error) {
+					return types.Page[ocirepos.Grant]{
+						Items: []ocirepos.Grant{{ID: "grant1", Action: "repo:pull"}},
+					}, nil
+				},
+			},
+			wantText: "grant1",
+		},
+		{
+			name:  "empty page surfaces has_more false",
+			input: ListOciRepoGrantsInput{RepoID: "repo1"},
+			stub: &stubOciRepos{
+				listGrantsFn: func(_ context.Context, _ string, _ ocirepos.ListGrantsInput) (types.Page[ocirepos.Grant], error) {
+					return types.Page[ocirepos.Grant]{}, nil
+				},
+			},
+			wantText: "\"has_more\": false",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{OciRepos: tt.stub}
+			handler := HandleListOciRepoGrants(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
