@@ -1,0 +1,23 @@
+name: Validate server.json
+
+# Runs only when server.json changes. Catches MCP Registry schema violations
+# (e.g. description length) on the PR instead of at publish time.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - server.json
+
+jobs:
+  validate:
+    name: Validate against MCP registry schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install check-jsonschema
+        run: pipx install check-jsonschema
+      - name: Validate
+        run: |
+          SCHEMA_URL=$(jq -r '."$schema"' server.json)
+          echo "Validating server.json against $SCHEMA_URL"
+          check-jsonschema --schemafile "$SCHEMA_URL" server.json

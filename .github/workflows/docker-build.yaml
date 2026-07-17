@@ -1,0 +1,29 @@
+name: Docker build
+
+# Runs only when the image's build inputs change. Normal PRs that only touch
+# Go logic don't trigger this — test.yaml already compiles those via `go build`.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - go.mod
+      - go.sum
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=mcp-image
+          cache-to: type=gha,scope=mcp-image,mode=max
