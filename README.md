@@ -10,7 +10,7 @@ To install manually, pick whichever suits your setup:
 
 **Download a release binary** — grab the archive for your platform (Linux, macOS, or Windows; amd64 and arm64) from [GitHub Releases](https://github.com/massdriver-cloud/mcp-server/releases) and put `mcp-server` on your `PATH`.
 
-**Go install** (requires Go 1.24+):
+**Go install** (requires Go 1.25+):
 
 ```bash
 go install github.com/massdriver-cloud/mcp-server@latest
@@ -126,7 +126,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (88)
+## Available Tools (87)
 
 See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
@@ -145,8 +145,8 @@ See [MCP_README.md](MCP_README.md) for the full tool reference, including per-to
 ### Components (7)
 `list_components` `get_component` `add_component` `update_component` `remove_component` `link_components` `unlink_components`
 
-### Bundles (2)
-`list_bundles` `get_bundle`
+### Bundles (1)
+`get_bundle`
 
 ### Resources (9)
 `list_resources` `get_resource` `create_resource` `update_resource` `delete_resource` `export_resource` `create_resource_grant` `delete_resource_grant` `list_resource_grants`

@@ -70,7 +70,7 @@ func applyAnnotations() {
 		GetInstanceTool, ListInstancesTool, ListAlarmsTool,
 		GetDeploymentTool, ListDeploymentsTool, GetDeploymentLogsTool,
 		GetComponentTool, ListComponentsTool,
-		GetBundleTool, ListBundlesTool,
+		GetBundleTool,
 		GetResourceTool, ListResourcesTool, ExportResourceTool, ListResourceGrantsTool,
 		GetOrganizationTool,
 		GetViewerTool,

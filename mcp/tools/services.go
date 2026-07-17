@@ -102,7 +102,6 @@ type ComponentsService interface {
 
 // BundlesService defines the bundle operations used by tool handlers.
 type BundlesService interface {
-	ListPage(ctx context.Context, input bundles.ListInput) (types.Page[bundles.Bundle], error)
 	Get(ctx context.Context, id string) (*bundles.Bundle, error)
 }
 

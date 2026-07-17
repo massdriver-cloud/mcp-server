@@ -27,7 +27,7 @@ var allToolInputs = []any{
 	GetOrganizationInput{}, GetPolicyAttributeSchemaInput{}, GetPolicyInput{}, GetProjectInput{},
 	GetResourceInput{}, GetServerInput{}, GetServiceAccountInput{}, GetURLInput{},
 	GetViewerInput{}, LinkComponentsInput{}, ListAlarmsInput{}, ListAuditLogEventTypesInput{},
-	ListAuditLogsInput{}, ListBundlesInput{}, ListComponentsInput{}, ListDeploymentsInput{},
+	ListAuditLogsInput{}, ListComponentsInput{}, ListDeploymentsInput{},
 	ListEnvironmentsInput{}, ListGroupsInput{}, ListInstancesInput{}, ListOciReposInput{},
 	ListPolicyActionsInput{}, ListPolicyAttributeValuesInput{}, ListPolicyEntitiesInput{}, ListProjectsInput{},
 	ListResourcesInput{}, ListServiceAccountsInput{}, ProposeDeploymentInput{}, RejectDeploymentInput{},
@@ -77,7 +77,7 @@ func TestOptionalFieldsAreNotRequired(t *testing.T) {
 // remove a tool, update wantTools to match. The dedup check catches copy/paste
 // mistakes in the list above.
 func TestInputCoverageMatchesRegisteredTools(t *testing.T) {
-	const wantTools = 88 // must equal the number of AddTool calls in mcp/server.go
+	const wantTools = 87 // must equal the number of AddTool calls in mcp/server.go
 
 	covered := make(map[string]bool, len(allToolInputs))
 	for _, in := range allToolInputs {
