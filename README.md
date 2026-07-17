@@ -10,7 +10,7 @@ To install manually, pick whichever suits your setup:
 
 **Download a release binary** — grab the archive for your platform (Linux, macOS, or Windows; amd64 and arm64) from [GitHub Releases](https://github.com/massdriver-cloud/mcp-server/releases) and put `mcp-server` on your `PATH`.
 
-**Go install** (requires Go 1.24+):
+**Go install** (requires Go 1.25+):
 
 ```bash
 go install github.com/massdriver-cloud/mcp-server@latest
