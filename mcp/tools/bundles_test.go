@@ -6,72 +6,14 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/bundles"
-	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubBundles struct {
-	listPageFn func(context.Context, bundles.ListInput) (types.Page[bundles.Bundle], error)
-	getFn      func(context.Context, string) (*bundles.Bundle, error)
+	getFn func(context.Context, string) (*bundles.Bundle, error)
 }
 
-func (s *stubBundles) ListPage(ctx context.Context, input bundles.ListInput) (types.Page[bundles.Bundle], error) {
-	return s.listPageFn(ctx, input)
-}
 func (s *stubBundles) Get(ctx context.Context, id string) (*bundles.Bundle, error) {
 	return s.getFn(ctx, id)
-}
-
-func TestHandleListBundles(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    ListBundlesInput
-		stub     *stubBundles
-		wantErr  bool
-		wantText string
-	}{
-		{
-			name:  "returns bundle page",
-			input: ListBundlesInput{},
-			stub: &stubBundles{
-				listPageFn: func(_ context.Context, _ bundles.ListInput) (types.Page[bundles.Bundle], error) {
-					return types.Page[bundles.Bundle]{
-						Items: []bundles.Bundle{{ID: "aws-aurora-postgres", Name: "Aurora PostgreSQL"}},
-					}, nil
-				},
-			},
-			wantText: "aws-aurora-postgres",
-		},
-		{
-			name:  "empty page surfaces has_more false",
-			input: ListBundlesInput{},
-			stub: &stubBundles{
-				listPageFn: func(context.Context, bundles.ListInput) (types.Page[bundles.Bundle], error) {
-					return types.Page[bundles.Bundle]{}, nil
-				},
-			},
-			wantText: "\"has_more\": false",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{Bundles: tt.stub}
-			handler := HandleListBundles(c)
-			result, _, err := handler(context.Background(), nil, tt.input)
-			if tt.wantErr {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if !strings.Contains(resultText(t, result), tt.wantText) {
-				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
-			}
-		})
-	}
 }
 
 func TestHandleGetBundle(t *testing.T) {

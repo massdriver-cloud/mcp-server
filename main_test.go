@@ -67,7 +67,7 @@ func TestMCPServerTools(t *testing.T) {
 		// Components
 		"list_components", "get_component", "add_component", "update_component", "remove_component", "link_components", "unlink_components",
 		// Bundles
-		"list_bundles", "get_bundle",
+		"get_bundle",
 		// Resources
 		"list_resources", "get_resource", "create_resource", "update_resource", "delete_resource", "export_resource",
 		"create_resource_grant", "delete_resource_grant", "list_resource_grants",

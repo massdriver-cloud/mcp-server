@@ -12,6 +12,7 @@ import (
 var ListOciReposTool = &mcpsdk.Tool{
 	Name: "list_oci_repos",
 	Description: "Lists OCI repositories in the organization, one page at a time. " +
+		"Filter by `artifact_type` to list repositories of a given type (e.g. 'BUNDLE'). " +
 		"PREFER filtering by `search` or `artifact_type` to focus the catalog. " +
 		"Returns up to `page_size` repositories (default 25, max 100) plus a `next_cursor` for the following page. " +
 		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
@@ -44,7 +45,7 @@ func HandleListOciRepos(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 
 var GetOciRepoTool = &mcpsdk.Tool{
 	Name:        "get_oci_repo",
-	Description: "Gets a specific OCI repository by ID.",
+	Description: "Gets a specific OCI repository by ID, including its published version tags.",
 }
 
 type GetOciRepoInput struct {

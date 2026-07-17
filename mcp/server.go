@@ -113,7 +113,6 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.UnlinkComponentsTool, tools.HandleUnlinkComponents(c))
 
 	// Bundles
-	mcpsdk.AddTool(s.mcpServer, tools.ListBundlesTool, tools.HandleListBundles(c))
 	mcpsdk.AddTool(s.mcpServer, tools.GetBundleTool, tools.HandleGetBundle(c))
 
 	// Resources

@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 88 tools available in the Massdriver MCP server.
+This document describes all 87 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -72,8 +72,7 @@ This document describes all 88 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `list_bundles` | Lists bundles in the catalog. Optionally filter by `search`, `oci_repo_name`, `resource_type`, or `dependency_type`. |
-| `get_bundle` | Gets a bundle by ID. Supports version constraints (e.g., `aws-aurora-postgres@~1`). |
+| `get_bundle` | Gets a bundle by ID. Supports version constraints (e.g., `aws-aurora-postgres@~1`). To list available bundles, use `list_oci_repos` with `artifact_type` set to `BUNDLE`; to list a bundle's versions, use `get_oci_repo` (version tags live on the repository). |
 
 ## Resources
 
@@ -142,7 +141,7 @@ This document describes all 88 tools available in the Massdriver MCP server.
 | Tool | Description |
 |------|-------------|
 | `list_oci_repos` | Lists OCI repositories. Optionally filter by `search` or `artifact_type`. |
-| `get_oci_repo` | Gets an OCI repository by ID. |
+| `get_oci_repo` | Gets an OCI repository by ID, including its published version tags. |
 | `create_oci_repo` | Creates an OCI repository. Requires `id` and `artifact_type`. |
 | `update_oci_repo` | Updates an OCI repository's attributes. |
 | `delete_oci_repo` | Deletes an OCI repository. |
