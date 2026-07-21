@@ -126,21 +126,21 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (87)
+## Available Tools (94)
 
 See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
-### Projects (5)
-`list_projects` `get_project` `create_project` `update_project` `delete_project`
+### Projects (6)
+`list_projects` `get_project` `create_project` `clone_project` `update_project` `delete_project`
 
-### Environments (7)
-`list_environments` `get_environment` `create_environment` `update_environment` `delete_environment` `set_environment_default` `remove_environment_default`
+### Environments (8)
+`list_environments` `get_environment` `create_environment` `update_environment` `delete_environment` `set_environment_default` `remove_environment_default` `compare_environments`
 
-### Instances (6)
-`list_instances` `get_instance` `update_instance` `set_instance_secret` `remove_instance_secret` `list_alarms`
+### Instances (8)
+`list_instances` `get_instance` `update_instance` `set_instance_secret` `remove_instance_secret` `set_remote_reference` `remove_remote_reference` `list_alarms`
 
-### Deployments (8)
-`list_deployments` `get_deployment` `get_deployment_logs` `create_deployment` `propose_deployment` `approve_deployment` `reject_deployment` `abort_deployment`
+### Deployments (11)
+`list_deployments` `get_deployment` `get_deployment_logs` `create_deployment` `propose_deployment` `approve_deployment` `reject_deployment` `abort_deployment` `plan_deployment` `rollback_deployment` `compare_deployments`
 
 ### Components (7)
 `list_components` `get_component` `add_component` `update_component` `remove_component` `link_components` `unlink_components`

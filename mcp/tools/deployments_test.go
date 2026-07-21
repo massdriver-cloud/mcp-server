@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -20,6 +21,9 @@ type stubDeployments struct {
 	approveFn  func(context.Context, string) (*deployments.Deployment, error)
 	rejectFn   func(context.Context, string) (*deployments.Deployment, error)
 	abortFn    func(context.Context, string) (*deployments.Deployment, error)
+	planFn     func(context.Context, string) (*deployments.Deployment, error)
+	rollbackFn func(context.Context, string) (*deployments.Deployment, error)
+	compareFn  func(context.Context, string, string) (*deployments.Comparison, error)
 }
 
 func (s *stubDeployments) ListPage(ctx context.Context, input deployments.ListInput) (types.Page[deployments.Deployment], error) {
@@ -51,6 +55,15 @@ func (s *stubDeployments) Reject(ctx context.Context, id string) (*deployments.D
 }
 func (s *stubDeployments) Abort(ctx context.Context, id string) (*deployments.Deployment, error) {
 	return s.abortFn(ctx, id)
+}
+func (s *stubDeployments) Plan(ctx context.Context, id string) (*deployments.Deployment, error) {
+	return s.planFn(ctx, id)
+}
+func (s *stubDeployments) Rollback(ctx context.Context, id string) (*deployments.Deployment, error) {
+	return s.rollbackFn(ctx, id)
+}
+func (s *stubDeployments) Compare(ctx context.Context, sourceID, targetID string) (*deployments.Comparison, error) {
+	return s.compareFn(ctx, sourceID, targetID)
 }
 
 func TestHandleListDeployments(t *testing.T) {
@@ -490,6 +503,186 @@ func TestHandleRejectDeployment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Deployments: tt.stub}
 			handler := HandleRejectDeployment(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandlePlanDeployment(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    PlanDeploymentInput
+		stub     *stubDeployments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing id",
+			input:   PlanDeploymentInput{},
+			stub:    &stubDeployments{},
+			wantErr: "id is required",
+		},
+		{
+			name:  "success returns plan deployment JSON",
+			input: PlanDeploymentInput{ID: "dep1"},
+			stub: &stubDeployments{
+				planFn: func(_ context.Context, id string) (*deployments.Deployment, error) {
+					return &deployments.Deployment{ID: "dep-plan", Action: "PLAN"}, nil
+				},
+			},
+			wantText: "dep-plan",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: PlanDeploymentInput{ID: "dep1"},
+			stub: &stubDeployments{
+				planFn: func(context.Context, string) (*deployments.Deployment, error) {
+					return nil, mutationFailedErr("plan deployment", "", "not found")
+				},
+			},
+			wantText: "plan_deployment failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Deployments: tt.stub}
+			handler := HandlePlanDeployment(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleRollbackDeployment(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    RollbackDeploymentInput
+		stub     *stubDeployments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing id",
+			input:   RollbackDeploymentInput{},
+			stub:    &stubDeployments{},
+			wantErr: "id is required",
+		},
+		{
+			name:  "success returns proposed deployment JSON",
+			input: RollbackDeploymentInput{ID: "dep1"},
+			stub: &stubDeployments{
+				rollbackFn: func(_ context.Context, id string) (*deployments.Deployment, error) {
+					return &deployments.Deployment{ID: "dep-rollback", Status: "PROPOSED"}, nil
+				},
+			},
+			wantText: "dep-rollback",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: RollbackDeploymentInput{ID: "dep1"},
+			stub: &stubDeployments{
+				rollbackFn: func(context.Context, string) (*deployments.Deployment, error) {
+					return nil, mutationFailedErr("rollback deployment", "", "not a completed provision")
+				},
+			},
+			wantText: "rollback_deployment failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Deployments: tt.stub}
+			handler := HandleRollbackDeployment(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleCompareDeployments(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    CompareDeploymentsInput
+		stub     *stubDeployments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing source_id",
+			input:   CompareDeploymentsInput{TargetID: "dep2"},
+			stub:    &stubDeployments{},
+			wantErr: "source_id is required",
+		},
+		{
+			name:    "missing target_id",
+			input:   CompareDeploymentsInput{SourceID: "dep1"},
+			stub:    &stubDeployments{},
+			wantErr: "target_id is required",
+		},
+		{
+			name:  "success returns comparison JSON",
+			input: CompareDeploymentsInput{SourceID: "dep1", TargetID: "dep2"},
+			stub: &stubDeployments{
+				compareFn: func(_ context.Context, sourceID, targetID string) (*deployments.Comparison, error) {
+					return &deployments.Comparison{
+						Source: deployments.Deployment{ID: sourceID},
+						Target: deployments.Deployment{ID: targetID},
+					}, nil
+				},
+			},
+			wantText: "dep2",
+		},
+		{
+			name:  "error is surfaced",
+			input: CompareDeploymentsInput{SourceID: "dep1", TargetID: "dep2"},
+			stub: &stubDeployments{
+				compareFn: func(context.Context, string, string) (*deployments.Comparison, error) {
+					return nil, errors.New("boom")
+				},
+			},
+			wantErr: "compare_deployments",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Deployments: tt.stub}
+			handler := HandleCompareDeployments(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

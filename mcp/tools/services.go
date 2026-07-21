@@ -51,6 +51,7 @@ type ProjectsService interface {
 	ListPage(ctx context.Context, input projects.ListInput) (types.Page[projects.Project], error)
 	Get(ctx context.Context, id string) (*projects.Project, error)
 	Create(ctx context.Context, input projects.CreateInput) (*projects.Project, error)
+	Clone(ctx context.Context, sourceProjectID string, input projects.CloneInput) (*projects.Project, error)
 	Update(ctx context.Context, id string, input projects.UpdateInput) (*projects.Project, error)
 	Delete(ctx context.Context, id string) (*projects.Project, error)
 }
@@ -64,6 +65,7 @@ type EnvironmentsService interface {
 	Delete(ctx context.Context, id string) (*environments.Environment, error)
 	SetDefault(ctx context.Context, environmentID, resourceID string) (*environments.EnvironmentDefault, error)
 	RemoveDefault(ctx context.Context, id string) (*environments.EnvironmentDefault, error)
+	Compare(ctx context.Context, sourceID, targetID string) (*environments.Comparison, error)
 }
 
 // InstancesService defines the instance operations used by tool handlers.
@@ -73,6 +75,8 @@ type InstancesService interface {
 	Update(ctx context.Context, id string, input instances.UpdateInput) (*instances.Instance, error)
 	SetSecret(ctx context.Context, instanceID, name, value string) (*instances.Secret, error)
 	RemoveSecret(ctx context.Context, instanceID, name string) (*instances.Secret, error)
+	SetRemoteReference(ctx context.Context, instanceID, resourceID, field string) (*instances.RemoteReference, error)
+	RemoveRemoteReference(ctx context.Context, instanceID, field string) (*instances.RemoteReference, error)
 	ListAlarmsPage(ctx context.Context, input instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
 }
 
@@ -87,6 +91,9 @@ type DeploymentsService interface {
 	Approve(ctx context.Context, id string) (*deployments.Deployment, error)
 	Reject(ctx context.Context, id string) (*deployments.Deployment, error)
 	Abort(ctx context.Context, id string) (*deployments.Deployment, error)
+	Plan(ctx context.Context, id string) (*deployments.Deployment, error)
+	Rollback(ctx context.Context, id string) (*deployments.Deployment, error)
+	Compare(ctx context.Context, sourceID, targetID string) (*deployments.Comparison, error)
 }
 
 // ComponentsService defines the component operations used by tool handlers.

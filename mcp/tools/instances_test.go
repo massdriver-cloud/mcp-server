@@ -10,12 +10,14 @@ import (
 )
 
 type stubInstances struct {
-	listPageFn       func(context.Context, instances.ListInput) (types.Page[instances.Instance], error)
-	getFn            func(context.Context, string) (*instances.Instance, error)
-	updateFn         func(context.Context, string, instances.UpdateInput) (*instances.Instance, error)
-	setSecretFn      func(context.Context, string, string, string) (*instances.Secret, error)
-	removeSecretFn   func(context.Context, string, string) (*instances.Secret, error)
-	listAlarmsPageFn func(context.Context, instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
+	listPageFn        func(context.Context, instances.ListInput) (types.Page[instances.Instance], error)
+	getFn             func(context.Context, string) (*instances.Instance, error)
+	updateFn          func(context.Context, string, instances.UpdateInput) (*instances.Instance, error)
+	setSecretFn       func(context.Context, string, string, string) (*instances.Secret, error)
+	removeSecretFn    func(context.Context, string, string) (*instances.Secret, error)
+	setRemoteRefFn    func(context.Context, string, string, string) (*instances.RemoteReference, error)
+	removeRemoteRefFn func(context.Context, string, string) (*instances.RemoteReference, error)
+	listAlarmsPageFn  func(context.Context, instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
 }
 
 func (s *stubInstances) ListPage(ctx context.Context, input instances.ListInput) (types.Page[instances.Instance], error) {
@@ -32,6 +34,12 @@ func (s *stubInstances) SetSecret(ctx context.Context, instanceID, name, value s
 }
 func (s *stubInstances) RemoveSecret(ctx context.Context, instanceID, name string) (*instances.Secret, error) {
 	return s.removeSecretFn(ctx, instanceID, name)
+}
+func (s *stubInstances) SetRemoteReference(ctx context.Context, instanceID, resourceID, field string) (*instances.RemoteReference, error) {
+	return s.setRemoteRefFn(ctx, instanceID, resourceID, field)
+}
+func (s *stubInstances) RemoveRemoteReference(ctx context.Context, instanceID, field string) (*instances.RemoteReference, error) {
+	return s.removeRemoteRefFn(ctx, instanceID, field)
 }
 func (s *stubInstances) ListAlarmsPage(ctx context.Context, input instances.ListAlarmsInput) (types.Page[instances.Alarm], error) {
 	return s.listAlarmsPageFn(ctx, input)
@@ -358,6 +366,138 @@ func TestHandleUpdateInstance(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Instances: tt.stub}
 			handler := HandleUpdateInstance(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleSetRemoteReference(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    SetRemoteReferenceInput
+		stub     *stubInstances
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing instance_id",
+			input:   SetRemoteReferenceInput{ResourceID: "res1", Field: "database"},
+			stub:    &stubInstances{},
+			wantErr: "instance_id is required",
+		},
+		{
+			name:    "missing resource_id",
+			input:   SetRemoteReferenceInput{InstanceID: "inst1", Field: "database"},
+			stub:    &stubInstances{},
+			wantErr: "resource_id is required",
+		},
+		{
+			name:    "missing field",
+			input:   SetRemoteReferenceInput{InstanceID: "inst1", ResourceID: "res1"},
+			stub:    &stubInstances{},
+			wantErr: "field is required",
+		},
+		{
+			name:  "success returns remote reference JSON",
+			input: SetRemoteReferenceInput{InstanceID: "inst1", ResourceID: "res1", Field: "database"},
+			stub: &stubInstances{
+				setRemoteRefFn: func(_ context.Context, _, _, field string) (*instances.RemoteReference, error) {
+					return &instances.RemoteReference{Field: field}, nil
+				},
+			},
+			wantText: "database",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: SetRemoteReferenceInput{InstanceID: "inst1", ResourceID: "res1", Field: "database"},
+			stub: &stubInstances{
+				setRemoteRefFn: func(context.Context, string, string, string) (*instances.RemoteReference, error) {
+					return nil, mutationFailedErr("set remote reference", "field", "unknown slot")
+				},
+			},
+			wantText: "set_remote_reference failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Instances: tt.stub}
+			handler := HandleSetRemoteReference(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleRemoveRemoteReference(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    RemoveRemoteReferenceInput
+		stub     *stubInstances
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing instance_id",
+			input:   RemoveRemoteReferenceInput{Field: "database"},
+			stub:    &stubInstances{},
+			wantErr: "instance_id is required",
+		},
+		{
+			name:    "missing field",
+			input:   RemoveRemoteReferenceInput{InstanceID: "inst1"},
+			stub:    &stubInstances{},
+			wantErr: "field is required",
+		},
+		{
+			name:  "success returns remote reference JSON",
+			input: RemoveRemoteReferenceInput{InstanceID: "inst1", Field: "database"},
+			stub: &stubInstances{
+				removeRemoteRefFn: func(_ context.Context, _, field string) (*instances.RemoteReference, error) {
+					return &instances.RemoteReference{Field: field}, nil
+				},
+			},
+			wantText: "database",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: RemoveRemoteReferenceInput{InstanceID: "inst1", Field: "database"},
+			stub: &stubInstances{
+				removeRemoteRefFn: func(context.Context, string, string) (*instances.RemoteReference, error) {
+					return nil, mutationFailedErr("remove remote reference", "field", "not set")
+				},
+			},
+			wantText: "remove_remote_reference failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Instances: tt.stub}
+			handler := HandleRemoveRemoteReference(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

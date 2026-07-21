@@ -13,12 +13,17 @@ var ListProjectsTool = &mcpsdk.Tool{
 	Description: "Lists projects in the Massdriver organization, one page at a time. " +
 		"Returns up to `page_size` projects (default 25, max 100) plus a `next_cursor` for the following page. " +
 		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Optionally filter with `search` (free-text over name and description), `name` (exact name match), " +
+		"or `name_in` (match any of several exact names). " +
 		"Stop once you have what you need — do NOT paginate to exhaustion unless the user explicitly asked for every project.",
 }
 
 type ListProjectsInput struct {
-	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
-	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+	Cursor   string   `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int      `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+	Search   string   `json:"search,omitempty"    jsonschema:"Optional. Free-text search across each project's name and description. Matches whole words anywhere in the text and is forgiving of partial or out-of-order terms. When set, results are ranked by relevance."`
+	Name     string   `json:"name,omitempty"      jsonschema:"Optional. Filters to projects whose display name exactly equals this value. Use search for partial matching. Mutually exclusive with name_in."`
+	NameIn   []string `json:"name_in,omitempty"   jsonschema:"Optional. Filters to projects whose display name is any of these exact values. Mutually exclusive with name."`
 }
 
 func HandleListProjects(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
@@ -26,6 +31,9 @@ func HandleListProjects(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		page, err := c.Projects.ListPage(ctx, projects.ListInput{
 			PageSize: clampPageSize(args.PageSize),
 			After:    args.Cursor,
+			Search:   args.Search,
+			Name:     args.Name,
+			NameIn:   args.NameIn,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_projects: %w", err)
@@ -100,6 +108,53 @@ func HandleCreateProject(c *Client) func(context.Context, *mcpsdk.CallToolReques
 				return errorResult(fmt.Sprintf("create_project failed: %s", mutationErr(err))), nil, nil
 			}
 			return nil, nil, fmt.Errorf("create_project: %w", err)
+		}
+
+		result, err := jsonResult(project)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, project, nil
+	}
+}
+
+var CloneProjectTool = &mcpsdk.Tool{
+	Name: "clone_project",
+	Description: "Clones an existing project into a new project, duplicating its blueprint structure " +
+		"(components and their wiring) without copying any environments. The new project starts with no environments.",
+}
+
+type CloneProjectInput struct {
+	SourceProjectID string         `json:"source_project_id"     jsonschema:"The ID of the project to clone from."`
+	ID              string         `json:"id"                    jsonschema:"Unique identifier for the new project, max 12 lowercase alphanumeric characters. Cannot be changed after creation."`
+	Name            string         `json:"name"                  jsonschema:"Human-readable name for the new project shown in the UI."`
+	Description     string         `json:"description,omitempty" jsonschema:"Optional description of the new project."`
+	Attributes      map[string]any `json:"attributes,omitempty"  jsonschema:"Optional. Custom attribute tags at the project scope (e.g., {\"team\":\"eng\"}). Must conform to the organization's custom-attribute schema. Use get_organization to discover defined attributes."`
+}
+
+func HandleCloneProject(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CloneProjectInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CloneProjectInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.SourceProjectID == "" {
+			return nil, nil, fmt.Errorf("clone_project: source_project_id is required")
+		}
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("clone_project: id is required")
+		}
+		if args.Name == "" {
+			return nil, nil, fmt.Errorf("clone_project: name is required")
+		}
+
+		project, err := c.Projects.Clone(ctx, args.SourceProjectID, projects.CloneInput{
+			ID:          args.ID,
+			Name:        args.Name,
+			Description: args.Description,
+			Attributes:  args.Attributes,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("clone_project failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("clone_project: %w", err)
 		}
 
 		result, err := jsonResult(project)
