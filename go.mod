@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/google/jsonschema-go v0.3.0
-	github.com/massdriver-cloud/massdriver-sdk-go v0.2.9
+	github.com/massdriver-cloud/massdriver-sdk-go v0.2.10-0.20260721201746-c925c95365f7
 	github.com/modelcontextprotocol/go-sdk v1.0.0
 )
 

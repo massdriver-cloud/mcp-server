@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 87 tools available in the Massdriver MCP server.
+This document describes all 94 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -14,9 +14,10 @@ This document describes all 87 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `list_projects` | Lists all projects in the organization, including their environments. |
+| `list_projects` | Lists all projects in the organization, including their environments. Optionally filter by `search` (free-text over name and description), `name` (exact match), or `name_in` (any of several exact names). |
 | `get_project` | Gets a specific project by ID, including its environments. |
 | `create_project` | Creates a new project. Requires `id` and `name`; accepts optional `description` and custom `attributes` (required by orgs that define required project attributes). |
+| `clone_project` | Clones an existing project into a new project, duplicating its blueprint structure (components and wiring) without copying any environments. Requires `source_project_id`, `id`, and `name`. |
 | `update_project` | Updates a project's name, description, or custom `attributes`. |
 | `delete_project` | Deletes a project. All environments must be empty first. |
 
@@ -31,6 +32,7 @@ This document describes all 87 tools available in the Massdriver MCP server.
 | `delete_environment` | Deletes an environment. All instances must be decommissioned first. |
 | `set_environment_default` | Sets a resource as the default of its type for an environment. The resource must first be shared to the environment via `create_resource_grant`. |
 | `remove_environment_default` | Removes a default resource binding. |
+| `compare_environments` | Compares two environments in the same project instance-by-instance (paired by component), reporting the resolved bundle version on each side and a leaf-level diff of configured params. |
 
 ## Instances
 
@@ -41,6 +43,8 @@ This document describes all 87 tools available in the Massdriver MCP server.
 | `update_instance` | Updates an instance's version pin. |
 | `set_instance_secret` | Sets or updates a secret on an instance. |
 | `remove_instance_secret` | Removes a secret from an instance. |
+| `set_remote_reference` | Overrides one of an instance's connection slots (`field`) with a resource from another project or an imported resource (`resource_id`). Takes priority over any blueprint link on that slot. |
+| `remove_remote_reference` | Removes a remote-reference override from a connection slot, reverting it to the blueprint link or environment default. |
 | `list_alarms` | Lists alarms. Optionally filter by project, environment, component, instance, or bundle. |
 
 ## Deployments
@@ -55,6 +59,9 @@ This document describes all 87 tools available in the Massdriver MCP server.
 | `approve_deployment` | Approves a proposed deployment. |
 | `reject_deployment` | Rejects a proposed deployment. |
 | `abort_deployment` | Aborts a running deployment. |
+| `plan_deployment` | Runs a fresh PLAN (dry-run preview) against an existing deployment's params. Mutates nothing on the source; returns a new PLAN deployment. |
+| `rollback_deployment` | Proposes a rollback to a past deployment's exact state. The source must be a `COMPLETED` `PROVISION`; creates a `PROPOSED` `PROVISION` for review (approve or reject). |
+| `compare_deployments` | Compares two deployments' snapshotted config: bundle version on each side plus a leaf-level diff of params. |
 
 ## Components
 

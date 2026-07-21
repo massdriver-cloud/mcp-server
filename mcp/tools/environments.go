@@ -248,3 +248,39 @@ func HandleRemoveEnvironmentDefault(c *Client) func(context.Context, *mcpsdk.Cal
 		return result, envDefault, nil
 	}
 }
+
+var CompareEnvironmentsTool = &mcpsdk.Tool{
+	Name: "compare_environments",
+	Description: "Compares two environments in the same project, instance-by-instance. Instances are paired by " +
+		"component; for each component the result reports the resolved bundle version on each side and a flat, " +
+		"leaf-level diff of the configured params. When a component is deployed on only one side, the other side's " +
+		"entry is null. Environment-level attributes and default resource wiring are not part of the comparison. " +
+		"Both environments must belong to the same project.",
+}
+
+type CompareEnvironmentsInput struct {
+	SourceID string `json:"source_id" jsonschema:"The source (baseline) environment ID."`
+	TargetID string `json:"target_id" jsonschema:"The target environment ID to compare against the source. Must be in the same project as the source."`
+}
+
+func HandleCompareEnvironments(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CompareEnvironmentsInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CompareEnvironmentsInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.SourceID == "" {
+			return nil, nil, fmt.Errorf("compare_environments: source_id is required")
+		}
+		if args.TargetID == "" {
+			return nil, nil, fmt.Errorf("compare_environments: target_id is required")
+		}
+
+		comparison, err := c.Environments.Compare(ctx, args.SourceID, args.TargetID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("compare_environments: %w", err)
+		}
+
+		result, err := jsonResult(comparison)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, comparison, nil
+	}
+}

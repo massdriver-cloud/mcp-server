@@ -352,6 +352,113 @@ func HandleRejectDeployment(c *Client) func(context.Context, *mcpsdk.CallToolReq
 	}
 }
 
+var PlanDeploymentTool = &mcpsdk.Tool{
+	Name: "plan_deployment",
+	Description: "Runs a fresh PLAN (dry-run preview) against an existing deployment's parameters. " +
+		"This is a read-only preview: it copies the source deployment's params onto a new PLAN deployment and " +
+		"changes nothing on the source deployment, the instance's saved configuration, or any other deployment. " +
+		"The source deployment can be in any status — use it to preview a proposal before approving, replay a " +
+		"completed deployment, or scope out a rollback against an older snapshot. Returns the new PLAN deployment.",
+}
+
+type PlanDeploymentInput struct {
+	ID string `json:"id" jsonschema:"The ID of the source deployment whose params should be planned."`
+}
+
+func HandlePlanDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, PlanDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args PlanDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("plan_deployment: id is required")
+		}
+
+		deployment, err := c.Deployments.Plan(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("plan_deployment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("plan_deployment: %w", err)
+		}
+
+		result, err := jsonResult(deployment)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, deployment, nil
+	}
+}
+
+var RollbackDeploymentTool = &mcpsdk.Tool{
+	Name: "rollback_deployment",
+	Description: "Proposes a rollback to a past deployment's exact state. The source deployment is the historical " +
+		"run to return to and must be a COMPLETED PROVISION. This creates a new PROPOSED PROVISION deployment " +
+		"that snapshots the source's params, connection wiring, bundle version, and release — it does NOT apply " +
+		"anything on its own. The proposal goes through the normal review flow: preview it with plan_deployment, " +
+		"then approve_deployment to apply (pinning the instance to the source's exact configuration) or " +
+		"reject_deployment to discard.",
+}
+
+type RollbackDeploymentInput struct {
+	ID string `json:"id" jsonschema:"The ID of the source deployment (a COMPLETED PROVISION) to roll back to."`
+}
+
+func HandleRollbackDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, RollbackDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args RollbackDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("rollback_deployment: id is required")
+		}
+
+		deployment, err := c.Deployments.Rollback(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("rollback_deployment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("rollback_deployment: %w", err)
+		}
+
+		result, err := jsonResult(deployment)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, deployment, nil
+	}
+}
+
+var CompareDeploymentsTool = &mcpsdk.Tool{
+	Name: "compare_deployments",
+	Description: "Compares two deployments' snapshotted configuration: the bundle version on each side plus a flat, " +
+		"leaf-level diff of their params. Use it to audit what a deployment changed or to contrast deployments from " +
+		"different points in time. Runtime state, logs, and produced artifacts are out of scope. The two deployments " +
+		"need not target the same instance, though comparing unrelated instances reports every param as present on " +
+		"one side only.",
+}
+
+type CompareDeploymentsInput struct {
+	SourceID string `json:"source_id" jsonschema:"The source (baseline) deployment ID."`
+	TargetID string `json:"target_id" jsonschema:"The target deployment ID to compare against the source."`
+}
+
+func HandleCompareDeployments(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CompareDeploymentsInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CompareDeploymentsInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.SourceID == "" {
+			return nil, nil, fmt.Errorf("compare_deployments: source_id is required")
+		}
+		if args.TargetID == "" {
+			return nil, nil, fmt.Errorf("compare_deployments: target_id is required")
+		}
+
+		comparison, err := c.Deployments.Compare(ctx, args.SourceID, args.TargetID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("compare_deployments: %w", err)
+		}
+
+		result, err := jsonResult(comparison)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, comparison, nil
+	}
+}
+
 // isTerminalDeploymentStatus reports whether a deployment is done and its
 // status will not change further.
 func isTerminalDeploymentStatus(s string) bool {

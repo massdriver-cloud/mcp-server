@@ -73,6 +73,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.ListProjectsTool, tools.HandleListProjects(c))
 	mcpsdk.AddTool(s.mcpServer, tools.GetProjectTool, tools.HandleGetProject(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CreateProjectTool, tools.HandleCreateProject(c))
+	mcpsdk.AddTool(s.mcpServer, tools.CloneProjectTool, tools.HandleCloneProject(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateProjectTool, tools.HandleUpdateProject(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteProjectTool, tools.HandleDeleteProject(c))
 
@@ -84,6 +85,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteEnvironmentTool, tools.HandleDeleteEnvironment(c))
 	mcpsdk.AddTool(s.mcpServer, tools.SetEnvironmentDefaultTool, tools.HandleSetEnvironmentDefault(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveEnvironmentDefaultTool, tools.HandleRemoveEnvironmentDefault(c))
+	mcpsdk.AddTool(s.mcpServer, tools.CompareEnvironmentsTool, tools.HandleCompareEnvironments(c))
 
 	// Instances
 	mcpsdk.AddTool(s.mcpServer, tools.ListInstancesTool, tools.HandleListInstances(c))
@@ -91,6 +93,8 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateInstanceTool, tools.HandleUpdateInstance(c))
 	mcpsdk.AddTool(s.mcpServer, tools.SetInstanceSecretTool, tools.HandleSetInstanceSecret(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveInstanceSecretTool, tools.HandleRemoveInstanceSecret(c))
+	mcpsdk.AddTool(s.mcpServer, tools.SetRemoteReferenceTool, tools.HandleSetRemoteReference(c))
+	mcpsdk.AddTool(s.mcpServer, tools.RemoveRemoteReferenceTool, tools.HandleRemoveRemoteReference(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListAlarmsTool, tools.HandleListAlarms(c))
 
 	// Deployments
@@ -102,6 +106,9 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.ApproveDeploymentTool, tools.HandleApproveDeployment(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RejectDeploymentTool, tools.HandleRejectDeployment(c))
 	mcpsdk.AddTool(s.mcpServer, tools.AbortDeploymentTool, tools.HandleAbortDeployment(c))
+	mcpsdk.AddTool(s.mcpServer, tools.PlanDeploymentTool, tools.HandlePlanDeployment(c))
+	mcpsdk.AddTool(s.mcpServer, tools.RollbackDeploymentTool, tools.HandleRollbackDeployment(c))
+	mcpsdk.AddTool(s.mcpServer, tools.CompareDeploymentsTool, tools.HandleCompareDeployments(c))
 
 	// Components
 	mcpsdk.AddTool(s.mcpServer, tools.ListComponentsTool, tools.HandleListComponents(c))

@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -17,6 +18,7 @@ type stubEnvironments struct {
 	deleteFn        func(context.Context, string) (*environments.Environment, error)
 	setDefaultFn    func(context.Context, string, string) (*environments.EnvironmentDefault, error)
 	removeDefaultFn func(context.Context, string) (*environments.EnvironmentDefault, error)
+	compareFn       func(context.Context, string, string) (*environments.Comparison, error)
 }
 
 func (s *stubEnvironments) ListPage(ctx context.Context, input environments.ListInput) (types.Page[environments.Environment], error) {
@@ -39,6 +41,9 @@ func (s *stubEnvironments) SetDefault(ctx context.Context, environmentID, resour
 }
 func (s *stubEnvironments) RemoveDefault(ctx context.Context, id string) (*environments.EnvironmentDefault, error) {
 	return s.removeDefaultFn(ctx, id)
+}
+func (s *stubEnvironments) Compare(ctx context.Context, sourceID, targetID string) (*environments.Comparison, error) {
+	return s.compareFn(ctx, sourceID, targetID)
 }
 
 func TestHandleListEnvironments(t *testing.T) {
@@ -427,6 +432,72 @@ func TestHandleRemoveEnvironmentDefault(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Environments: tt.stub}
 			handler := HandleRemoveEnvironmentDefault(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleCompareEnvironments(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    CompareEnvironmentsInput
+		stub     *stubEnvironments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing source_id",
+			input:   CompareEnvironmentsInput{TargetID: "env2"},
+			stub:    &stubEnvironments{},
+			wantErr: "source_id is required",
+		},
+		{
+			name:    "missing target_id",
+			input:   CompareEnvironmentsInput{SourceID: "env1"},
+			stub:    &stubEnvironments{},
+			wantErr: "target_id is required",
+		},
+		{
+			name:  "success returns comparison JSON",
+			input: CompareEnvironmentsInput{SourceID: "env1", TargetID: "env2"},
+			stub: &stubEnvironments{
+				compareFn: func(_ context.Context, sourceID, targetID string) (*environments.Comparison, error) {
+					return &environments.Comparison{
+						Source: environments.Environment{ID: sourceID},
+						Target: environments.Environment{ID: targetID},
+					}, nil
+				},
+			},
+			wantText: "env2",
+		},
+		{
+			name:  "error is surfaced",
+			input: CompareEnvironmentsInput{SourceID: "env1", TargetID: "env2"},
+			stub: &stubEnvironments{
+				compareFn: func(context.Context, string, string) (*environments.Comparison, error) {
+					return nil, errors.New("cross-project comparison forbidden")
+				},
+			},
+			wantErr: "compare_environments",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Environments: tt.stub}
+			handler := HandleCompareEnvironments(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

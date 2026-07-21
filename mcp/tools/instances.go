@@ -229,3 +229,84 @@ func HandleUpdateInstance(c *Client) func(context.Context, *mcpsdk.CallToolReque
 		return result, instance, nil
 	}
 }
+
+var SetRemoteReferenceTool = &mcpsdk.Tool{
+	Name: "set_remote_reference",
+	Description: "Overrides one of an instance's connection slots with a resource from another project (or an " +
+		"imported resource). `field` names the connection slot to bind — a key in the instance bundle's " +
+		"connectionsSchema. `resource_id` is either a UUID (for imported resources) or \"instance.field\" (for a " +
+		"resource provisioned by another instance). This override takes priority over any blueprint-level link " +
+		"wired into the same slot, and reverts to that link (or the environment default) when removed with " +
+		"remove_remote_reference. The instance must not be in PROVISIONED or FAILED status.",
+}
+
+type SetRemoteReferenceInput struct {
+	InstanceID string `json:"instance_id" jsonschema:"The instance ID whose connection slot is being overridden."`
+	ResourceID string `json:"resource_id" jsonschema:"The resource to bind: a UUID for an imported resource, or \"instance.field\" for a resource provisioned by another instance."`
+	Field      string `json:"field"       jsonschema:"The connection slot to bind — a key in the instance bundle's connectionsSchema."`
+}
+
+func HandleSetRemoteReference(c *Client) func(context.Context, *mcpsdk.CallToolRequest, SetRemoteReferenceInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args SetRemoteReferenceInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.InstanceID == "" {
+			return nil, nil, fmt.Errorf("set_remote_reference: instance_id is required")
+		}
+		if args.ResourceID == "" {
+			return nil, nil, fmt.Errorf("set_remote_reference: resource_id is required")
+		}
+		if args.Field == "" {
+			return nil, nil, fmt.Errorf("set_remote_reference: field is required")
+		}
+
+		ref, err := c.Instances.SetRemoteReference(ctx, args.InstanceID, args.ResourceID, args.Field)
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("set_remote_reference failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("set_remote_reference: %w", err)
+		}
+
+		result, err := jsonResult(ref)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, ref, nil
+	}
+}
+
+var RemoveRemoteReferenceTool = &mcpsdk.Tool{
+	Name: "remove_remote_reference",
+	Description: "Removes the remote-reference override from the named connection slot on an instance. The slot " +
+		"reverts to its blueprint link (if any) or the environment default at the next deploy. `field` is a key in " +
+		"the instance bundle's connectionsSchema. The instance must not be in PROVISIONED or FAILED status.",
+}
+
+type RemoveRemoteReferenceInput struct {
+	InstanceID string `json:"instance_id" jsonschema:"The instance ID whose connection-slot override is being removed."`
+	Field      string `json:"field"       jsonschema:"The connection slot to clear — a key in the instance bundle's connectionsSchema."`
+}
+
+func HandleRemoveRemoteReference(c *Client) func(context.Context, *mcpsdk.CallToolRequest, RemoveRemoteReferenceInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args RemoveRemoteReferenceInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.InstanceID == "" {
+			return nil, nil, fmt.Errorf("remove_remote_reference: instance_id is required")
+		}
+		if args.Field == "" {
+			return nil, nil, fmt.Errorf("remove_remote_reference: field is required")
+		}
+
+		ref, err := c.Instances.RemoveRemoteReference(ctx, args.InstanceID, args.Field)
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("remove_remote_reference failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("remove_remote_reference: %w", err)
+		}
+
+		result, err := jsonResult(ref)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, ref, nil
+	}
+}

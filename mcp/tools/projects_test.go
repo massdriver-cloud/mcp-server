@@ -13,6 +13,7 @@ type stubProjects struct {
 	listPageFn func(context.Context, projects.ListInput) (types.Page[projects.Project], error)
 	getFn      func(context.Context, string) (*projects.Project, error)
 	createFn   func(context.Context, projects.CreateInput) (*projects.Project, error)
+	cloneFn    func(context.Context, string, projects.CloneInput) (*projects.Project, error)
 	updateFn   func(context.Context, string, projects.UpdateInput) (*projects.Project, error)
 	deleteFn   func(context.Context, string) (*projects.Project, error)
 }
@@ -25,6 +26,9 @@ func (s *stubProjects) Get(ctx context.Context, id string) (*projects.Project, e
 }
 func (s *stubProjects) Create(ctx context.Context, input projects.CreateInput) (*projects.Project, error) {
 	return s.createFn(ctx, input)
+}
+func (s *stubProjects) Clone(ctx context.Context, sourceProjectID string, input projects.CloneInput) (*projects.Project, error) {
+	return s.cloneFn(ctx, sourceProjectID, input)
 }
 func (s *stubProjects) Update(ctx context.Context, id string, input projects.UpdateInput) (*projects.Project, error) {
 	return s.updateFn(ctx, id, input)
@@ -291,6 +295,106 @@ func TestHandleDeleteProject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Projects: tt.stub}
 			handler := HandleDeleteProject(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleListProjectsFilters(t *testing.T) {
+	var got projects.ListInput
+	c := &Client{Projects: &stubProjects{
+		listPageFn: func(_ context.Context, input projects.ListInput) (types.Page[projects.Project], error) {
+			got = input
+			return types.Page[projects.Project]{}, nil
+		},
+	}}
+	handler := HandleListProjects(c)
+	_, _, err := handler(context.Background(), nil, ListProjectsInput{
+		Search: "billing",
+		Name:   "Billing",
+		NameIn: []string{"Billing", "Payments"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Search != "billing" {
+		t.Errorf("expected Search %q, got %q", "billing", got.Search)
+	}
+	if got.Name != "Billing" {
+		t.Errorf("expected Name %q, got %q", "Billing", got.Name)
+	}
+	if len(got.NameIn) != 2 || got.NameIn[0] != "Billing" {
+		t.Errorf("expected NameIn [Billing Payments], got %v", got.NameIn)
+	}
+}
+
+func TestHandleCloneProject(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    CloneProjectInput
+		stub     *stubProjects
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing source_project_id",
+			input:   CloneProjectInput{ID: "newproj", Name: "New Project"},
+			stub:    &stubProjects{},
+			wantErr: "source_project_id is required",
+		},
+		{
+			name:    "missing id",
+			input:   CloneProjectInput{SourceProjectID: "src", Name: "New Project"},
+			stub:    &stubProjects{},
+			wantErr: "id is required",
+		},
+		{
+			name:    "missing name",
+			input:   CloneProjectInput{SourceProjectID: "src", ID: "newproj"},
+			stub:    &stubProjects{},
+			wantErr: "name is required",
+		},
+		{
+			name:  "success returns cloned project JSON",
+			input: CloneProjectInput{SourceProjectID: "src", ID: "newproj", Name: "New Project"},
+			stub: &stubProjects{
+				cloneFn: func(_ context.Context, sourceProjectID string, input projects.CloneInput) (*projects.Project, error) {
+					if sourceProjectID != "src" {
+						t.Errorf("expected source %q, got %q", "src", sourceProjectID)
+					}
+					return &projects.Project{ID: input.ID, Name: input.Name}, nil
+				},
+			},
+			wantText: "newproj",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: CloneProjectInput{SourceProjectID: "src", ID: "newproj", Name: "New Project"},
+			stub: &stubProjects{
+				cloneFn: func(context.Context, string, projects.CloneInput) (*projects.Project, error) {
+					return nil, mutationFailedErr("clone project", "id", "already taken")
+				},
+			},
+			wantText: "clone_project failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Projects: tt.stub}
+			handler := HandleCloneProject(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

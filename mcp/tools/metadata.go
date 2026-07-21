@@ -68,7 +68,8 @@ func applyAnnotations() {
 		GetProjectTool, ListProjectsTool,
 		GetEnvironmentTool, ListEnvironmentsTool,
 		GetInstanceTool, ListInstancesTool, ListAlarmsTool,
-		GetDeploymentTool, ListDeploymentsTool, GetDeploymentLogsTool,
+		GetDeploymentTool, ListDeploymentsTool, GetDeploymentLogsTool, CompareDeploymentsTool,
+		CompareEnvironmentsTool,
 		GetComponentTool, ListComponentsTool,
 		GetBundleTool,
 		GetResourceTool, ListResourcesTool, ExportResourceTool, ListResourceGrantsTool,
@@ -88,10 +89,10 @@ func applyAnnotations() {
 	// Additive creators: not destructive, not idempotent (a second identical
 	// call creates a duplicate or fails).
 	additive := []*mcpsdk.Tool{
-		CreateProjectTool, CreateEnvironmentTool, AddComponentTool, LinkComponentsTool,
+		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, AddComponentTool, LinkComponentsTool,
 		CreateResourceTool, CreateResourceGrantTool, CreateOciRepoGrantTool, CreateCustomAttributeTool,
 		CreateGroupTool, CreateServiceAccountTool, CreateOciRepoTool, CreatePolicyTool,
-		ProposeDeploymentTool, RejectDeploymentTool,
+		ProposeDeploymentTool, RejectDeploymentTool, PlanDeploymentTool, RollbackDeploymentTool,
 	}
 	annotate(additive, func() *mcpsdk.ToolAnnotations { return writeHints(false, false) })
 
@@ -99,7 +100,7 @@ func applyAnnotations() {
 	// (re-applying the same values is a no-op).
 	updates := []*mcpsdk.Tool{
 		UpdateProjectTool, UpdateEnvironmentTool, SetEnvironmentDefaultTool,
-		UpdateInstanceTool, SetInstanceSecretTool,
+		UpdateInstanceTool, SetInstanceSecretTool, SetRemoteReferenceTool,
 		UpdateComponentTool, UpdateResourceTool, UpdateCustomAttributeTool,
 		UpdateGroupTool, AddGroupUserTool, AddGroupServiceAccountTool,
 		UpdateServiceAccountTool, UpdateOciRepoTool, UpdatePolicyTool,
@@ -109,7 +110,7 @@ func applyAnnotations() {
 	// Destructive removals: idempotent (the target ends up absent either way).
 	destructiveIdempotent := []*mcpsdk.Tool{
 		DeleteProjectTool, DeleteEnvironmentTool, RemoveEnvironmentDefaultTool,
-		RemoveInstanceSecretTool, RemoveComponentTool, UnlinkComponentsTool,
+		RemoveInstanceSecretTool, RemoveRemoteReferenceTool, RemoveComponentTool, UnlinkComponentsTool,
 		DeleteResourceTool, DeleteResourceGrantTool, DeleteCustomAttributeTool,
 		DeleteGroupTool, RemoveGroupUserTool, RevokeGroupInvitationTool,
 		RemoveGroupServiceAccountTool, DeleteServiceAccountTool, DeletePolicyTool,
