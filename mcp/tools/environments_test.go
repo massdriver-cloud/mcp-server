@@ -19,6 +19,7 @@ type stubEnvironments struct {
 	setDefaultFn    func(context.Context, string, string) (*environments.EnvironmentDefault, error)
 	removeDefaultFn func(context.Context, string) (*environments.EnvironmentDefault, error)
 	compareFn       func(context.Context, string, string) (*environments.Comparison, error)
+	forkFn          func(context.Context, string, environments.ForkInput) (*environments.Environment, error)
 }
 
 func (s *stubEnvironments) ListPage(ctx context.Context, input environments.ListInput) (types.Page[environments.Environment], error) {
@@ -44,6 +45,9 @@ func (s *stubEnvironments) RemoveDefault(ctx context.Context, id string) (*envir
 }
 func (s *stubEnvironments) Compare(ctx context.Context, sourceID, targetID string) (*environments.Comparison, error) {
 	return s.compareFn(ctx, sourceID, targetID)
+}
+func (s *stubEnvironments) Fork(ctx context.Context, parentID string, input environments.ForkInput) (*environments.Environment, error) {
+	return s.forkFn(ctx, parentID, input)
 }
 
 func TestHandleListEnvironments(t *testing.T) {
@@ -498,6 +502,84 @@ func TestHandleCompareEnvironments(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Environments: tt.stub}
 			handler := HandleCompareEnvironments(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleForkEnvironment(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ForkEnvironmentInput
+		stub     *stubEnvironments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing parent_id",
+			input:   ForkEnvironmentInput{ID: "staging", Name: "Staging"},
+			stub:    &stubEnvironments{},
+			wantErr: "parent_id is required",
+		},
+		{
+			name:    "missing id",
+			input:   ForkEnvironmentInput{ParentID: "myproj-prod", Name: "Staging"},
+			stub:    &stubEnvironments{},
+			wantErr: "id is required",
+		},
+		{
+			name:    "missing name",
+			input:   ForkEnvironmentInput{ParentID: "myproj-prod", ID: "staging"},
+			stub:    &stubEnvironments{},
+			wantErr: "name is required",
+		},
+		{
+			name: "success passes copy toggles and returns environment JSON",
+			input: ForkEnvironmentInput{
+				ParentID: "myproj-prod", ID: "staging", Name: "Staging",
+				CopySecrets: true, CopyEnvironmentDefaults: true,
+			},
+			stub: &stubEnvironments{
+				forkFn: func(_ context.Context, parentID string, input environments.ForkInput) (*environments.Environment, error) {
+					if parentID != "myproj-prod" {
+						t.Errorf("expected parent %q, got %q", "myproj-prod", parentID)
+					}
+					if !input.CopySecrets || !input.CopyEnvironmentDefaults || input.CopyRemoteReferences {
+						t.Errorf("copy toggles not passed through: %+v", input)
+					}
+					return &environments.Environment{ID: "myproj-" + input.ID, Name: input.Name}, nil
+				},
+			},
+			wantText: "myproj-staging",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: ForkEnvironmentInput{ParentID: "myproj-prod", ID: "staging", Name: "Staging"},
+			stub: &stubEnvironments{
+				forkFn: func(context.Context, string, environments.ForkInput) (*environments.Environment, error) {
+					return nil, mutationFailedErr("fork environment", "id", "already exists")
+				},
+			},
+			wantText: "fork_environment failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Environments: tt.stub}
+			handler := HandleForkEnvironment(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

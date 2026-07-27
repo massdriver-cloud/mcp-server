@@ -66,6 +66,7 @@ type EnvironmentsService interface {
 	SetDefault(ctx context.Context, environmentID, resourceID string) (*environments.EnvironmentDefault, error)
 	RemoveDefault(ctx context.Context, id string) (*environments.EnvironmentDefault, error)
 	Compare(ctx context.Context, sourceID, targetID string) (*environments.Comparison, error)
+	Fork(ctx context.Context, parentID string, input environments.ForkInput) (*environments.Environment, error)
 }
 
 // InstancesService defines the instance operations used by tool handlers.
@@ -77,6 +78,7 @@ type InstancesService interface {
 	RemoveSecret(ctx context.Context, instanceID, name string) (*instances.Secret, error)
 	SetRemoteReference(ctx context.Context, instanceID, resourceID, field string) (*instances.RemoteReference, error)
 	RemoveRemoteReference(ctx context.Context, instanceID, field string) (*instances.RemoteReference, error)
+	Copy(ctx context.Context, sourceID, destinationID string, input instances.CopyInput) (*instances.Instance, error)
 	ListAlarmsPage(ctx context.Context, input instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
 }
 

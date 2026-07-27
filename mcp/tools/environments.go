@@ -284,3 +284,59 @@ func HandleCompareEnvironments(c *Client) func(context.Context, *mcpsdk.CallTool
 		return result, comparison, nil
 	}
 }
+
+var ForkEnvironmentTool = &mcpsdk.Tool{
+	Name: "fork_environment",
+	Description: "Forks a new environment from an existing parent environment within the same project, copying the " +
+		"parent's component configuration into the new environment. Requires `parent_id`, `id`, and `name`. " +
+		"The copy toggles control what carries over from the parent: `copy_secrets` (each component's secret " +
+		"values), `copy_remote_references` (each component's remote resource references), and " +
+		"`copy_environment_defaults` (the parent's default resource connections). All default to false.",
+}
+
+type ForkEnvironmentInput struct {
+	ParentID                string         `json:"parent_id"                          jsonschema:"The ID of the parent environment to fork from."`
+	ID                      string         `json:"id"                                 jsonschema:"Unique identifier for the new environment within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
+	Name                    string         `json:"name"                               jsonschema:"Human-readable name shown in the UI."`
+	Description             string         `json:"description,omitempty"              jsonschema:"Optional description of the fork's purpose."`
+	Attributes              map[string]any `json:"attributes,omitempty"               jsonschema:"Optional. Custom attribute tags at the environment scope. Must conform to the organization's custom-attribute schema; some may be required."`
+	CopySecrets             bool           `json:"copy_secrets,omitempty"             jsonschema:"Optional. When true, copies every component's secret values from the parent into the fork. Default false."`
+	CopyRemoteReferences    bool           `json:"copy_remote_references,omitempty"   jsonschema:"Optional. When true, copies every component's remote resource references from the parent into the fork. Default false."`
+	CopyEnvironmentDefaults bool           `json:"copy_environment_defaults,omitempty" jsonschema:"Optional. When true, copies the parent's default resource connections into the fork. Default false."`
+}
+
+func HandleForkEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ForkEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ForkEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ParentID == "" {
+			return nil, nil, fmt.Errorf("fork_environment: parent_id is required")
+		}
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("fork_environment: id is required")
+		}
+		if args.Name == "" {
+			return nil, nil, fmt.Errorf("fork_environment: name is required")
+		}
+
+		env, err := c.Environments.Fork(ctx, args.ParentID, environments.ForkInput{
+			ID:                      args.ID,
+			Name:                    args.Name,
+			Description:             args.Description,
+			Attributes:              args.Attributes,
+			CopySecrets:             args.CopySecrets,
+			CopyRemoteReferences:    args.CopyRemoteReferences,
+			CopyEnvironmentDefaults: args.CopyEnvironmentDefaults,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("fork_environment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("fork_environment: %w", err)
+		}
+
+		result, err := jsonResult(env)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, env, nil
+	}
+}

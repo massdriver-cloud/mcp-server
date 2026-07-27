@@ -58,10 +58,10 @@ func TestMCPServerTools(t *testing.T) {
 		"list_projects", "get_project", "create_project", "clone_project", "update_project", "delete_project",
 		// Environments
 		"list_environments", "get_environment", "create_environment", "update_environment", "delete_environment",
-		"set_environment_default", "remove_environment_default", "compare_environments",
+		"set_environment_default", "remove_environment_default", "compare_environments", "fork_environment",
 		// Instances
 		"list_instances", "get_instance", "update_instance", "set_instance_secret", "remove_instance_secret",
-		"set_remote_reference", "remove_remote_reference", "list_alarms",
+		"set_remote_reference", "remove_remote_reference", "copy_instance", "list_alarms",
 		// Deployments
 		"list_deployments", "get_deployment", "get_deployment_logs", "create_deployment",
 		"propose_deployment", "approve_deployment", "reject_deployment", "abort_deployment",

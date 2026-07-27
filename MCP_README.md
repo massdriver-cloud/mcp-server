@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 94 tools available in the Massdriver MCP server.
+This document describes all 96 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -33,6 +33,7 @@ This document describes all 94 tools available in the Massdriver MCP server.
 | `set_environment_default` | Sets a resource as the default of its type for an environment. The resource must first be shared to the environment via `create_resource_grant`. |
 | `remove_environment_default` | Removes a default resource binding. |
 | `compare_environments` | Compares two environments in the same project instance-by-instance (paired by component), reporting the resolved bundle version on each side and a leaf-level diff of configured params. |
+| `fork_environment` | Forks a new environment from a parent environment in the same project. Requires `parent_id`, `id`, `name`; optional toggles `copy_secrets`, `copy_remote_references`, and `copy_environment_defaults` (all default false) control what carries over. |
 
 ## Instances
 
@@ -45,6 +46,7 @@ This document describes all 94 tools available in the Massdriver MCP server.
 | `remove_instance_secret` | Removes a secret from an instance. |
 | `set_remote_reference` | Overrides one of an instance's connection slots (`field`) with a resource from another project or an imported resource (`resource_id`). Takes priority over any blueprint link on that slot. |
 | `remove_remote_reference` | Removes a remote-reference override from a connection slot, reverting it to the blueprint link or environment default. |
+| `copy_instance` | Copies a source instance's configuration onto an existing destination instance (overwriting its params). Requires `source_id` and `destination_id`; optional `overrides` (deep-merged onto source params), `copy_secrets`, and `copy_remote_references`. |
 | `list_alarms` | Lists alarms. Optionally filter by project, environment, component, instance, or bundle. |
 
 ## Deployments

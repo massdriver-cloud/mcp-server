@@ -86,6 +86,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.SetEnvironmentDefaultTool, tools.HandleSetEnvironmentDefault(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveEnvironmentDefaultTool, tools.HandleRemoveEnvironmentDefault(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CompareEnvironmentsTool, tools.HandleCompareEnvironments(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ForkEnvironmentTool, tools.HandleForkEnvironment(c))
 
 	// Instances
 	mcpsdk.AddTool(s.mcpServer, tools.ListInstancesTool, tools.HandleListInstances(c))
@@ -95,6 +96,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveInstanceSecretTool, tools.HandleRemoveInstanceSecret(c))
 	mcpsdk.AddTool(s.mcpServer, tools.SetRemoteReferenceTool, tools.HandleSetRemoteReference(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveRemoteReferenceTool, tools.HandleRemoveRemoteReference(c))
+	mcpsdk.AddTool(s.mcpServer, tools.CopyInstanceTool, tools.HandleCopyInstance(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListAlarmsTool, tools.HandleListAlarms(c))
 
 	// Deployments

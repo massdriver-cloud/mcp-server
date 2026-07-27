@@ -89,7 +89,7 @@ func applyAnnotations() {
 	// Additive creators: not destructive, not idempotent (a second identical
 	// call creates a duplicate or fails).
 	additive := []*mcpsdk.Tool{
-		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, AddComponentTool, LinkComponentsTool,
+		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, ForkEnvironmentTool, AddComponentTool, LinkComponentsTool,
 		CreateResourceTool, CreateResourceGrantTool, CreateOciRepoGrantTool, CreateCustomAttributeTool,
 		CreateGroupTool, CreateServiceAccountTool, CreateOciRepoTool, CreatePolicyTool,
 		ProposeDeploymentTool, RejectDeploymentTool, PlanDeploymentTool, RollbackDeploymentTool,
@@ -110,7 +110,7 @@ func applyAnnotations() {
 	// Destructive removals: idempotent (the target ends up absent either way).
 	destructiveIdempotent := []*mcpsdk.Tool{
 		DeleteProjectTool, DeleteEnvironmentTool, RemoveEnvironmentDefaultTool,
-		RemoveInstanceSecretTool, RemoveRemoteReferenceTool, RemoveComponentTool, UnlinkComponentsTool,
+		RemoveInstanceSecretTool, RemoveRemoteReferenceTool, CopyInstanceTool, RemoveComponentTool, UnlinkComponentsTool,
 		DeleteResourceTool, DeleteResourceGrantTool, DeleteCustomAttributeTool,
 		DeleteGroupTool, RemoveGroupUserTool, RevokeGroupInvitationTool,
 		RemoveGroupServiceAccountTool, DeleteServiceAccountTool, DeletePolicyTool,
