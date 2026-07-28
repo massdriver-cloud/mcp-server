@@ -67,6 +67,8 @@ type EnvironmentsService interface {
 	RemoveDefault(ctx context.Context, id string) (*environments.EnvironmentDefault, error)
 	Compare(ctx context.Context, sourceID, targetID string) (*environments.Comparison, error)
 	Fork(ctx context.Context, parentID string, input environments.ForkInput) (*environments.Environment, error)
+	Deploy(ctx context.Context, id string) (*environments.Environment, error)
+	Decommission(ctx context.Context, id string) (*environments.Environment, error)
 }
 
 // InstancesService defines the instance operations used by tool handlers.

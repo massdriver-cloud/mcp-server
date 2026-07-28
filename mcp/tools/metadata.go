@@ -122,6 +122,7 @@ func applyAnnotations() {
 	// changes: potentially destructive and not idempotent.
 	destructiveNonIdempotent := []*mcpsdk.Tool{
 		CreateDeploymentTool, ApproveDeploymentTool, AbortDeploymentTool,
+		DeployEnvironmentTool, DecommissionEnvironmentTool,
 	}
 	annotate(destructiveNonIdempotent, func() *mcpsdk.ToolAnnotations { return writeHints(true, false) })
 }

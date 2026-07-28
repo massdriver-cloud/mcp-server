@@ -340,3 +340,71 @@ func HandleForkEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 		return result, env, nil
 	}
 }
+
+var DeployEnvironmentTool = &mcpsdk.Tool{
+	Name: "deploy_environment",
+	Description: "Schedules a deployment of every instance in the environment in dependency order. Cancels any " +
+		"in-flight environment deployment and enqueues a fresh provision wave. Returns as soon as the wave is " +
+		"enqueued — the infrastructure changes happen asynchronously.",
+}
+
+type DeployEnvironmentInput struct {
+	ID string `json:"id" jsonschema:"The environment ID to deploy (e.g., 'myproj-staging')."`
+}
+
+func HandleDeployEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, DeployEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args DeployEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("deploy_environment: id is required")
+		}
+
+		env, err := c.Environments.Deploy(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("deploy_environment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("deploy_environment: %w", err)
+		}
+
+		result, err := jsonResult(env)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, env, nil
+	}
+}
+
+var DecommissionEnvironmentTool = &mcpsdk.Tool{
+	Name: "decommission_environment",
+	Description: "Schedules a teardown of every instance in the environment in reverse dependency order. The " +
+		"environment shell stays in place so it can be redeployed; use delete_environment to remove the empty " +
+		"environment afterwards. Cancels any in-flight environment deployment and enqueues a fresh decommission " +
+		"wave. Returns as soon as the wave is enqueued — the infrastructure changes happen asynchronously. Blocked " +
+		"when the environment has decommission protection enabled; disable it via update_environment first.",
+}
+
+type DecommissionEnvironmentInput struct {
+	ID string `json:"id" jsonschema:"The environment ID to decommission (e.g., 'myproj-staging')."`
+}
+
+func HandleDecommissionEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, DecommissionEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args DecommissionEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("decommission_environment: id is required")
+		}
+
+		env, err := c.Environments.Decommission(ctx, args.ID)
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("decommission_environment failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("decommission_environment: %w", err)
+		}
+
+		result, err := jsonResult(env)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, env, nil
+	}
+}

@@ -59,6 +59,7 @@ func TestMCPServerTools(t *testing.T) {
 		// Environments
 		"list_environments", "get_environment", "create_environment", "update_environment", "delete_environment",
 		"set_environment_default", "remove_environment_default", "compare_environments", "fork_environment",
+		"deploy_environment", "decommission_environment",
 		// Instances
 		"list_instances", "get_instance", "update_instance", "set_instance_secret", "remove_instance_secret",
 		"set_remote_reference", "remove_remote_reference", "copy_instance", "list_alarms",

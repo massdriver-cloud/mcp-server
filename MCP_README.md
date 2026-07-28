@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 96 tools available in the Massdriver MCP server.
+This document describes all 98 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -34,6 +34,8 @@ This document describes all 96 tools available in the Massdriver MCP server.
 | `remove_environment_default` | Removes a default resource binding. |
 | `compare_environments` | Compares two environments in the same project instance-by-instance (paired by component), reporting the resolved bundle version on each side and a leaf-level diff of configured params. |
 | `fork_environment` | Forks a new environment from a parent environment in the same project. Requires `parent_id`, `id`, `name`; optional toggles `copy_secrets`, `copy_remote_references`, and `copy_environment_defaults` (all default false) control what carries over. |
+| `deploy_environment` | Schedules a deployment of every instance in the environment in dependency order. Cancels any in-flight environment deployment and enqueues a fresh provision wave; changes happen asynchronously. |
+| `decommission_environment` | Schedules a teardown of every instance in the environment in reverse dependency order (the environment shell stays; use `delete_environment` to remove it afterwards). Blocked when decommission protection is enabled. |
 
 ## Instances
 

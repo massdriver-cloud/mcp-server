@@ -126,15 +126,15 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (96)
+## Available Tools (98)
 
 See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
 ### Projects (6)
 `list_projects` `get_project` `create_project` `clone_project` `update_project` `delete_project`
 
-### Environments (9)
-`list_environments` `get_environment` `create_environment` `update_environment` `delete_environment` `set_environment_default` `remove_environment_default` `compare_environments` `fork_environment`
+### Environments (11)
+`list_environments` `get_environment` `create_environment` `update_environment` `delete_environment` `set_environment_default` `remove_environment_default` `compare_environments` `fork_environment` `deploy_environment` `decommission_environment`
 
 ### Instances (9)
 `list_instances` `get_instance` `update_instance` `set_instance_secret` `remove_instance_secret` `set_remote_reference` `remove_remote_reference` `copy_instance` `list_alarms`
