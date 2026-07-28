@@ -9,13 +9,14 @@ import (
 )
 
 type stubComponents struct {
-	listFn       func(context.Context, components.ListInput) ([]components.Component, error)
-	getFn        func(context.Context, string) (*components.Component, error)
-	addFn        func(context.Context, string, components.AddInput) (*components.Component, error)
-	updateFn     func(context.Context, string, components.UpdateInput) (*components.Component, error)
-	removeFn     func(context.Context, string) (*components.Component, error)
-	addLinkFn    func(context.Context, components.AddLinkInput) (*components.Link, error)
-	removeLinkFn func(context.Context, string) (*components.Link, error)
+	listFn        func(context.Context, components.ListInput) ([]components.Component, error)
+	getFn         func(context.Context, string) (*components.Component, error)
+	addFn         func(context.Context, string, components.AddInput) (*components.Component, error)
+	updateFn      func(context.Context, string, components.UpdateInput) (*components.Component, error)
+	setPositionFn func(context.Context, string, components.Position) (*components.Component, error)
+	removeFn      func(context.Context, string) (*components.Component, error)
+	addLinkFn     func(context.Context, components.AddLinkInput) (*components.Link, error)
+	removeLinkFn  func(context.Context, string) (*components.Link, error)
 }
 
 func (s *stubComponents) List(ctx context.Context, input components.ListInput) ([]components.Component, error) {
@@ -29,6 +30,9 @@ func (s *stubComponents) Add(ctx context.Context, projectID string, input compon
 }
 func (s *stubComponents) Update(ctx context.Context, id string, input components.UpdateInput) (*components.Component, error) {
 	return s.updateFn(ctx, id, input)
+}
+func (s *stubComponents) SetPosition(ctx context.Context, id string, position components.Position) (*components.Component, error) {
+	return s.setPositionFn(ctx, id, position)
 }
 func (s *stubComponents) Remove(ctx context.Context, id string) (*components.Component, error) {
 	return s.removeFn(ctx, id)
@@ -434,6 +438,66 @@ func TestHandleUnlinkComponents(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Components: tt.stub}
 			handler := HandleUnlinkComponents(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleSetComponentPosition(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    SetComponentPositionInput
+		stub     *stubComponents
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing id",
+			input:   SetComponentPositionInput{X: 10, Y: 20},
+			stub:    &stubComponents{},
+			wantErr: "id is required",
+		},
+		{
+			name:  "success passes coordinates and returns component JSON",
+			input: SetComponentPositionInput{ID: "myproj-database", X: 120, Y: 340},
+			stub: &stubComponents{
+				setPositionFn: func(_ context.Context, id string, position components.Position) (*components.Component, error) {
+					if position.X != 120 || position.Y != 340 {
+						t.Errorf("expected position {120,340}, got %+v", position)
+					}
+					return &components.Component{ID: id, Name: "Database"}, nil
+				},
+			},
+			wantText: "myproj-database",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: SetComponentPositionInput{ID: "myproj-database", X: 1, Y: 2},
+			stub: &stubComponents{
+				setPositionFn: func(context.Context, string, components.Position) (*components.Component, error) {
+					return nil, mutationFailedErr("set component position", "", "not found")
+				},
+			},
+			wantText: "set_component_position failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Components: tt.stub}
+			handler := HandleSetComponentPosition(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

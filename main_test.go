@@ -62,13 +62,13 @@ func TestMCPServerTools(t *testing.T) {
 		"deploy_environment", "decommission_environment",
 		// Instances
 		"list_instances", "get_instance", "update_instance", "set_instance_secret", "remove_instance_secret",
-		"set_remote_reference", "remove_remote_reference", "copy_instance", "list_alarms",
+		"set_remote_reference", "remove_remote_reference", "copy_instance", "orphan_instance", "list_alarms",
 		// Deployments
 		"list_deployments", "get_deployment", "get_deployment_logs", "create_deployment",
 		"propose_deployment", "approve_deployment", "reject_deployment", "abort_deployment",
 		"plan_deployment", "rollback_deployment", "compare_deployments",
 		// Components
-		"list_components", "get_component", "add_component", "update_component", "remove_component", "link_components", "unlink_components",
+		"list_components", "get_component", "add_component", "update_component", "set_component_position", "remove_component", "link_components", "unlink_components",
 		// Bundles
 		"get_bundle",
 		// Resources

@@ -126,7 +126,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (98)
+## Available Tools (100)
 
 See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
@@ -136,14 +136,14 @@ See [MCP_README.md](MCP_README.md) for the full tool reference, including per-to
 ### Environments (11)
 `list_environments` `get_environment` `create_environment` `update_environment` `delete_environment` `set_environment_default` `remove_environment_default` `compare_environments` `fork_environment` `deploy_environment` `decommission_environment`
 
-### Instances (9)
-`list_instances` `get_instance` `update_instance` `set_instance_secret` `remove_instance_secret` `set_remote_reference` `remove_remote_reference` `copy_instance` `list_alarms`
+### Instances (10)
+`list_instances` `get_instance` `update_instance` `set_instance_secret` `remove_instance_secret` `set_remote_reference` `remove_remote_reference` `copy_instance` `orphan_instance` `list_alarms`
 
 ### Deployments (11)
 `list_deployments` `get_deployment` `get_deployment_logs` `create_deployment` `propose_deployment` `approve_deployment` `reject_deployment` `abort_deployment` `plan_deployment` `rollback_deployment` `compare_deployments`
 
-### Components (7)
-`list_components` `get_component` `add_component` `update_component` `remove_component` `link_components` `unlink_components`
+### Components (8)
+`list_components` `get_component` `add_component` `update_component` `set_component_position` `remove_component` `link_components` `unlink_components`
 
 ### Bundles (1)
 `get_bundle`

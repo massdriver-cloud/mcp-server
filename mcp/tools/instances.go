@@ -356,3 +356,43 @@ func HandleCopyInstance(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		return result, instance, nil
 	}
 }
+
+var OrphanInstanceTool = &mcpsdk.Tool{
+	Name: "orphan_instance",
+	Description: "Break-glass operation that resets a permanently-stuck instance to INITIALIZED, clearing all " +
+		"Terraform/OpenTofu state locks. Active RUNNING, PENDING, and APPROVED deployments are bulk-aborted so a " +
+		"late worker callback cannot walk the instance status back to PROVISIONED. " +
+		"Set `delete_state: true` to ALSO remove the remote IaC state files — this is IRREVERSIBLE: the next " +
+		"deployment provisions from scratch and may duplicate any resources the prior state was tracking. Leave " +
+		"`delete_state` false unless the state is known to be unrecoverable. Use only to recover a genuinely stuck " +
+		"instance.",
+}
+
+type OrphanInstanceInput struct {
+	InstanceID  string `json:"instance_id"            jsonschema:"The instance ID to orphan (reset to INITIALIZED)."`
+	DeleteState bool   `json:"delete_state,omitempty" jsonschema:"Optional. When true, also deletes the remote Terraform/OpenTofu state files. IRREVERSIBLE — the next deployment provisions from scratch and may duplicate resources. Default false."`
+}
+
+func HandleOrphanInstance(c *Client) func(context.Context, *mcpsdk.CallToolRequest, OrphanInstanceInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args OrphanInstanceInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.InstanceID == "" {
+			return nil, nil, fmt.Errorf("orphan_instance: instance_id is required")
+		}
+
+		instance, err := c.Instances.Orphan(ctx, args.InstanceID, instances.OrphanInput{
+			DeleteState: args.DeleteState,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("orphan_instance failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("orphan_instance: %w", err)
+		}
+
+		result, err := jsonResult(instance)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, instance, nil
+	}
+}

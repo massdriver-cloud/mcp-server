@@ -81,6 +81,7 @@ type InstancesService interface {
 	SetRemoteReference(ctx context.Context, instanceID, resourceID, field string) (*instances.RemoteReference, error)
 	RemoveRemoteReference(ctx context.Context, instanceID, field string) (*instances.RemoteReference, error)
 	Copy(ctx context.Context, sourceID, destinationID string, input instances.CopyInput) (*instances.Instance, error)
+	Orphan(ctx context.Context, id string, input instances.OrphanInput) (*instances.Instance, error)
 	ListAlarmsPage(ctx context.Context, input instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
 }
 
@@ -106,6 +107,7 @@ type ComponentsService interface {
 	Get(ctx context.Context, id string) (*components.Component, error)
 	Add(ctx context.Context, projectID string, input components.AddInput) (*components.Component, error)
 	Update(ctx context.Context, id string, input components.UpdateInput) (*components.Component, error)
+	SetPosition(ctx context.Context, id string, position components.Position) (*components.Component, error)
 	Remove(ctx context.Context, id string) (*components.Component, error)
 	AddLink(ctx context.Context, input components.AddLinkInput) (*components.Link, error)
 	RemoveLink(ctx context.Context, linkID string) (*components.Link, error)

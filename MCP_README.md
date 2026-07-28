@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 98 tools available in the Massdriver MCP server.
+This document describes all 100 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -49,6 +49,7 @@ This document describes all 98 tools available in the Massdriver MCP server.
 | `set_remote_reference` | Overrides one of an instance's connection slots (`field`) with a resource from another project or an imported resource (`resource_id`). Takes priority over any blueprint link on that slot. |
 | `remove_remote_reference` | Removes a remote-reference override from a connection slot, reverting it to the blueprint link or environment default. |
 | `copy_instance` | Copies a source instance's configuration onto an existing destination instance (overwriting its params). Requires `source_id` and `destination_id`; optional `overrides` (deep-merged onto source params), `copy_secrets`, and `copy_remote_references`. |
+| `orphan_instance` | Break-glass reset of a permanently-stuck instance to INITIALIZED, clearing state locks and bulk-aborting active deployments. Optional `delete_state` also removes the remote IaC state files (IRREVERSIBLE — next deploy provisions from scratch). |
 | `list_alarms` | Lists alarms. Optionally filter by project, environment, component, instance, or bundle. |
 
 ## Deployments
@@ -75,6 +76,7 @@ This document describes all 98 tools available in the Massdriver MCP server.
 | `get_component` | Gets a component by ID. |
 | `add_component` | Adds a component to a project blueprint. Requires `project_id`, `bundle_name`, `id`, `name`; accepts optional `description` and custom `attributes`. |
 | `update_component` | Updates a component's name, description, or custom `attributes`. |
+| `set_component_position` | Sets a component's pixel position (`x`, `y`) on the project's visual canvas. Purely cosmetic — does not affect configuration or deployments. |
 | `remove_component` | Removes a component from a blueprint. |
 | `link_components` | Links two components (source output field to destination input field). |
 | `unlink_components` | Removes a link between components. |

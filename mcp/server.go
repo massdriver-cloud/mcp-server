@@ -99,6 +99,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.SetRemoteReferenceTool, tools.HandleSetRemoteReference(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveRemoteReferenceTool, tools.HandleRemoveRemoteReference(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CopyInstanceTool, tools.HandleCopyInstance(c))
+	mcpsdk.AddTool(s.mcpServer, tools.OrphanInstanceTool, tools.HandleOrphanInstance(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListAlarmsTool, tools.HandleListAlarms(c))
 
 	// Deployments
@@ -119,6 +120,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.GetComponentTool, tools.HandleGetComponent(c))
 	mcpsdk.AddTool(s.mcpServer, tools.AddComponentTool, tools.HandleAddComponent(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateComponentTool, tools.HandleUpdateComponent(c))
+	mcpsdk.AddTool(s.mcpServer, tools.SetComponentPositionTool, tools.HandleSetComponentPosition(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveComponentTool, tools.HandleRemoveComponent(c))
 	mcpsdk.AddTool(s.mcpServer, tools.LinkComponentsTool, tools.HandleLinkComponents(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UnlinkComponentsTool, tools.HandleUnlinkComponents(c))

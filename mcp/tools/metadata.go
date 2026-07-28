@@ -101,7 +101,7 @@ func applyAnnotations() {
 	updates := []*mcpsdk.Tool{
 		UpdateProjectTool, UpdateEnvironmentTool, SetEnvironmentDefaultTool,
 		UpdateInstanceTool, SetInstanceSecretTool, SetRemoteReferenceTool,
-		UpdateComponentTool, UpdateResourceTool, UpdateCustomAttributeTool,
+		UpdateComponentTool, SetComponentPositionTool, UpdateResourceTool, UpdateCustomAttributeTool,
 		UpdateGroupTool, AddGroupUserTool, AddGroupServiceAccountTool,
 		UpdateServiceAccountTool, UpdateOciRepoTool, UpdatePolicyTool,
 	}
@@ -110,7 +110,7 @@ func applyAnnotations() {
 	// Destructive removals: idempotent (the target ends up absent either way).
 	destructiveIdempotent := []*mcpsdk.Tool{
 		DeleteProjectTool, DeleteEnvironmentTool, RemoveEnvironmentDefaultTool,
-		RemoveInstanceSecretTool, RemoveRemoteReferenceTool, CopyInstanceTool, RemoveComponentTool, UnlinkComponentsTool,
+		RemoveInstanceSecretTool, RemoveRemoteReferenceTool, CopyInstanceTool, OrphanInstanceTool, RemoveComponentTool, UnlinkComponentsTool,
 		DeleteResourceTool, DeleteResourceGrantTool, DeleteCustomAttributeTool,
 		DeleteGroupTool, RemoveGroupUserTool, RevokeGroupInvitationTool,
 		RemoveGroupServiceAccountTool, DeleteServiceAccountTool, DeletePolicyTool,

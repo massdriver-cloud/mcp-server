@@ -18,6 +18,7 @@ type stubInstances struct {
 	setRemoteRefFn    func(context.Context, string, string, string) (*instances.RemoteReference, error)
 	removeRemoteRefFn func(context.Context, string, string) (*instances.RemoteReference, error)
 	copyFn            func(context.Context, string, string, instances.CopyInput) (*instances.Instance, error)
+	orphanFn          func(context.Context, string, instances.OrphanInput) (*instances.Instance, error)
 	listAlarmsPageFn  func(context.Context, instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
 }
 
@@ -44,6 +45,9 @@ func (s *stubInstances) RemoveRemoteReference(ctx context.Context, instanceID, f
 }
 func (s *stubInstances) Copy(ctx context.Context, sourceID, destinationID string, input instances.CopyInput) (*instances.Instance, error) {
 	return s.copyFn(ctx, sourceID, destinationID, input)
+}
+func (s *stubInstances) Orphan(ctx context.Context, id string, input instances.OrphanInput) (*instances.Instance, error) {
+	return s.orphanFn(ctx, id, input)
 }
 func (s *stubInstances) ListAlarmsPage(ctx context.Context, input instances.ListAlarmsInput) (types.Page[instances.Alarm], error) {
 	return s.listAlarmsPageFn(ctx, input)
@@ -574,6 +578,79 @@ func TestHandleCopyInstance(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Instances: tt.stub}
 			handler := HandleCopyInstance(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleOrphanInstance(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    OrphanInstanceInput
+		stub     *stubInstances
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing instance_id",
+			input:   OrphanInstanceInput{},
+			stub:    &stubInstances{},
+			wantErr: "instance_id is required",
+		},
+		{
+			name:  "success passes delete_state and returns instance JSON",
+			input: OrphanInstanceInput{InstanceID: "inst1", DeleteState: true},
+			stub: &stubInstances{
+				orphanFn: func(_ context.Context, id string, input instances.OrphanInput) (*instances.Instance, error) {
+					if !input.DeleteState {
+						t.Errorf("expected DeleteState to be passed through as true")
+					}
+					return &instances.Instance{ID: id, Status: "INITIALIZED"}, nil
+				},
+			},
+			wantText: "INITIALIZED",
+		},
+		{
+			name:  "defaults delete_state to false",
+			input: OrphanInstanceInput{InstanceID: "inst1"},
+			stub: &stubInstances{
+				orphanFn: func(_ context.Context, id string, input instances.OrphanInput) (*instances.Instance, error) {
+					if input.DeleteState {
+						t.Errorf("expected DeleteState to default to false")
+					}
+					return &instances.Instance{ID: id, Status: "INITIALIZED"}, nil
+				},
+			},
+			wantText: "inst1",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: OrphanInstanceInput{InstanceID: "inst1"},
+			stub: &stubInstances{
+				orphanFn: func(context.Context, string, instances.OrphanInput) (*instances.Instance, error) {
+					return nil, mutationFailedErr("orphan instance", "", "not found")
+				},
+			},
+			wantText: "orphan_instance failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Instances: tt.stub}
+			handler := HandleOrphanInstance(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
