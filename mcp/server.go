@@ -86,6 +86,9 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.SetEnvironmentDefaultTool, tools.HandleSetEnvironmentDefault(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveEnvironmentDefaultTool, tools.HandleRemoveEnvironmentDefault(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CompareEnvironmentsTool, tools.HandleCompareEnvironments(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ForkEnvironmentTool, tools.HandleForkEnvironment(c))
+	mcpsdk.AddTool(s.mcpServer, tools.DeployEnvironmentTool, tools.HandleDeployEnvironment(c))
+	mcpsdk.AddTool(s.mcpServer, tools.DecommissionEnvironmentTool, tools.HandleDecommissionEnvironment(c))
 
 	// Instances
 	mcpsdk.AddTool(s.mcpServer, tools.ListInstancesTool, tools.HandleListInstances(c))
@@ -95,6 +98,8 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveInstanceSecretTool, tools.HandleRemoveInstanceSecret(c))
 	mcpsdk.AddTool(s.mcpServer, tools.SetRemoteReferenceTool, tools.HandleSetRemoteReference(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveRemoteReferenceTool, tools.HandleRemoveRemoteReference(c))
+	mcpsdk.AddTool(s.mcpServer, tools.CopyInstanceTool, tools.HandleCopyInstance(c))
+	mcpsdk.AddTool(s.mcpServer, tools.OrphanInstanceTool, tools.HandleOrphanInstance(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListAlarmsTool, tools.HandleListAlarms(c))
 
 	// Deployments
@@ -115,6 +120,7 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.GetComponentTool, tools.HandleGetComponent(c))
 	mcpsdk.AddTool(s.mcpServer, tools.AddComponentTool, tools.HandleAddComponent(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateComponentTool, tools.HandleUpdateComponent(c))
+	mcpsdk.AddTool(s.mcpServer, tools.SetComponentPositionTool, tools.HandleSetComponentPosition(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveComponentTool, tools.HandleRemoveComponent(c))
 	mcpsdk.AddTool(s.mcpServer, tools.LinkComponentsTool, tools.HandleLinkComponents(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UnlinkComponentsTool, tools.HandleUnlinkComponents(c))

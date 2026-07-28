@@ -66,6 +66,9 @@ type EnvironmentsService interface {
 	SetDefault(ctx context.Context, environmentID, resourceID string) (*environments.EnvironmentDefault, error)
 	RemoveDefault(ctx context.Context, id string) (*environments.EnvironmentDefault, error)
 	Compare(ctx context.Context, sourceID, targetID string) (*environments.Comparison, error)
+	Fork(ctx context.Context, parentID string, input environments.ForkInput) (*environments.Environment, error)
+	Deploy(ctx context.Context, id string) (*environments.Environment, error)
+	Decommission(ctx context.Context, id string) (*environments.Environment, error)
 }
 
 // InstancesService defines the instance operations used by tool handlers.
@@ -77,6 +80,8 @@ type InstancesService interface {
 	RemoveSecret(ctx context.Context, instanceID, name string) (*instances.Secret, error)
 	SetRemoteReference(ctx context.Context, instanceID, resourceID, field string) (*instances.RemoteReference, error)
 	RemoveRemoteReference(ctx context.Context, instanceID, field string) (*instances.RemoteReference, error)
+	Copy(ctx context.Context, sourceID, destinationID string, input instances.CopyInput) (*instances.Instance, error)
+	Orphan(ctx context.Context, id string, input instances.OrphanInput) (*instances.Instance, error)
 	ListAlarmsPage(ctx context.Context, input instances.ListAlarmsInput) (types.Page[instances.Alarm], error)
 }
 
@@ -102,6 +107,7 @@ type ComponentsService interface {
 	Get(ctx context.Context, id string) (*components.Component, error)
 	Add(ctx context.Context, projectID string, input components.AddInput) (*components.Component, error)
 	Update(ctx context.Context, id string, input components.UpdateInput) (*components.Component, error)
+	SetPosition(ctx context.Context, id string, position components.Position) (*components.Component, error)
 	Remove(ctx context.Context, id string) (*components.Component, error)
 	AddLink(ctx context.Context, input components.AddLinkInput) (*components.Link, error)
 	RemoveLink(ctx context.Context, linkID string) (*components.Link, error)

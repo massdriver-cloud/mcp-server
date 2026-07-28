@@ -89,7 +89,7 @@ func applyAnnotations() {
 	// Additive creators: not destructive, not idempotent (a second identical
 	// call creates a duplicate or fails).
 	additive := []*mcpsdk.Tool{
-		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, AddComponentTool, LinkComponentsTool,
+		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, ForkEnvironmentTool, AddComponentTool, LinkComponentsTool,
 		CreateResourceTool, CreateResourceGrantTool, CreateOciRepoGrantTool, CreateCustomAttributeTool,
 		CreateGroupTool, CreateServiceAccountTool, CreateOciRepoTool, CreatePolicyTool,
 		ProposeDeploymentTool, RejectDeploymentTool, PlanDeploymentTool, RollbackDeploymentTool,
@@ -101,7 +101,7 @@ func applyAnnotations() {
 	updates := []*mcpsdk.Tool{
 		UpdateProjectTool, UpdateEnvironmentTool, SetEnvironmentDefaultTool,
 		UpdateInstanceTool, SetInstanceSecretTool, SetRemoteReferenceTool,
-		UpdateComponentTool, UpdateResourceTool, UpdateCustomAttributeTool,
+		UpdateComponentTool, SetComponentPositionTool, UpdateResourceTool, UpdateCustomAttributeTool,
 		UpdateGroupTool, AddGroupUserTool, AddGroupServiceAccountTool,
 		UpdateServiceAccountTool, UpdateOciRepoTool, UpdatePolicyTool,
 	}
@@ -110,7 +110,7 @@ func applyAnnotations() {
 	// Destructive removals: idempotent (the target ends up absent either way).
 	destructiveIdempotent := []*mcpsdk.Tool{
 		DeleteProjectTool, DeleteEnvironmentTool, RemoveEnvironmentDefaultTool,
-		RemoveInstanceSecretTool, RemoveRemoteReferenceTool, RemoveComponentTool, UnlinkComponentsTool,
+		RemoveInstanceSecretTool, RemoveRemoteReferenceTool, CopyInstanceTool, OrphanInstanceTool, RemoveComponentTool, UnlinkComponentsTool,
 		DeleteResourceTool, DeleteResourceGrantTool, DeleteCustomAttributeTool,
 		DeleteGroupTool, RemoveGroupUserTool, RevokeGroupInvitationTool,
 		RemoveGroupServiceAccountTool, DeleteServiceAccountTool, DeletePolicyTool,
@@ -122,6 +122,7 @@ func applyAnnotations() {
 	// changes: potentially destructive and not idempotent.
 	destructiveNonIdempotent := []*mcpsdk.Tool{
 		CreateDeploymentTool, ApproveDeploymentTool, AbortDeploymentTool,
+		DeployEnvironmentTool, DecommissionEnvironmentTool,
 	}
 	annotate(destructiveNonIdempotent, func() *mcpsdk.ToolAnnotations { return writeHints(true, false) })
 }

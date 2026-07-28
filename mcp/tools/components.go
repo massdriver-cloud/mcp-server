@@ -153,6 +153,41 @@ func HandleUpdateComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 	}
 }
 
+var SetComponentPositionTool = &mcpsdk.Tool{
+	Name: "set_component_position",
+	Description: "Sets a component's pixel position on the project's visual canvas. `x` is the horizontal offset " +
+		"and `y` the vertical offset, both in pixels from the canvas origin. This is a purely cosmetic layout " +
+		"change and does not affect the component's configuration or deployments.",
+}
+
+type SetComponentPositionInput struct {
+	ID string `json:"id" jsonschema:"The component ID to reposition (e.g., 'myproj-database')."`
+	X  int    `json:"x"  jsonschema:"Horizontal position in pixels from the canvas origin."`
+	Y  int    `json:"y"  jsonschema:"Vertical position in pixels from the canvas origin."`
+}
+
+func HandleSetComponentPosition(c *Client) func(context.Context, *mcpsdk.CallToolRequest, SetComponentPositionInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args SetComponentPositionInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("set_component_position: id is required")
+		}
+
+		component, err := c.Components.SetPosition(ctx, args.ID, components.Position{X: args.X, Y: args.Y})
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("set_component_position failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("set_component_position: %w", err)
+		}
+
+		result, err := jsonResult(component)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, component, nil
+	}
+}
+
 var RemoveComponentTool = &mcpsdk.Tool{
 	Name:        "remove_component",
 	Description: "Removes a component from a project's blueprint.",

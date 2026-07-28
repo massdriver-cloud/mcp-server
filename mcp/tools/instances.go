@@ -310,3 +310,89 @@ func HandleRemoveRemoteReference(c *Client) func(context.Context, *mcpsdk.CallTo
 		return result, ref, nil
 	}
 }
+
+var CopyInstanceTool = &mcpsdk.Tool{
+	Name: "copy_instance",
+	Description: "Copies a source instance's configuration onto an existing destination instance, overwriting the " +
+		"destination's params. Requires `source_id` and `destination_id` (the destination instance must already " +
+		"exist — this does not create a new instance). `overrides` is deep-merged onto the source params before " +
+		"writing, useful for destination-specific tweaks. `copy_secrets` and `copy_remote_references` (both default " +
+		"false) control whether secret values and remote resource references carry over from the source.",
+}
+
+type CopyInstanceInput struct {
+	SourceID             string         `json:"source_id"                        jsonschema:"The ID of the instance to copy configuration from."`
+	DestinationID        string         `json:"destination_id"                   jsonschema:"The ID of the existing destination instance to copy configuration onto. Its params will be overwritten."`
+	Overrides            map[string]any `json:"overrides,omitempty"              jsonschema:"Optional. Params deep-merged onto the source params before writing to the destination (e.g. environment-specific tweaks)."`
+	CopySecrets          bool           `json:"copy_secrets,omitempty"           jsonschema:"Optional. When true, copies secret values from the source instance to the destination. Default false."`
+	CopyRemoteReferences bool           `json:"copy_remote_references,omitempty" jsonschema:"Optional. When true, copies remote resource references from the source instance to the destination. Default false."`
+}
+
+func HandleCopyInstance(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CopyInstanceInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CopyInstanceInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.SourceID == "" {
+			return nil, nil, fmt.Errorf("copy_instance: source_id is required")
+		}
+		if args.DestinationID == "" {
+			return nil, nil, fmt.Errorf("copy_instance: destination_id is required")
+		}
+
+		instance, err := c.Instances.Copy(ctx, args.SourceID, args.DestinationID, instances.CopyInput{
+			Overrides:            args.Overrides,
+			CopySecrets:          args.CopySecrets,
+			CopyRemoteReferences: args.CopyRemoteReferences,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("copy_instance failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("copy_instance: %w", err)
+		}
+
+		result, err := jsonResult(instance)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, instance, nil
+	}
+}
+
+var OrphanInstanceTool = &mcpsdk.Tool{
+	Name: "orphan_instance",
+	Description: "Break-glass operation that resets a permanently-stuck instance to INITIALIZED, clearing all " +
+		"Terraform/OpenTofu state locks. Active RUNNING, PENDING, and APPROVED deployments are bulk-aborted so a " +
+		"late worker callback cannot walk the instance status back to PROVISIONED. " +
+		"Set `delete_state: true` to ALSO remove the remote IaC state files — this is IRREVERSIBLE: the next " +
+		"deployment provisions from scratch and may duplicate any resources the prior state was tracking. Leave " +
+		"`delete_state` false unless the state is known to be unrecoverable. Use only to recover a genuinely stuck " +
+		"instance.",
+}
+
+type OrphanInstanceInput struct {
+	InstanceID  string `json:"instance_id"            jsonschema:"The instance ID to orphan (reset to INITIALIZED)."`
+	DeleteState bool   `json:"delete_state,omitempty" jsonschema:"Optional. When true, also deletes the remote Terraform/OpenTofu state files. IRREVERSIBLE — the next deployment provisions from scratch and may duplicate resources. Default false."`
+}
+
+func HandleOrphanInstance(c *Client) func(context.Context, *mcpsdk.CallToolRequest, OrphanInstanceInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args OrphanInstanceInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.InstanceID == "" {
+			return nil, nil, fmt.Errorf("orphan_instance: instance_id is required")
+		}
+
+		instance, err := c.Instances.Orphan(ctx, args.InstanceID, instances.OrphanInput{
+			DeleteState: args.DeleteState,
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("orphan_instance failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("orphan_instance: %w", err)
+		}
+
+		result, err := jsonResult(instance)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, instance, nil
+	}
+}
