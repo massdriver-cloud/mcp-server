@@ -158,11 +158,12 @@ func HandleListPolicyActions(c *Client) func(context.Context, *mcpsdk.CallToolRe
 			return nil, nil, fmt.Errorf("list_policy_actions: %w", err)
 		}
 
-		result, err := jsonResult(actions)
+		out := listResult(actions)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, actions, nil
+		return result, out, nil
 	}
 }
 
@@ -180,11 +181,12 @@ func HandleListPolicyEntities(c *Client) func(context.Context, *mcpsdk.CallToolR
 			return nil, nil, fmt.Errorf("list_policy_entities: %w", err)
 		}
 
-		result, err := jsonResult(entities)
+		out := listResult(entities)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, entities, nil
+		return result, out, nil
 	}
 }
 
@@ -250,11 +252,12 @@ func HandleEvaluatePoliciesBatch(c *Client) func(context.Context, *mcpsdk.CallTo
 			return nil, nil, fmt.Errorf("evaluate_policies_batch: %w", err)
 		}
 
-		result, err := jsonResult(decisions)
+		out := listResult(decisions)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, decisions, nil
+		return result, out, nil
 	}
 }
 
@@ -284,11 +287,12 @@ func HandleExplainPolicy(c *Client) func(context.Context, *mcpsdk.CallToolReques
 			return nil, nil, fmt.Errorf("explain_policy: %w", err)
 		}
 
-		result, err := jsonResult(lines)
+		out := listResult(lines)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, lines, nil
+		return result, out, nil
 	}
 }
 
@@ -340,10 +344,11 @@ func HandleListPolicyAttributeValues(c *Client) func(context.Context, *mcpsdk.Ca
 			return nil, nil, fmt.Errorf("list_policy_attribute_values: %w", err)
 		}
 
-		result, err := jsonResult(values)
+		out := listResult(values)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, values, nil
+		return result, out, nil
 	}
 }

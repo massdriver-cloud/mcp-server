@@ -28,11 +28,12 @@ func HandleListComponents(c *Client) func(context.Context, *mcpsdk.CallToolReque
 			return nil, nil, fmt.Errorf("list_components: %w", err)
 		}
 
-		result, err := jsonResult(list)
+		out := listResult(list)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, list, nil
+		return result, out, nil
 	}
 }
 
