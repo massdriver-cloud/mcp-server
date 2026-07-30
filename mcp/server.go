@@ -22,14 +22,19 @@ type Server struct {
 
 // NewServer creates a new Massdriver MCP server and registers all tools.
 func NewServer(client *massdriver.Client) *Server {
+	return newServerWithClient(clientFromSDK(client))
+}
+
+// newServerWithClient builds a server around an already-assembled tools.Client.
+// It is the shared core of NewServer and the seam tests use to register the
+// full tool set against stubbed services.
+func newServerWithClient(tc *tools.Client) *Server {
 	impl := &mcpsdk.Implementation{
 		Name:    "massdriver-mcp-server",
 		Version: Version,
 	}
 
 	mcpServer := mcpsdk.NewServer(impl, nil)
-
-	tc := clientFromSDK(client)
 
 	s := &Server{
 		mcpServer: mcpServer,

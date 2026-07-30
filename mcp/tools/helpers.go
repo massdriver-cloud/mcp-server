@@ -47,6 +47,24 @@ func pageResult[T any](p types.Page[T]) PageResult[T] {
 	}
 }
 
+// ListResult is the JSON shape every unpaginated List tool returns. Like
+// PageResult it wraps the items in an object rather than returning a naked
+// array, because the MCP spec requires a tool's structuredContent to be a JSON
+// object — a bare top-level array fails client-side schema validation. It omits
+// the pagination fields since these result sets are bounded and returned whole.
+type ListResult[T any] struct {
+	Items []T `json:"items"`
+}
+
+// listResult wraps a bounded slice into the tool-facing ListResult shape,
+// normalizing a nil slice to an empty (non-null) array.
+func listResult[T any](items []T) ListResult[T] {
+	if items == nil {
+		items = []T{}
+	}
+	return ListResult[T]{Items: items}
+}
+
 // textResult builds a CallToolResult with a single text content item.
 func textResult(text string) *mcpsdk.CallToolResult {
 	return &mcpsdk.CallToolResult{

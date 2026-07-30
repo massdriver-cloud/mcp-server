@@ -69,14 +69,14 @@ func TestHandleListComponents(t *testing.T) {
 			wantText: "Database",
 		},
 		{
-			name:  "returns null for empty list",
+			name:  "empty list surfaces an empty items array",
 			input: ListComponentsInput{ProjectID: "proj1"},
 			stub: &stubComponents{
 				listFn: func(context.Context, components.ListInput) ([]components.Component, error) {
 					return nil, nil
 				},
 			},
-			wantText: "null",
+			wantText: "\"items\": []",
 		},
 	}
 

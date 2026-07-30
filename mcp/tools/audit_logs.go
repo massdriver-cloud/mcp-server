@@ -61,11 +61,12 @@ func HandleListAuditLogEventTypes(c *Client) func(context.Context, *mcpsdk.CallT
 			return nil, nil, fmt.Errorf("list_audit_log_event_types: %w", err)
 		}
 
-		result, err := jsonResult(types)
+		out := listResult(types)
+		result, err := jsonResult(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return result, types, nil
+		return result, out, nil
 	}
 }
 
