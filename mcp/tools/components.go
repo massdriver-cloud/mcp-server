@@ -123,9 +123,9 @@ var UpdateComponentTool = &mcpsdk.Tool{
 
 type UpdateComponentInput struct {
 	ID          string         `json:"id"                    jsonschema:"The component ID to update."`
-	Name        string         `json:"name,omitempty"        jsonschema:"Optional. New display name."`
-	Description string         `json:"description,omitempty" jsonschema:"Optional. New description."`
-	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Replacement custom attribute tags at the component scope. Must conform to the organization's custom-attribute schema."`
+	Name        *string        `json:"name,omitempty"        jsonschema:"Optional. New display name. Omit to leave unchanged; cannot be set to an empty string."`
+	Description *string        `json:"description,omitempty" jsonschema:"Optional. New description. Omit to leave unchanged; pass an empty string to clear it."`
+	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Replacement custom attribute tags at the component scope. Omit to leave unchanged; when provided, replaces the full attribute set. Must conform to the organization's custom-attribute schema."`
 }
 
 func HandleUpdateComponent(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateComponentInput) (*mcpsdk.CallToolResult, any, error) {

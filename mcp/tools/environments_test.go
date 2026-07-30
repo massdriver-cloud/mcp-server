@@ -237,16 +237,16 @@ func TestHandleUpdateEnvironment(t *testing.T) {
 	}{
 		{
 			name:    "missing id",
-			input:   UpdateEnvironmentInput{Name: "New Name"},
+			input:   UpdateEnvironmentInput{Name: ptr("New Name")},
 			stub:    &stubEnvironments{},
 			wantErr: "id is required",
 		},
 		{
 			name:  "success returns updated environment JSON",
-			input: UpdateEnvironmentInput{ID: "myproj-staging", Name: "Production"},
+			input: UpdateEnvironmentInput{ID: "myproj-staging", Name: ptr("Production")},
 			stub: &stubEnvironments{
 				updateFn: func(_ context.Context, id string, input environments.UpdateInput) (*environments.Environment, error) {
-					return &environments.Environment{ID: id, Name: input.Name}, nil
+					return &environments.Environment{ID: id, Name: derefStr(input.Name)}, nil
 				},
 			},
 			wantText: "Production",

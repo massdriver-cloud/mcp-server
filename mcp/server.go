@@ -149,6 +149,8 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.CreateCustomAttributeTool, tools.HandleCreateCustomAttribute(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateCustomAttributeTool, tools.HandleUpdateCustomAttribute(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteCustomAttributeTool, tools.HandleDeleteCustomAttribute(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListOrganizationMembersTool, tools.HandleListOrganizationMembers(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListCustomAttributesTool, tools.HandleListCustomAttributes(c))
 
 	// Viewer
 	mcpsdk.AddTool(s.mcpServer, tools.GetViewerTool, tools.HandleGetViewer(c))
@@ -169,6 +171,10 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.RevokeGroupInvitationTool, tools.HandleRevokeGroupInvitation(c))
 	mcpsdk.AddTool(s.mcpServer, tools.AddGroupServiceAccountTool, tools.HandleAddGroupServiceAccount(c))
 	mcpsdk.AddTool(s.mcpServer, tools.RemoveGroupServiceAccountTool, tools.HandleRemoveGroupServiceAccount(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListGroupMembersTool, tools.HandleListGroupMembers(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListGroupServiceAccountsTool, tools.HandleListGroupServiceAccounts(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListGroupInvitationsTool, tools.HandleListGroupInvitations(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListGroupPoliciesTool, tools.HandleListGroupPolicies(c))
 
 	// Service Accounts
 	mcpsdk.AddTool(s.mcpServer, tools.ListServiceAccountsTool, tools.HandleListServiceAccounts(c))

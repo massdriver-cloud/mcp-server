@@ -208,16 +208,16 @@ func TestHandleUpdateProject(t *testing.T) {
 	}{
 		{
 			name:    "missing id",
-			input:   UpdateProjectInput{Name: "New Name"},
+			input:   UpdateProjectInput{Name: ptr("New Name")},
 			stub:    &stubProjects{},
 			wantErr: "id is required",
 		},
 		{
 			name:  "success returns updated project JSON",
-			input: UpdateProjectInput{ID: "myproj", Name: "Updated Name"},
+			input: UpdateProjectInput{ID: "myproj", Name: ptr("Updated Name")},
 			stub: &stubProjects{
 				updateFn: func(_ context.Context, id string, input projects.UpdateInput) (*projects.Project, error) {
-					return &projects.Project{ID: id, Name: input.Name}, nil
+					return &projects.Project{ID: id, Name: derefStr(input.Name)}, nil
 				},
 			},
 			wantText: "Updated Name",

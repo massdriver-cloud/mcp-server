@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/organizations"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubOrganizations struct {
@@ -13,6 +14,8 @@ type stubOrganizations struct {
 	createCustomAttributeFn func(context.Context, organizations.CreateCustomAttributeInput) (*organizations.CustomAttribute, error)
 	updateCustomAttributeFn func(context.Context, string, organizations.UpdateCustomAttributeInput) (*organizations.CustomAttribute, error)
 	deleteCustomAttributeFn func(context.Context, string) (*organizations.CustomAttribute, error)
+	listMembersPageFn       func(context.Context, organizations.ListMembersInput) (types.Page[organizations.Account], error)
+	listCustomAttributesFn  func(context.Context, organizations.ListCustomAttributesInput) (types.Page[organizations.CustomAttribute], error)
 }
 
 func (s *stubOrganizations) Get(ctx context.Context) (*organizations.Organization, error) {
@@ -23,6 +26,12 @@ func (s *stubOrganizations) CreateCustomAttribute(ctx context.Context, input org
 }
 func (s *stubOrganizations) UpdateCustomAttribute(ctx context.Context, id string, input organizations.UpdateCustomAttributeInput) (*organizations.CustomAttribute, error) {
 	return s.updateCustomAttributeFn(ctx, id, input)
+}
+func (s *stubOrganizations) ListMembersPage(ctx context.Context, input organizations.ListMembersInput) (types.Page[organizations.Account], error) {
+	return s.listMembersPageFn(ctx, input)
+}
+func (s *stubOrganizations) ListCustomAttributesPage(ctx context.Context, input organizations.ListCustomAttributesInput) (types.Page[organizations.CustomAttribute], error) {
+	return s.listCustomAttributesFn(ctx, input)
 }
 func (s *stubOrganizations) DeleteCustomAttribute(ctx context.Context, id string) (*organizations.CustomAttribute, error) {
 	return s.deleteCustomAttributeFn(ctx, id)
@@ -125,6 +134,43 @@ func TestHandleCreateCustomAttribute(t *testing.T) {
 			}
 			if !strings.Contains(resultText(t, result), tt.wantText) {
 				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+// TestHandleCreateCustomAttributeRequiredDefault verifies the handler sends an
+// explicit required=false when the caller omits it (the API defaults an omitted
+// value to true, which would silently make the attribute mandatory org-wide),
+// and passes an explicit value through unchanged.
+func TestHandleCreateCustomAttributeRequiredDefault(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        CreateCustomAttributeInput
+		wantRequired bool
+	}{
+		{name: "omitted defaults to false", input: CreateCustomAttributeInput{Key: "team", Scope: "PROJECT"}, wantRequired: false},
+		{name: "explicit true preserved", input: CreateCustomAttributeInput{Key: "team", Scope: "PROJECT", Required: ptr(true)}, wantRequired: true},
+		{name: "explicit false preserved", input: CreateCustomAttributeInput{Key: "team", Scope: "PROJECT", Required: ptr(false)}, wantRequired: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got *bool
+			c := &Client{Organizations: &stubOrganizations{
+				createCustomAttributeFn: func(_ context.Context, input organizations.CreateCustomAttributeInput) (*organizations.CustomAttribute, error) {
+					got = input.Required
+					return &organizations.CustomAttribute{ID: "attr1"}, nil
+				},
+			}}
+			if _, _, err := HandleCreateCustomAttribute(c)(context.Background(), nil, tt.input); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil {
+				t.Fatal("expected an explicit required value to be sent, got nil")
+			}
+			if *got != tt.wantRequired {
+				t.Errorf("expected required=%v, got %v", tt.wantRequired, *got)
 			}
 		})
 	}
@@ -241,5 +287,35 @@ func TestHandleDeleteCustomAttribute(t *testing.T) {
 				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
 			}
 		})
+	}
+}
+
+func TestHandleListOrganizationMembers(t *testing.T) {
+	c := &Client{Organizations: &stubOrganizations{
+		listMembersPageFn: func(_ context.Context, _ organizations.ListMembersInput) (types.Page[organizations.Account], error) {
+			return types.Page[organizations.Account]{Items: []organizations.Account{{ID: "u1", Email: "member@example.com"}}}, nil
+		},
+	}}
+	result, _, err := HandleListOrganizationMembers(c)(context.Background(), nil, ListOrganizationMembersInput{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(resultText(t, result), "member@example.com") {
+		t.Errorf("expected member in result, got: %s", resultText(t, result))
+	}
+}
+
+func TestHandleListCustomAttributes(t *testing.T) {
+	c := &Client{Organizations: &stubOrganizations{
+		listCustomAttributesFn: func(_ context.Context, _ organizations.ListCustomAttributesInput) (types.Page[organizations.CustomAttribute], error) {
+			return types.Page[organizations.CustomAttribute]{Items: []organizations.CustomAttribute{{ID: "attr1", Key: "team", Scope: "PROJECT"}}}, nil
+		},
+	}}
+	result, _, err := HandleListCustomAttributes(c)(context.Background(), nil, ListCustomAttributesInput{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(resultText(t, result), "team") {
+		t.Errorf("expected attribute in result, got: %s", resultText(t, result))
 	}
 }

@@ -164,13 +164,15 @@ func HandleGetDeploymentLogs(c *Client) func(context.Context, *mcpsdk.CallToolRe
 var CreateDeploymentTool = &mcpsdk.Tool{
 	Name: "create_deployment",
 	Description: "Creates and starts a deployment for an instance. Use action PROVISION to deploy, DECOMMISSION to tear down, or PLAN to preview changes. " +
-		"The params map must conform to the instance's params schema (see get_instance.paramsSchema). Use get_deployment_logs with follow=true to block until it finishes and see the result.",
+		"`params` is REQUIRED for every action (including DECOMMISSION) and is the full parameter set, validated against the instance's params schema (see get_instance.paramsSchema) — it is not a partial override, and there is no 'use saved params' mode. " +
+		"To redeploy an instance's current configuration, read get_instance.params and pass it back here. To tear down a whole environment without assembling params, use decommission_environment instead. " +
+		"Use get_deployment_logs with follow=true to block until it finishes and see the result.",
 }
 
 type CreateDeploymentInput struct {
 	InstanceID string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
 	Action     string         `json:"action"            jsonschema:"Deployment action: PROVISION, DECOMMISSION, or PLAN."`
-	Params     map[string]any `json:"params,omitempty"  jsonschema:"Optional. Parameter overrides for the deployment."`
+	Params     map[string]any `json:"params,omitempty"  jsonschema:"The full bundle parameter set for this deployment, validated against the instance params schema (get_instance.paramsSchema). Required for every action; omitting it sends an empty map and fails schema validation. Read get_instance.params to reuse current config."`
 	Message    string         `json:"message,omitempty" jsonschema:"Optional. Deployment message or reason."`
 }
 
@@ -245,13 +247,13 @@ func HandleAbortDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 var ProposeDeploymentTool = &mcpsdk.Tool{
 	Name: "propose_deployment",
 	Description: "Proposes a deployment for approval. Only supports PROVISION and DECOMMISSION actions. The deployment enters PROPOSED status and must be approved or rejected. " +
-		"The params map must conform to the instance's params schema (see get_instance.paramsSchema).",
+		"`params` is REQUIRED for both actions and is the full parameter set, validated against the instance's params schema (see get_instance.paramsSchema) — not a partial override. To reuse current configuration, read get_instance.params and pass it back.",
 }
 
 type ProposeDeploymentInput struct {
 	InstanceID string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
 	Action     string         `json:"action"            jsonschema:"Deployment action: PROVISION or DECOMMISSION."`
-	Params     map[string]any `json:"params,omitempty"  jsonschema:"Optional. Parameter overrides for the deployment."`
+	Params     map[string]any `json:"params,omitempty"  jsonschema:"The full bundle parameter set for this deployment, validated against the instance params schema (get_instance.paramsSchema). Required for every action; omitting it sends an empty map and fails schema validation. Read get_instance.params to reuse current config."`
 	Message    string         `json:"message,omitempty" jsonschema:"Optional. Deployment message or reason."`
 }
 

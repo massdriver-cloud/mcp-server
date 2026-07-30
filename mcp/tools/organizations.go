@@ -10,7 +10,7 @@ import (
 
 var GetOrganizationTool = &mcpsdk.Tool{
 	Name:        "get_organization",
-	Description: "Gets the current organization's details, including subscription status, custom attributes, and member counts.",
+	Description: "Gets the current organization's details (id, name, subscription status, timestamps). Custom attributes and members are not included here — use list_custom_attributes and list_organization_members for those.",
 }
 
 type GetOrganizationInput struct{}
@@ -31,14 +31,16 @@ func HandleGetOrganization(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 }
 
 var CreateCustomAttributeTool = &mcpsdk.Tool{
-	Name:        "create_custom_attribute",
-	Description: "Creates a custom attribute definition for the organization.",
+	Name: "create_custom_attribute",
+	Description: "Creates a custom attribute definition for the organization. " +
+		"When `required` is true, the attribute becomes MANDATORY org-wide for every resource at its scope — set it deliberately. " +
+		"This tool defaults `required` to false when you omit it.",
 }
 
 type CreateCustomAttributeInput struct {
 	Key      string   `json:"key"      jsonschema:"Attribute key name."`
 	Scope    string   `json:"scope"    jsonschema:"Attribute scope: PROJECT, ENVIRONMENT, COMPONENT, or REPO."`
-	Required *bool    `json:"required,omitempty" jsonschema:"Optional. Whether the attribute is required."`
+	Required *bool    `json:"required,omitempty" jsonschema:"Optional. Whether the attribute is mandatory org-wide at its scope. Defaults to false when omitted. Set true only when you intend to require it on every resource at that scope."`
 	Values   []string `json:"values,omitempty"   jsonschema:"Optional. Allowed values for the attribute."`
 }
 
@@ -51,10 +53,18 @@ func HandleCreateCustomAttribute(c *Client) func(context.Context, *mcpsdk.CallTo
 			return nil, nil, fmt.Errorf("create_custom_attribute: scope is required")
 		}
 
+		// The API defaults an omitted `required` to TRUE, which would silently
+		// make the attribute mandatory org-wide. Send an explicit false when the
+		// caller doesn't specify, so omitting the field is the safe default.
+		required := args.Required
+		if required == nil {
+			required = new(bool)
+		}
+
 		attr, err := c.Organizations.CreateCustomAttribute(ctx, organizations.CreateCustomAttributeInput{
 			Key:      args.Key,
 			Scope:    organizations.AttributeScope(args.Scope),
-			Required: args.Required,
+			Required: required,
 			Values:   args.Values,
 		})
 		if err != nil {
@@ -132,5 +142,69 @@ func HandleDeleteCustomAttribute(c *Client) func(context.Context, *mcpsdk.CallTo
 		}
 
 		return textResult(fmt.Sprintf("custom attribute %q deleted successfully", args.ID)), nil, nil
+	}
+}
+
+var ListOrganizationMembersTool = &mcpsdk.Tool{
+	Name: "list_organization_members",
+	Description: "Lists the members (user accounts) of the current organization, one page at a time. " +
+		"Returns up to `page_size` members (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
+		"Requires the organization:manageProfile permission — non-admin tokens will get a forbidden error.",
+}
+
+type ListOrganizationMembersInput struct {
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
+
+func HandleListOrganizationMembers(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListOrganizationMembersInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListOrganizationMembersInput) (*mcpsdk.CallToolResult, any, error) {
+		page, err := c.Organizations.ListMembersPage(ctx, organizations.ListMembersInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_organization_members: %w", err)
+		}
+
+		out := pageResult(page)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
+var ListCustomAttributesTool = &mcpsdk.Tool{
+	Name: "list_custom_attributes",
+	Description: "Lists the organization's custom attribute definitions, one page at a time. " +
+		"Use this to discover which attribute keys are declared (and their scopes and allowed values) before setting attributes on projects/environments/components or writing policy conditions. " +
+		"Returns up to `page_size` attributes (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`.",
+}
+
+type ListCustomAttributesInput struct {
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
+
+func HandleListCustomAttributes(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListCustomAttributesInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListCustomAttributesInput) (*mcpsdk.CallToolResult, any, error) {
+		page, err := c.Organizations.ListCustomAttributesPage(ctx, organizations.ListCustomAttributesInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_custom_attributes: %w", err)
+		}
+
+		out := pageResult(page)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
 	}
 }

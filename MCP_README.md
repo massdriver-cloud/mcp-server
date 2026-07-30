@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 100 tools available in the Massdriver MCP server.
+This document describes all 106 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -28,7 +28,7 @@ This document describes all 100 tools available in the Massdriver MCP server.
 | `list_environments` | Lists all environments. Optionally filter by `project_id`. |
 | `get_environment` | Gets an environment by its identifier (e.g., `myproj-staging`). |
 | `create_environment` | Creates an environment within a project. Requires `project_id`, `id`, `name`; accepts optional `description` and custom `attributes`. |
-| `update_environment` | Updates an environment's name, description, or custom `attributes`. |
+| `update_environment` | Updates an environment's name, description, custom `attributes`, or `decommission_protection`. Only the fields you provide change; omitted fields are left unchanged. |
 | `delete_environment` | Deletes an environment. All instances must be decommissioned first. |
 | `set_environment_default` | Sets a resource as the default of its type for an environment. The resource must first be shared to the environment via `create_resource_grant`. |
 | `remove_environment_default` | Removes a default resource binding. |
@@ -48,7 +48,7 @@ This document describes all 100 tools available in the Massdriver MCP server.
 | `remove_instance_secret` | Removes a secret from an instance. |
 | `set_remote_reference` | Overrides one of an instance's connection slots (`field`) with a resource from another project or an imported resource (`resource_id`). Takes priority over any blueprint link on that slot. |
 | `remove_remote_reference` | Removes a remote-reference override from a connection slot, reverting it to the blueprint link or environment default. |
-| `copy_instance` | Copies a source instance's configuration onto an existing destination instance (overwriting its params). Requires `source_id` and `destination_id`; optional `overrides` (deep-merged onto source params), `copy_secrets`, and `copy_remote_references`. |
+| `copy_instance` | Copies a source instance's configuration onto an existing destination instance (overwriting its params). Source and destination must be instances of the same blueprint component (same manifest). Requires `source_id` and `destination_id`; optional `overrides` (deep-merged onto source params), `copy_secrets`, and `copy_remote_references`. |
 | `orphan_instance` | Break-glass reset of a permanently-stuck instance to INITIALIZED, clearing state locks and bulk-aborting active deployments. Optional `delete_state` also removes the remote IaC state files (IRREVERSIBLE — next deploy provisions from scratch). |
 | `list_alarms` | Lists alarms. Optionally filter by project, environment, component, instance, or bundle. |
 
@@ -59,8 +59,8 @@ This document describes all 100 tools available in the Massdriver MCP server.
 | `list_deployments` | Lists deployments (newest first). Optionally filter by `instance_id`, `status`, or `action`. |
 | `get_deployment` | Gets a deployment by ID. |
 | `get_deployment_logs` | Gets a deployment's logs. With `follow: true`, blocks until the deployment reaches a terminal status and returns the final status plus complete logs (optional `timeout_seconds`, default 300, max 600). |
-| `create_deployment` | Creates and starts a deployment. Actions: `PROVISION`, `DECOMMISSION`, `PLAN`. |
-| `propose_deployment` | Proposes a deployment for approval (enters `PROPOSED` status). Actions: `PROVISION`, `DECOMMISSION`. |
+| `create_deployment` | Creates and starts a deployment. Actions: `PROVISION`, `DECOMMISSION`, `PLAN`. `params` is required for every action (full set, validated against the instance's params schema) — read `get_instance.params` to reuse current config. |
+| `propose_deployment` | Proposes a deployment for approval (enters `PROPOSED` status). Actions: `PROVISION`, `DECOMMISSION`. `params` is required (full set, validated against the instance's params schema). |
 | `approve_deployment` | Approves a proposed deployment. |
 | `reject_deployment` | Rejects a proposed deployment. |
 | `abort_deployment` | Aborts a running deployment. |
@@ -97,7 +97,7 @@ This document describes all 100 tools available in the Massdriver MCP server.
 | `update_resource` | Updates a resource's name or payload. |
 | `delete_resource` | Deletes an imported resource. |
 | `export_resource` | Exports a resource with unmasked payload (audit-logged). |
-| `create_resource_grant` | Creates a sharing grant on a resource. |
+| `create_resource_grant` | Creates a sharing grant on a resource. `action` must be `resource:export` (the only grantable action). |
 | `delete_resource_grant` | Deletes a sharing grant. |
 | `list_resource_grants` | Lists sharing grants on a resource. |
 
@@ -106,9 +106,11 @@ This document describes all 100 tools available in the Massdriver MCP server.
 | Tool | Description |
 |------|-------------|
 | `get_organization` | Gets the current organization's details. |
-| `create_custom_attribute` | Creates a custom attribute definition. Requires `key` and `scope`. |
+| `create_custom_attribute` | Creates a custom attribute definition. Requires `key` and `scope`. `required` defaults to false here; setting it true makes the attribute mandatory org-wide at its scope. |
 | `update_custom_attribute` | Updates a custom attribute's required flag or allowed values. |
 | `delete_custom_attribute` | Deletes a custom attribute definition. |
+| `list_organization_members` | Lists the organization's members (user accounts), paginated. Requires the `organization:manageProfile` permission (non-admin tokens get a forbidden error). |
+| `list_custom_attributes` | Lists the organization's custom attribute definitions (keys, scopes, allowed values), paginated. Use to discover declared attribute keys before setting attributes or writing policy conditions. |
 
 ## Viewer
 
@@ -129,7 +131,7 @@ This document describes all 100 tools available in the Massdriver MCP server.
 | Tool | Description |
 |------|-------------|
 | `list_groups` | Lists all access control groups. |
-| `get_group` | Gets a group by ID, including members, service accounts, and policies. |
+| `get_group` | Gets a group by ID (id, name, description, role, timestamps). Members, service accounts, and policies are not included. |
 | `create_group` | Creates a new group. Requires `name`. |
 | `update_group` | Updates a group's name or description. |
 | `delete_group` | Deletes a group. |
@@ -138,6 +140,10 @@ This document describes all 100 tools available in the Massdriver MCP server.
 | `revoke_group_invitation` | Revokes a pending group invitation. |
 | `add_group_service_account` | Adds a service account to a group. |
 | `remove_group_service_account` | Removes a service account from a group. |
+| `list_group_members` | Lists the users who are members of a group, paginated. |
+| `list_group_service_accounts` | Lists the service accounts that are members of a group, paginated. |
+| `list_group_invitations` | Lists pending email invitations to a group (invited but not yet joined), paginated. |
+| `list_group_policies` | Lists the ABAC policies attached to a group, paginated. |
 
 ## Service Accounts
 
@@ -167,14 +173,14 @@ This document describes all 100 tools available in the Massdriver MCP server.
 | Tool | Description |
 |------|-------------|
 | `get_policy` | Gets an ABAC policy by ID. |
-| `create_policy` | Creates a policy on a group. Requires `group_id` and `effect` (`ALLOW`/`DENY`). |
+| `create_policy` | Creates a policy on a group. Requires `group_id`, `effect` (`ALLOW`/`DENY`), and a non-empty `actions` list (an empty list grants nothing, not all actions). |
 | `update_policy` | Updates a policy's effect, actions, or conditions. |
 | `delete_policy` | Deletes a policy. |
 | `list_policy_actions` | Lists all available policy actions. |
 | `list_policy_entities` | Lists all entity kinds that policies can target. |
 | `evaluate_policy` | Checks if the caller is allowed to perform an action on an entity. |
 | `evaluate_policies_batch` | Checks multiple action/entity pairs in one request (max 10). |
-| `explain_policy` | Returns a human-readable explanation of a policy configuration. |
+| `explain_policy` | Returns a human-readable explanation of a policy configuration. Requires `effect` and a non-empty `actions` list. Conditions referencing attribute keys not declared in the org are silently dropped. |
 | `get_policy_attribute_schema` | Gets the JSON Schema for valid condition attributes for a policy action. |
 | `list_policy_attribute_values` | Lists permitted values for a custom attribute key at a given scope. |
 

@@ -172,9 +172,9 @@ var UpdateProjectTool = &mcpsdk.Tool{
 
 type UpdateProjectInput struct {
 	ID          string         `json:"id"                    jsonschema:"The project ID to update."`
-	Name        string         `json:"name,omitempty"        jsonschema:"Optional. New human-readable name for the project."`
-	Description string         `json:"description,omitempty" jsonschema:"Optional. New description for the project."`
-	Attributes  map[string]any `json:"attributes,omitempty"  jsonschema:"Optional. Replacement custom attribute tags at the project scope. Must conform to the organization's custom-attribute schema."`
+	Name        *string        `json:"name,omitempty"        jsonschema:"Optional. New human-readable name. Omit to leave unchanged; cannot be set to an empty string."`
+	Description *string        `json:"description,omitempty" jsonschema:"Optional. New description. Omit to leave unchanged; pass an empty string to clear it."`
+	Attributes  map[string]any `json:"attributes,omitempty"  jsonschema:"Optional. Replacement custom attribute tags at the project scope. Omit to leave unchanged; when provided, replaces the full attribute set. Must conform to the organization's custom-attribute schema."`
 }
 
 func HandleUpdateProject(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateProjectInput) (*mcpsdk.CallToolResult, any, error) {
