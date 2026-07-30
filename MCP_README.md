@@ -105,7 +105,7 @@ This document describes all 106 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `get_organization` | Gets the current organization's details. |
+| `get_organization` | Gets the current organization's details (id, name, subscription status, timestamps). Custom attributes and members are not included here — use `list_custom_attributes` and `list_organization_members` for those. |
 | `create_custom_attribute` | Creates a custom attribute definition. Requires `key` and `scope`. `required` defaults to false here; setting it true makes the attribute mandatory org-wide at its scope. |
 | `update_custom_attribute` | Updates a custom attribute's required flag or allowed values. |
 | `delete_custom_attribute` | Deletes a custom attribute definition. |

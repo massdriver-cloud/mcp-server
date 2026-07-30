@@ -58,7 +58,8 @@ func HandleCreateCustomAttribute(c *Client) func(context.Context, *mcpsdk.CallTo
 		// caller doesn't specify, so omitting the field is the safe default.
 		required := args.Required
 		if required == nil {
-			required = new(bool)
+			f := false
+			required = &f
 		}
 
 		attr, err := c.Organizations.CreateCustomAttribute(ctx, organizations.CreateCustomAttributeInput{
