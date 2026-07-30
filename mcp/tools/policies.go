@@ -46,8 +46,8 @@ var CreatePolicyTool = &mcpsdk.Tool{
 type CreatePolicyInput struct {
 	GroupID    string                 `json:"group_id"   jsonschema:"The group ID to attach the policy to."`
 	Effect     string                 `json:"effect"               jsonschema:"Policy effect: ALLOW or DENY."`
-	Actions    []string               `json:"actions,omitempty"    jsonschema:"Optional. Actions the policy applies to (e.g., 'deployment:create'). Empty means all actions."`
-	Conditions types.PolicyConditions `json:"conditions,omitempty" jsonschema:"Optional. Attribute conditions scoping the policy (map of attribute key to allowed values)."`
+	Actions    []string               `json:"actions"              jsonschema:"Actions the policy applies to (e.g., 'deployment:create'), in entity:verb form. Must be non-empty — an empty list grants nothing, it does NOT mean 'all actions'. Use list_policy_actions to enumerate valid actions."`
+	Conditions types.PolicyConditions `json:"conditions,omitempty" jsonschema:"Optional. Attribute conditions scoping the policy (map of attribute key to allowed values). Conditions referencing attribute keys not declared in the organization are silently dropped by the server, widening the policy beyond what you intended — verify keys with get_organization / the org's custom attributes first."`
 }
 
 func HandleCreatePolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreatePolicyInput) (*mcpsdk.CallToolResult, any, error) {
@@ -57,6 +57,9 @@ func HandleCreatePolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 		}
 		if args.Effect == "" {
 			return nil, nil, fmt.Errorf("create_policy: effect is required")
+		}
+		if len(args.Actions) == 0 {
+			return nil, nil, fmt.Errorf("create_policy: actions must be non-empty (an empty list grants nothing, not all actions)")
 		}
 
 		policy, err := c.Policies.Create(ctx, args.GroupID, policies.CreatePolicyInput{
@@ -268,14 +271,17 @@ var ExplainPolicyTool = &mcpsdk.Tool{
 
 type ExplainPolicyInput struct {
 	Effect     string                 `json:"effect"               jsonschema:"Policy effect: ALLOW or DENY."`
-	Actions    []string               `json:"actions,omitempty"    jsonschema:"Optional. Actions the policy applies to."`
-	Conditions types.PolicyConditions `json:"conditions,omitempty" jsonschema:"Optional. Attribute conditions scoping the policy."`
+	Actions    []string               `json:"actions"              jsonschema:"Actions the policy applies to, in entity:verb form. Must be non-empty — an empty list explains to nothing, it does NOT mean 'all actions'."`
+	Conditions types.PolicyConditions `json:"conditions,omitempty" jsonschema:"Optional. Attribute conditions scoping the policy. Conditions referencing attribute keys not declared in the organization are silently dropped by the explainer (the explanation reads wider than intended rather than erroring) — verify keys against the org's custom attributes first."`
 }
 
 func HandleExplainPolicy(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ExplainPolicyInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ExplainPolicyInput) (*mcpsdk.CallToolResult, any, error) {
 		if args.Effect == "" {
 			return nil, nil, fmt.Errorf("explain_policy: effect is required")
+		}
+		if len(args.Actions) == 0 {
+			return nil, nil, fmt.Errorf("explain_policy: actions must be non-empty (an empty list explains to nothing, not all actions)")
 		}
 
 		lines, err := c.Policies.Explain(ctx, policies.ExplainInput{

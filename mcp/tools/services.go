@@ -137,6 +137,8 @@ type OrganizationsService interface {
 	CreateCustomAttribute(ctx context.Context, input organizations.CreateCustomAttributeInput) (*organizations.CustomAttribute, error)
 	UpdateCustomAttribute(ctx context.Context, id string, input organizations.UpdateCustomAttributeInput) (*organizations.CustomAttribute, error)
 	DeleteCustomAttribute(ctx context.Context, id string) (*organizations.CustomAttribute, error)
+	ListMembersPage(ctx context.Context, input organizations.ListMembersInput) (types.Page[organizations.Account], error)
+	ListCustomAttributesPage(ctx context.Context, input organizations.ListCustomAttributesInput) (types.Page[organizations.CustomAttribute], error)
 }
 
 // ViewerService defines the viewer operations used by tool handlers.
@@ -163,6 +165,10 @@ type GroupsService interface {
 	RevokeInvitation(ctx context.Context, groupID, email string) error
 	AddServiceAccount(ctx context.Context, groupID, serviceAccountID string) error
 	RemoveServiceAccount(ctx context.Context, groupID, serviceAccountID string) error
+	ListMembersPage(ctx context.Context, groupID string, input groups.ListMembersInput) (types.Page[groups.User], error)
+	ListServiceAccountsPage(ctx context.Context, groupID string, input groups.ListServiceAccountsInput) (types.Page[groups.ServiceAccount], error)
+	ListInvitationsPage(ctx context.Context, groupID string, input groups.ListInvitationsInput) (types.Page[groups.Invitation], error)
+	ListPoliciesPage(ctx context.Context, groupID string, input groups.ListPoliciesInput) (types.Page[groups.Policy], error)
 }
 
 // ServiceAccountsService defines the service account operations used by tool handlers.

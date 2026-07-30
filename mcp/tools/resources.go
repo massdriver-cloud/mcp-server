@@ -224,7 +224,7 @@ var CreateResourceGrantTool = &mcpsdk.Tool{
 
 type CreateResourceGrantInput struct {
 	ResourceID          string                 `json:"resource_id"          jsonschema:"The resource ID to grant access to."`
-	Action              string                 `json:"action"                         jsonschema:"The action to grant, e.g. resource:export."`
+	Action              string                 `json:"action"                         jsonschema:"The action to grant. Currently 'resource:export' is the only grantable action; visibility is inferred from any granted action."`
 	RecipientConditions types.PolicyConditions `json:"recipient_conditions,omitempty" jsonschema:"Optional. Attribute conditions restricting grant recipients."`
 }
 

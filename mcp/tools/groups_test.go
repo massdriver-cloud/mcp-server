@@ -20,6 +20,10 @@ type stubGroups struct {
 	revokeInvitationFn     func(context.Context, string, string) error
 	addServiceAccountFn    func(context.Context, string, string) error
 	removeServiceAccountFn func(context.Context, string, string) error
+	listMembersPageFn      func(context.Context, string, groups.ListMembersInput) (types.Page[groups.User], error)
+	listServiceAccountsFn  func(context.Context, string, groups.ListServiceAccountsInput) (types.Page[groups.ServiceAccount], error)
+	listInvitationsPageFn  func(context.Context, string, groups.ListInvitationsInput) (types.Page[groups.Invitation], error)
+	listPoliciesPageFn     func(context.Context, string, groups.ListPoliciesInput) (types.Page[groups.Policy], error)
 }
 
 func (s *stubGroups) ListPage(ctx context.Context, input groups.ListInput) (types.Page[groups.Group], error) {
@@ -48,6 +52,18 @@ func (s *stubGroups) RevokeInvitation(ctx context.Context, groupID, email string
 }
 func (s *stubGroups) AddServiceAccount(ctx context.Context, groupID, serviceAccountID string) error {
 	return s.addServiceAccountFn(ctx, groupID, serviceAccountID)
+}
+func (s *stubGroups) ListMembersPage(ctx context.Context, groupID string, input groups.ListMembersInput) (types.Page[groups.User], error) {
+	return s.listMembersPageFn(ctx, groupID, input)
+}
+func (s *stubGroups) ListServiceAccountsPage(ctx context.Context, groupID string, input groups.ListServiceAccountsInput) (types.Page[groups.ServiceAccount], error) {
+	return s.listServiceAccountsFn(ctx, groupID, input)
+}
+func (s *stubGroups) ListInvitationsPage(ctx context.Context, groupID string, input groups.ListInvitationsInput) (types.Page[groups.Invitation], error) {
+	return s.listInvitationsPageFn(ctx, groupID, input)
+}
+func (s *stubGroups) ListPoliciesPage(ctx context.Context, groupID string, input groups.ListPoliciesInput) (types.Page[groups.Policy], error) {
+	return s.listPoliciesPageFn(ctx, groupID, input)
 }
 func (s *stubGroups) RemoveServiceAccount(ctx context.Context, groupID, serviceAccountID string) error {
 	return s.removeServiceAccountFn(ctx, groupID, serviceAccountID)
@@ -633,5 +649,77 @@ func TestHandleRemoveGroupServiceAccount(t *testing.T) {
 				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
 			}
 		})
+	}
+}
+
+func TestHandleListGroupMembers(t *testing.T) {
+	c := &Client{Groups: &stubGroups{
+		listMembersPageFn: func(_ context.Context, _ string, _ groups.ListMembersInput) (types.Page[groups.User], error) {
+			return types.Page[groups.User]{Items: []groups.User{{ID: "u1", Email: "a@example.com"}}}, nil
+		},
+	}}
+	if _, _, err := HandleListGroupMembers(c)(context.Background(), nil, ListGroupMembersInput{}); err == nil {
+		t.Error("expected error for missing group_id")
+	}
+	result, _, err := HandleListGroupMembers(c)(context.Background(), nil, ListGroupMembersInput{GroupID: "grp1"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(resultText(t, result), "a@example.com") {
+		t.Errorf("expected member in result, got: %s", resultText(t, result))
+	}
+}
+
+func TestHandleListGroupServiceAccounts(t *testing.T) {
+	c := &Client{Groups: &stubGroups{
+		listServiceAccountsFn: func(_ context.Context, _ string, _ groups.ListServiceAccountsInput) (types.Page[groups.ServiceAccount], error) {
+			return types.Page[groups.ServiceAccount]{Items: []groups.ServiceAccount{{ID: "sa1", Name: "CI"}}}, nil
+		},
+	}}
+	if _, _, err := HandleListGroupServiceAccounts(c)(context.Background(), nil, ListGroupServiceAccountsInput{}); err == nil {
+		t.Error("expected error for missing group_id")
+	}
+	result, _, err := HandleListGroupServiceAccounts(c)(context.Background(), nil, ListGroupServiceAccountsInput{GroupID: "grp1"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(resultText(t, result), "CI") {
+		t.Errorf("expected service account in result, got: %s", resultText(t, result))
+	}
+}
+
+func TestHandleListGroupInvitations(t *testing.T) {
+	c := &Client{Groups: &stubGroups{
+		listInvitationsPageFn: func(_ context.Context, _ string, _ groups.ListInvitationsInput) (types.Page[groups.Invitation], error) {
+			return types.Page[groups.Invitation]{Items: []groups.Invitation{{ID: "inv1", Email: "invitee@example.com"}}}, nil
+		},
+	}}
+	if _, _, err := HandleListGroupInvitations(c)(context.Background(), nil, ListGroupInvitationsInput{}); err == nil {
+		t.Error("expected error for missing group_id")
+	}
+	result, _, err := HandleListGroupInvitations(c)(context.Background(), nil, ListGroupInvitationsInput{GroupID: "grp1"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(resultText(t, result), "invitee@example.com") {
+		t.Errorf("expected invitation in result, got: %s", resultText(t, result))
+	}
+}
+
+func TestHandleListGroupPolicies(t *testing.T) {
+	c := &Client{Groups: &stubGroups{
+		listPoliciesPageFn: func(_ context.Context, _ string, _ groups.ListPoliciesInput) (types.Page[groups.Policy], error) {
+			return types.Page[groups.Policy]{Items: []groups.Policy{{ID: "pol1", Effect: "ALLOW"}}}, nil
+		},
+	}}
+	if _, _, err := HandleListGroupPolicies(c)(context.Background(), nil, ListGroupPoliciesInput{}); err == nil {
+		t.Error("expected error for missing group_id")
+	}
+	result, _, err := HandleListGroupPolicies(c)(context.Background(), nil, ListGroupPoliciesInput{GroupID: "grp1"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(resultText(t, result), "pol1") {
+		t.Errorf("expected policy in result, got: %s", resultText(t, result))
 	}
 }

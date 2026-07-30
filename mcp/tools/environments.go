@@ -119,14 +119,15 @@ func HandleCreateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 
 var UpdateEnvironmentTool = &mcpsdk.Tool{
 	Name:        "update_environment",
-	Description: "Updates an environment's name or description.",
+	Description: "Updates an environment's name, description, custom attributes, or decommission protection. Only the fields you provide are changed.",
 }
 
 type UpdateEnvironmentInput struct {
-	ID          string         `json:"id"                    jsonschema:"The environment identifier (e.g., 'myproj-staging')."`
-	Name        string         `json:"name,omitempty"        jsonschema:"Optional. New human-readable name for the environment."`
-	Description string         `json:"description,omitempty" jsonschema:"Optional. New description for the environment."`
-	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Replacement custom attribute tags at the environment scope. Must conform to the organization's custom-attribute schema."`
+	ID                     string         `json:"id"                      jsonschema:"The environment identifier (e.g., 'myproj-staging')."`
+	Name                   *string        `json:"name,omitempty"          jsonschema:"Optional. New human-readable name. Omit to leave unchanged; cannot be set to an empty string."`
+	Description            *string        `json:"description,omitempty"   jsonschema:"Optional. New description. Omit to leave unchanged; pass an empty string to clear it."`
+	Attributes             map[string]any `json:"attributes,omitempty"    jsonschema:"Optional. Replacement custom attribute tags at the environment scope. Omit to leave unchanged; when provided, replaces the full attribute set. Must conform to the organization's custom-attribute schema."`
+	DecommissionProtection *bool          `json:"decommission_protection,omitempty" jsonschema:"Optional. Toggles the guard that blocks decommission_environment and per-instance DECOMMISSION deployments. Omit to leave unchanged."`
 }
 
 func HandleUpdateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -136,9 +137,10 @@ func HandleUpdateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		}
 
 		env, err := c.Environments.Update(ctx, args.ID, environments.UpdateInput{
-			Name:        args.Name,
-			Description: args.Description,
-			Attributes:  args.Attributes,
+			Name:                   args.Name,
+			Description:            args.Description,
+			Attributes:             args.Attributes,
+			DecommissionProtection: args.DecommissionProtection,
 		})
 		if err != nil {
 			if isMutationFailed(err) {

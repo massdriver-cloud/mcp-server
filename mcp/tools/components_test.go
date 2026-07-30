@@ -233,16 +233,16 @@ func TestHandleUpdateComponent(t *testing.T) {
 	}{
 		{
 			name:    "missing id",
-			input:   UpdateComponentInput{Name: "New Name"},
+			input:   UpdateComponentInput{Name: ptr("New Name")},
 			stub:    &stubComponents{},
 			wantErr: "id is required",
 		},
 		{
 			name:  "success returns updated component JSON",
-			input: UpdateComponentInput{ID: "db", Name: "Updated DB"},
+			input: UpdateComponentInput{ID: "db", Name: ptr("Updated DB")},
 			stub: &stubComponents{
 				updateFn: func(_ context.Context, id string, input components.UpdateInput) (*components.Component, error) {
-					return &components.Component{ID: id, Name: input.Name}, nil
+					return &components.Component{ID: id, Name: derefStr(input.Name)}, nil
 				},
 			},
 			wantText: "Updated DB",

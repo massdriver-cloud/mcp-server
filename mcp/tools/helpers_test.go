@@ -7,6 +7,18 @@ import (
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// ptr returns a pointer to v — a test helper for building the *string/*bool
+// fields on the partial-update tool inputs.
+func ptr[T any](v T) *T { return &v }
+
+// derefStr safely dereferences a *string, returning "" for nil.
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // resultText extracts the text from the first TextContent item in a CallToolResult.
 func resultText(t *testing.T, result *mcpsdk.CallToolResult) string {
 	t.Helper()

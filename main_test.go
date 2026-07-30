@@ -76,6 +76,7 @@ func TestMCPServerTools(t *testing.T) {
 		"create_resource_grant", "delete_resource_grant", "list_resource_grants",
 		// Organization
 		"get_organization", "create_custom_attribute", "update_custom_attribute", "delete_custom_attribute",
+		"list_organization_members", "list_custom_attributes",
 		// Viewer
 		"get_viewer",
 		// Audit Logs
@@ -84,6 +85,7 @@ func TestMCPServerTools(t *testing.T) {
 		"list_groups", "get_group", "create_group", "update_group", "delete_group",
 		"add_group_user", "remove_group_user", "revoke_group_invitation",
 		"add_group_service_account", "remove_group_service_account",
+		"list_group_members", "list_group_service_accounts", "list_group_invitations", "list_group_policies",
 		// Service Accounts
 		"list_service_accounts", "get_service_account", "create_service_account", "update_service_account", "delete_service_account",
 		// OCI Repos

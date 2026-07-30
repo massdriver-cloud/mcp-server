@@ -42,7 +42,7 @@ func HandleListGroups(c *Client) func(context.Context, *mcpsdk.CallToolRequest, 
 
 var GetGroupTool = &mcpsdk.Tool{
 	Name:        "get_group",
-	Description: "Gets a specific access control group by ID, including its members, service accounts, and policies.",
+	Description: "Gets a specific access control group by ID (id, name, description, role, timestamps). Members, service accounts, and policies are not included here — use list_group_members, list_group_service_accounts, list_group_invitations, and list_group_policies for those.",
 }
 
 type GetGroupInput struct {
@@ -322,5 +322,149 @@ func HandleRemoveGroupServiceAccount(c *Client) func(context.Context, *mcpsdk.Ca
 		}
 
 		return textResult(fmt.Sprintf("service account %q removed from group %q successfully", args.ServiceAccountID, args.GroupID)), nil, nil
+	}
+}
+
+var ListGroupMembersTool = &mcpsdk.Tool{
+	Name: "list_group_members",
+	Description: "Lists the users who are members of a group, one page at a time. " +
+		"Returns up to `page_size` members (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`.",
+}
+
+type ListGroupMembersInput struct {
+	GroupID  string `json:"group_id"            jsonschema:"The group ID whose members to list."`
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
+
+func HandleListGroupMembers(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListGroupMembersInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListGroupMembersInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.GroupID == "" {
+			return nil, nil, fmt.Errorf("list_group_members: group_id is required")
+		}
+
+		page, err := c.Groups.ListMembersPage(ctx, args.GroupID, groups.ListMembersInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_group_members: %w", err)
+		}
+
+		out := pageResult(page)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
+var ListGroupServiceAccountsTool = &mcpsdk.Tool{
+	Name: "list_group_service_accounts",
+	Description: "Lists the service accounts that are members of a group, one page at a time. " +
+		"Returns up to `page_size` service accounts (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`.",
+}
+
+type ListGroupServiceAccountsInput struct {
+	GroupID  string `json:"group_id"            jsonschema:"The group ID whose service accounts to list."`
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
+
+func HandleListGroupServiceAccounts(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListGroupServiceAccountsInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListGroupServiceAccountsInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.GroupID == "" {
+			return nil, nil, fmt.Errorf("list_group_service_accounts: group_id is required")
+		}
+
+		page, err := c.Groups.ListServiceAccountsPage(ctx, args.GroupID, groups.ListServiceAccountsInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_group_service_accounts: %w", err)
+		}
+
+		out := pageResult(page)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
+var ListGroupInvitationsTool = &mcpsdk.Tool{
+	Name: "list_group_invitations",
+	Description: "Lists pending email invitations to a group (users invited but not yet joined), one page at a time. " +
+		"Returns up to `page_size` invitations (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`.",
+}
+
+type ListGroupInvitationsInput struct {
+	GroupID  string `json:"group_id"            jsonschema:"The group ID whose pending invitations to list."`
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
+
+func HandleListGroupInvitations(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListGroupInvitationsInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListGroupInvitationsInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.GroupID == "" {
+			return nil, nil, fmt.Errorf("list_group_invitations: group_id is required")
+		}
+
+		page, err := c.Groups.ListInvitationsPage(ctx, args.GroupID, groups.ListInvitationsInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_group_invitations: %w", err)
+		}
+
+		out := pageResult(page)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
+var ListGroupPoliciesTool = &mcpsdk.Tool{
+	Name: "list_group_policies",
+	Description: "Lists the ABAC policies attached to a group, one page at a time. " +
+		"Returns up to `page_size` policies (default 25, max 100) plus a `next_cursor` for the following page. " +
+		"To continue, call again with `cursor` set to the previous `next_cursor`.",
+}
+
+type ListGroupPoliciesInput struct {
+	GroupID  string `json:"group_id"            jsonschema:"The group ID whose attached policies to list."`
+	Cursor   string `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize int    `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
+}
+
+func HandleListGroupPolicies(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListGroupPoliciesInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListGroupPoliciesInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.GroupID == "" {
+			return nil, nil, fmt.Errorf("list_group_policies: group_id is required")
+		}
+
+		page, err := c.Groups.ListPoliciesPage(ctx, args.GroupID, groups.ListPoliciesInput{
+			PageSize: clampPageSize(args.PageSize),
+			After:    args.Cursor,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_group_policies: %w", err)
+		}
+
+		out := pageResult(page)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
 	}
 }

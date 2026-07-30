@@ -162,3 +162,19 @@ func isMutationFailed(err error) bool {
 	_, ok := gql.AsMutationFailedError(err)
 	return ok
 }
+
+// mutationHasCode reports whether a mutation-failed error carries a message
+// whose machine code equals code. The API sometimes puts the machine code in
+// the Message field (with Code "unknown") rather than Code, so both are checked.
+func mutationHasCode(err error, code string) bool {
+	mf, ok := gql.AsMutationFailedError(err)
+	if !ok {
+		return false
+	}
+	for _, m := range mf.Messages {
+		if m.Code == code || m.Message == code {
+			return true
+		}
+	}
+	return false
+}

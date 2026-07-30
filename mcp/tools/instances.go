@@ -315,9 +315,11 @@ var CopyInstanceTool = &mcpsdk.Tool{
 	Name: "copy_instance",
 	Description: "Copies a source instance's configuration onto an existing destination instance, overwriting the " +
 		"destination's params. Requires `source_id` and `destination_id` (the destination instance must already " +
-		"exist — this does not create a new instance). `overrides` is deep-merged onto the source params before " +
-		"writing, useful for destination-specific tweaks. `copy_secrets` and `copy_remote_references` (both default " +
-		"false) control whether secret values and remote resource references carry over from the source.",
+		"exist — this does not create a new instance). Source and destination MUST be instances of the same " +
+		"blueprint component (same manifest) — instances built from the same bundle/OCI repo but different " +
+		"components cannot be copied between. `overrides` is deep-merged onto the source params before writing, " +
+		"useful for destination-specific tweaks. `copy_secrets` and `copy_remote_references` (both default false) " +
+		"control whether secret values and remote resource references carry over from the source.",
 }
 
 type CopyInstanceInput struct {
@@ -343,6 +345,9 @@ func HandleCopyInstance(c *Client) func(context.Context, *mcpsdk.CallToolRequest
 			CopyRemoteReferences: args.CopyRemoteReferences,
 		})
 		if err != nil {
+			if mutationHasCode(err, "different_manifests") {
+				return errorResult("copy_instance failed: source and destination must be instances of the same blueprint component (same manifest); instances from the same bundle but different components cannot be copied between"), nil, nil
+			}
 			if isMutationFailed(err) {
 				return errorResult(fmt.Sprintf("copy_instance failed: %s", mutationErr(err))), nil, nil
 			}

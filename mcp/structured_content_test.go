@@ -369,6 +369,12 @@ func (scOrganizations) UpdateCustomAttribute(context.Context, string, organizati
 func (scOrganizations) DeleteCustomAttribute(context.Context, string) (*organizations.CustomAttribute, error) {
 	return &organizations.CustomAttribute{}, nil
 }
+func (scOrganizations) ListMembersPage(context.Context, organizations.ListMembersInput) (types.Page[organizations.Account], error) {
+	return types.Page[organizations.Account]{Items: []organizations.Account{{}}}, nil
+}
+func (scOrganizations) ListCustomAttributesPage(context.Context, organizations.ListCustomAttributesInput) (types.Page[organizations.CustomAttribute], error) {
+	return types.Page[organizations.CustomAttribute]{Items: []organizations.CustomAttribute{{}}}, nil
+}
 
 type scViewer struct{}
 
@@ -406,6 +412,18 @@ func (scGroups) RemoveUser(context.Context, string, string) error           { re
 func (scGroups) RevokeInvitation(context.Context, string, string) error     { return nil }
 func (scGroups) AddServiceAccount(context.Context, string, string) error    { return nil }
 func (scGroups) RemoveServiceAccount(context.Context, string, string) error { return nil }
+func (scGroups) ListMembersPage(context.Context, string, groups.ListMembersInput) (types.Page[groups.User], error) {
+	return types.Page[groups.User]{Items: []groups.User{{}}}, nil
+}
+func (scGroups) ListServiceAccountsPage(context.Context, string, groups.ListServiceAccountsInput) (types.Page[groups.ServiceAccount], error) {
+	return types.Page[groups.ServiceAccount]{Items: []groups.ServiceAccount{{}}}, nil
+}
+func (scGroups) ListInvitationsPage(context.Context, string, groups.ListInvitationsInput) (types.Page[groups.Invitation], error) {
+	return types.Page[groups.Invitation]{Items: []groups.Invitation{{}}}, nil
+}
+func (scGroups) ListPoliciesPage(context.Context, string, groups.ListPoliciesInput) (types.Page[groups.Policy], error) {
+	return types.Page[groups.Policy]{Items: []groups.Policy{{}}}, nil
+}
 
 type scServiceAccounts struct{}
 

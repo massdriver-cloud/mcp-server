@@ -572,6 +572,16 @@ func TestHandleCopyInstance(t *testing.T) {
 			},
 			wantText: "copy_instance failed",
 		},
+		{
+			name:  "different_manifests translated to a human message",
+			input: CopyInstanceInput{SourceID: "src1", DestinationID: "dest1"},
+			stub: &stubInstances{
+				copyFn: func(context.Context, string, string, instances.CopyInput) (*instances.Instance, error) {
+					return nil, mutationFailedErr("copy instance", "", "different_manifests")
+				},
+			},
+			wantText: "same blueprint component",
+		},
 	}
 
 	for _, tt := range tests {

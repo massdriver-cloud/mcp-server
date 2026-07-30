@@ -77,6 +77,8 @@ func applyAnnotations() {
 		GetViewerTool,
 		GetAuditLogTool, ListAuditLogsTool, ListAuditLogEventTypesTool,
 		GetGroupTool, ListGroupsTool,
+		ListGroupMembersTool, ListGroupServiceAccountsTool, ListGroupInvitationsTool, ListGroupPoliciesTool,
+		ListOrganizationMembersTool, ListCustomAttributesTool,
 		GetServiceAccountTool, ListServiceAccountsTool,
 		GetOciRepoTool, ListOciReposTool, ListOciRepoGrantsTool,
 		GetPolicyTool, ListPolicyActionsTool, ListPolicyEntitiesTool,
@@ -146,6 +148,7 @@ func applyEnums() {
 	withEnums(ListDeploymentsTool, ListDeploymentsInput{}, map[string][]string{"action": deployActions, "status": deployStatuses})
 	withEnums(ListInstancesTool, ListInstancesInput{}, map[string][]string{"status": {"INITIALIZED", "PROVISIONED", "DECOMMISSIONED", "FAILED"}})
 	withEnums(ListResourcesTool, ListResourcesInput{}, map[string][]string{"origin": {"IMPORTED", "PROVISIONED"}})
+	withEnums(CreateResourceGrantTool, CreateResourceGrantInput{}, map[string][]string{"action": {"resource:export"}})
 	withEnums(CreateCustomAttributeTool, CreateCustomAttributeInput{}, map[string][]string{"scope": scopes})
 	withEnums(ListPolicyAttributeValuesTool, ListPolicyAttributeValuesInput{}, map[string][]string{"scope": scopes})
 	withEnums(CreatePolicyTool, CreatePolicyInput{}, map[string][]string{"effect": effects})

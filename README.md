@@ -126,7 +126,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (100)
+## Available Tools (106)
 
 See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
@@ -151,8 +151,8 @@ See [MCP_README.md](MCP_README.md) for the full tool reference, including per-to
 ### Resources (9)
 `list_resources` `get_resource` `create_resource` `update_resource` `delete_resource` `export_resource` `create_resource_grant` `delete_resource_grant` `list_resource_grants`
 
-### Organization (4)
-`get_organization` `create_custom_attribute` `update_custom_attribute` `delete_custom_attribute`
+### Organization (6)
+`get_organization` `create_custom_attribute` `update_custom_attribute` `delete_custom_attribute` `list_organization_members` `list_custom_attributes`
 
 ### Viewer (1)
 `get_viewer`
@@ -160,8 +160,8 @@ See [MCP_README.md](MCP_README.md) for the full tool reference, including per-to
 ### Audit Logs (3)
 `get_audit_log` `list_audit_logs` `list_audit_log_event_types`
 
-### Groups (10)
-`list_groups` `get_group` `create_group` `update_group` `delete_group` `add_group_user` `remove_group_user` `revoke_group_invitation` `add_group_service_account` `remove_group_service_account`
+### Groups (14)
+`list_groups` `get_group` `create_group` `update_group` `delete_group` `add_group_user` `remove_group_user` `revoke_group_invitation` `add_group_service_account` `remove_group_service_account` `list_group_members` `list_group_service_accounts` `list_group_invitations` `list_group_policies`
 
 ### Service Accounts (5)
 `list_service_accounts` `get_service_account` `create_service_account` `update_service_account` `delete_service_account`

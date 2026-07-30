@@ -126,6 +126,12 @@ func TestHandleCreatePolicy(t *testing.T) {
 			wantErr: "effect is required",
 		},
 		{
+			name:    "empty actions rejected",
+			input:   CreatePolicyInput{GroupID: "grp1", Effect: "ALLOW"},
+			stub:    &stubPolicies{},
+			wantErr: "actions must be non-empty",
+		},
+		{
 			name:  "success",
 			input: CreatePolicyInput{GroupID: "grp1", Effect: "ALLOW", Actions: []string{"project:view"}},
 			stub: &stubPolicies{
@@ -137,7 +143,7 @@ func TestHandleCreatePolicy(t *testing.T) {
 		},
 		{
 			name:  "mutation failure",
-			input: CreatePolicyInput{GroupID: "grp1", Effect: "ALLOW"},
+			input: CreatePolicyInput{GroupID: "grp1", Effect: "ALLOW", Actions: []string{"project:view"}},
 			stub: &stubPolicies{
 				createFn: func(context.Context, string, policies.CreatePolicyInput) (*policies.Policy, error) {
 					return nil, mutationFailedErr("create policy", "effect", "invalid")
@@ -461,6 +467,12 @@ func TestHandleExplainPolicy(t *testing.T) {
 			input:   ExplainPolicyInput{},
 			stub:    &stubPolicies{},
 			wantErr: "effect is required",
+		},
+		{
+			name:    "empty actions rejected",
+			input:   ExplainPolicyInput{Effect: "ALLOW"},
+			stub:    &stubPolicies{},
+			wantErr: "actions must be non-empty",
 		},
 		{
 			name:  "success",
