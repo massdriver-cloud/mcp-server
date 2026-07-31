@@ -130,6 +130,27 @@ func TestHandleGetInstance(t *testing.T) {
 			},
 			wantText: "proj1-staging-db",
 		},
+		{
+			name:  "includes dependencies",
+			input: GetInstanceInput{ID: "proj1-staging-api"},
+			stub: &stubInstances{
+				getFn: func(_ context.Context, id string) (*instances.Instance, error) {
+					return &instances.Instance{
+						ID:   id,
+						Name: "API",
+						Dependencies: []types.InstanceDependency{
+							{
+								Field:    "database",
+								Required: true,
+								Source:   string(instances.DependencySourceConnection),
+								Resource: types.Resource{Field: "primary", Instance: &types.Instance{ID: "proj1-staging-db"}},
+							},
+						},
+					}, nil
+				},
+			},
+			wantText: `"dependencies"`,
+		},
 	}
 
 	for _, tt := range tests {
