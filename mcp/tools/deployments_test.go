@@ -379,15 +379,41 @@ func TestCreateDeploymentUseLatestParams(t *testing.T) {
 		c := &Client{
 			Instances: &stubInstances{
 				getFn: func(_ context.Context, id string) (*instances.Instance, error) {
-					return &instances.Instance{ID: id}, nil
+					return &instances.Instance{ID: id, Status: string(instances.StatusInitialized), Params: map[string]any{}}, nil
 				},
 			},
 			Deployments: &stubDeployments{},
 		}
 		input := CreateDeploymentInput{InstanceID: "inst1", Action: "PROVISION", UseLatestParams: true}
 		_, _, err := HandleCreateDeployment(c)(context.Background(), nil, input)
-		if err == nil || !strings.Contains(err.Error(), "no saved params") {
-			t.Fatalf("expected no-saved-params error, got: %v", err)
+		if err == nil || !strings.Contains(err.Error(), "never been deployed") {
+			t.Fatalf("expected never-deployed error, got: %v", err)
+		}
+	})
+
+	t.Run("deployed instance with empty params is reusable", func(t *testing.T) {
+		// A bundle with no configurable params legitimately saves {} after a
+		// real deployment — that must not be mistaken for never-deployed.
+		var gotParams map[string]any
+		c := &Client{
+			Instances: &stubInstances{
+				getFn: func(_ context.Context, id string) (*instances.Instance, error) {
+					return &instances.Instance{ID: id, Status: string(instances.StatusProvisioned)}, nil
+				},
+			},
+			Deployments: &stubDeployments{
+				createFn: func(_ context.Context, _ string, input deployments.CreateInput) (*deployments.Deployment, error) {
+					gotParams = input.Params
+					return &deployments.Deployment{ID: "dep1", Status: "PENDING"}, nil
+				},
+			},
+		}
+		input := CreateDeploymentInput{InstanceID: "inst1", Action: "DECOMMISSION", UseLatestParams: true}
+		if _, _, err := HandleCreateDeployment(c)(context.Background(), nil, input); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotParams == nil || len(gotParams) != 0 {
+			t.Errorf("deployment created with params %v, want an empty non-nil map", gotParams)
 		}
 	})
 }

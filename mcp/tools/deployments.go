@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/deployments"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/instances"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -486,7 +487,9 @@ func HandleCompareDeployments(c *Client) func(context.Context, *mcpsdk.CallToolR
 // propose_deployment: it fetches the instance and returns its saved params
 // (the values from its most recent deployment). Reuse must be explicit and
 // unambiguous, so passing params alongside the flag is an error, as is an
-// instance with nothing saved to reuse.
+// instance that has never been deployed. Never-deployed is judged by the
+// instance's lifecycle status, not by whether Params is empty — an empty map
+// is the legitimate saved configuration of a bundle with no params.
 func latestInstanceParams(ctx context.Context, c *Client, toolName, instanceID string, explicit map[string]any) (map[string]any, error) {
 	if explicit != nil {
 		return nil, fmt.Errorf("%s: params and use_latest_params are mutually exclusive — pass one or the other", toolName)
@@ -495,8 +498,8 @@ func latestInstanceParams(ctx context.Context, c *Client, toolName, instanceID s
 	if err != nil {
 		return nil, fmt.Errorf("%s: fetching instance for use_latest_params: %w", toolName, err)
 	}
-	if len(instance.Params) == 0 {
-		return nil, fmt.Errorf("%s: use_latest_params requires an instance that has been deployed before, but instance %s has no saved params — pass params explicitly", toolName, instanceID)
+	if instances.Status(instance.Status) == instances.StatusInitialized {
+		return nil, fmt.Errorf("%s: use_latest_params requires an instance that has been deployed before, but instance %s has never been deployed — pass params explicitly", toolName, instanceID)
 	}
 	return instance.Params, nil
 }
