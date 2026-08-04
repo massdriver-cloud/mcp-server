@@ -136,6 +136,45 @@ func TestEnumConstraintsApplied(t *testing.T) {
 	}
 }
 
+// TestMaxLengthConstraintsApplied verifies that description fields and
+// creation-time identifier slugs carry maxLength in their input schema.
+func TestMaxLengthConstraintsApplied(t *testing.T) {
+	cases := []struct {
+		tool  *mcpsdk.Tool
+		field string
+		want  int
+	}{
+		{CreateProjectTool, "description", 255},
+		{CreateProjectTool, "id", 20},
+		{CloneProjectTool, "description", 255},
+		{CloneProjectTool, "id", 20},
+		{UpdateProjectTool, "description", 255},
+		{CreateEnvironmentTool, "description", 255},
+		{CreateEnvironmentTool, "id", 20},
+		{ForkEnvironmentTool, "description", 255},
+		{ForkEnvironmentTool, "id", 20},
+		{UpdateEnvironmentTool, "description", 255},
+		{AddComponentTool, "description", 255},
+		{AddComponentTool, "id", 20},
+		{UpdateComponentTool, "description", 255},
+	}
+	for _, tc := range cases {
+		schema, ok := tc.tool.InputSchema.(*jsonschema.Schema)
+		if !ok {
+			t.Errorf("%s: InputSchema is %T, want *jsonschema.Schema", tc.tool.Name, tc.tool.InputSchema)
+			continue
+		}
+		prop := schema.Properties[tc.field]
+		if prop == nil {
+			t.Errorf("%s: no property %q", tc.tool.Name, tc.field)
+			continue
+		}
+		if prop.MaxLength == nil || *prop.MaxLength != tc.want {
+			t.Errorf("%s.%s: maxLength = %v, want %d", tc.tool.Name, tc.field, prop.MaxLength, tc.want)
+		}
+	}
+}
+
 // TestStripKeysRemovesNestedKeys verifies icon-style stripping at every level.
 func TestStripKeysRemovesNestedKeys(t *testing.T) {
 	v := map[string]any{

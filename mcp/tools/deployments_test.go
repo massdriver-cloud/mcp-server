@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/deployments"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/instances"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
@@ -200,6 +201,26 @@ func TestHandleGetDeploymentLogs(t *testing.T) {
 			},
 			wantText: "no logs available",
 		},
+		{
+			name:  "long log is tailed by default with a note",
+			input: GetDeploymentLogsInput{ID: "dep1"},
+			stub: &stubDeployments{
+				getLogsFn: func(context.Context, string) (string, error) {
+					return strings.Repeat("provider install noise\n", 3000) + "Apply complete!\n", nil
+				},
+			},
+			wantText: "(showing the last ",
+		},
+		{
+			name:  "tail_lines=-1 returns the complete log",
+			input: GetDeploymentLogsInput{ID: "dep1", TailLines: -1},
+			stub: &stubDeployments{
+				getLogsFn: func(context.Context, string) (string, error) {
+					return "first line\n" + strings.Repeat("noise\n", 2000), nil
+				},
+			},
+			wantText: "first line",
+		},
 	}
 
 	for _, tt := range tests {
@@ -220,6 +241,31 @@ func TestHandleGetDeploymentLogs(t *testing.T) {
 				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
 			}
 		})
+	}
+}
+
+// TestGetDeploymentLogsFollow verifies follow mode returns the streamed logs
+// verbatim under a terminal-status header.
+func TestGetDeploymentLogsFollow(t *testing.T) {
+	c := &Client{Deployments: &stubDeployments{
+		tailLogsFn: func(_ context.Context, _ string, w io.Writer) error {
+			_, err := io.WriteString(w, "Apply complete! Resources: 3 added.\n")
+			return err
+		},
+		getFn: func(_ context.Context, id string) (*deployments.Deployment, error) {
+			return &deployments.Deployment{ID: id, Status: "COMPLETED"}, nil
+		},
+	}}
+	result, _, err := HandleGetDeploymentLogs(c)(context.Background(), nil, GetDeploymentLogsInput{ID: "dep1", Follow: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	text := resultText(t, result)
+	if !strings.Contains(text, "finished with status: COMPLETED") {
+		t.Errorf("missing terminal status header, got: %s", text)
+	}
+	if !strings.Contains(text, "Apply complete! Resources: 3 added.") {
+		t.Errorf("missing streamed logs, got: %q", text)
 	}
 }
 
@@ -283,6 +329,116 @@ func TestHandleCreateDeployment(t *testing.T) {
 				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
 			}
 		})
+	}
+}
+
+// TestCreateDeploymentUseLatestParams covers the saved-params reuse flag on
+// create_deployment (propose_deployment shares the same helper).
+func TestCreateDeploymentUseLatestParams(t *testing.T) {
+	savedParams := map[string]any{"size": "large", "replicas": float64(3)}
+
+	t.Run("reuses instance saved params", func(t *testing.T) {
+		var gotParams map[string]any
+		c := &Client{
+			Instances: &stubInstances{
+				getFn: func(_ context.Context, id string) (*instances.Instance, error) {
+					return &instances.Instance{ID: id, Params: savedParams}, nil
+				},
+			},
+			Deployments: &stubDeployments{
+				createFn: func(_ context.Context, _ string, input deployments.CreateInput) (*deployments.Deployment, error) {
+					gotParams = input.Params
+					return &deployments.Deployment{ID: "dep1", Status: "PENDING"}, nil
+				},
+			},
+		}
+		input := CreateDeploymentInput{InstanceID: "inst1", Action: "DECOMMISSION", UseLatestParams: true}
+		if _, _, err := HandleCreateDeployment(c)(context.Background(), nil, input); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotParams["size"] != "large" {
+			t.Errorf("deployment created with params %v, want the instance's saved params", gotParams)
+		}
+	})
+
+	t.Run("mutually exclusive with explicit params", func(t *testing.T) {
+		c := &Client{Deployments: &stubDeployments{}}
+		input := CreateDeploymentInput{
+			InstanceID:      "inst1",
+			Action:          "PROVISION",
+			Params:          map[string]any{"size": "small"},
+			UseLatestParams: true,
+		}
+		_, _, err := HandleCreateDeployment(c)(context.Background(), nil, input)
+		if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+			t.Fatalf("expected mutual-exclusion error, got: %v", err)
+		}
+	})
+
+	t.Run("fails when instance has never been deployed", func(t *testing.T) {
+		c := &Client{
+			Instances: &stubInstances{
+				getFn: func(_ context.Context, id string) (*instances.Instance, error) {
+					return &instances.Instance{ID: id, Status: string(instances.StatusInitialized), Params: map[string]any{}}, nil
+				},
+			},
+			Deployments: &stubDeployments{},
+		}
+		input := CreateDeploymentInput{InstanceID: "inst1", Action: "PROVISION", UseLatestParams: true}
+		_, _, err := HandleCreateDeployment(c)(context.Background(), nil, input)
+		if err == nil || !strings.Contains(err.Error(), "never been deployed") {
+			t.Fatalf("expected never-deployed error, got: %v", err)
+		}
+	})
+
+	t.Run("deployed instance with empty params is reusable", func(t *testing.T) {
+		// A bundle with no configurable params legitimately saves {} after a
+		// real deployment — that must not be mistaken for never-deployed.
+		var gotParams map[string]any
+		c := &Client{
+			Instances: &stubInstances{
+				getFn: func(_ context.Context, id string) (*instances.Instance, error) {
+					return &instances.Instance{ID: id, Status: string(instances.StatusProvisioned)}, nil
+				},
+			},
+			Deployments: &stubDeployments{
+				createFn: func(_ context.Context, _ string, input deployments.CreateInput) (*deployments.Deployment, error) {
+					gotParams = input.Params
+					return &deployments.Deployment{ID: "dep1", Status: "PENDING"}, nil
+				},
+			},
+		}
+		input := CreateDeploymentInput{InstanceID: "inst1", Action: "DECOMMISSION", UseLatestParams: true}
+		if _, _, err := HandleCreateDeployment(c)(context.Background(), nil, input); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotParams == nil || len(gotParams) != 0 {
+			t.Errorf("deployment created with params %v, want an empty non-nil map", gotParams)
+		}
+	})
+}
+
+func TestProposeDeploymentUseLatestParams(t *testing.T) {
+	var gotParams map[string]any
+	c := &Client{
+		Instances: &stubInstances{
+			getFn: func(_ context.Context, id string) (*instances.Instance, error) {
+				return &instances.Instance{ID: id, Params: map[string]any{"size": "large"}}, nil
+			},
+		},
+		Deployments: &stubDeployments{
+			proposeFn: func(_ context.Context, _ string, input deployments.ProposeInput) (*deployments.Deployment, error) {
+				gotParams = input.Params
+				return &deployments.Deployment{ID: "dep1", Status: "PROPOSED"}, nil
+			},
+		},
+	}
+	input := ProposeDeploymentInput{InstanceID: "inst1", Action: "DECOMMISSION", UseLatestParams: true}
+	if _, _, err := HandleProposeDeployment(c)(context.Background(), nil, input); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotParams["size"] != "large" {
+		t.Errorf("proposal created with params %v, want the instance's saved params", gotParams)
 	}
 }
 

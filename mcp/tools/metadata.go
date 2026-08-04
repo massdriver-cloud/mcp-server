@@ -23,6 +23,7 @@ import (
 func init() {
 	applyAnnotations()
 	applyEnums()
+	applyMaxLengths()
 }
 
 // readOnly marks a tool that never modifies state.
@@ -159,26 +160,76 @@ func applyEnums() {
 	})
 }
 
-// withEnums infers the input schema for the given zero-value input (the same way
-// mcp-go's AddTool would), applies enum constraints to the named string
-// properties, and assigns the result to the tool's InputSchema so AddTool uses
-// it verbatim. It panics on a misconfigured field name since that is a
-// programming error caught at startup.
-func withEnums(tool *mcpsdk.Tool, in any, enums map[string][]string) {
+// applyMaxLengths attaches JSON Schema maxLength constraints mirroring API-side
+// limits that otherwise surface only as runtime mutation errors. Descriptions
+// are stored in 255-character columns; creation-time identifier slugs are
+// capped at 20 characters. Only slugs chosen at creation are constrained — the
+// `id` on get/update tools is a lookup reference (e.g. 'myproj-staging') that
+// can exceed the slug limit.
+func applyMaxLengths() {
+	const (
+		descriptionMax = 255
+		identifierMax  = 20
+	)
+	withMaxLengths(CreateProjectTool, CreateProjectInput{}, map[string]int{"description": descriptionMax, "id": identifierMax})
+	withMaxLengths(CloneProjectTool, CloneProjectInput{}, map[string]int{"description": descriptionMax, "id": identifierMax})
+	withMaxLengths(UpdateProjectTool, UpdateProjectInput{}, map[string]int{"description": descriptionMax})
+	withMaxLengths(CreateEnvironmentTool, CreateEnvironmentInput{}, map[string]int{"description": descriptionMax, "id": identifierMax})
+	withMaxLengths(ForkEnvironmentTool, ForkEnvironmentInput{}, map[string]int{"description": descriptionMax, "id": identifierMax})
+	withMaxLengths(UpdateEnvironmentTool, UpdateEnvironmentInput{}, map[string]int{"description": descriptionMax})
+	withMaxLengths(AddComponentTool, AddComponentInput{}, map[string]int{"description": descriptionMax, "id": identifierMax})
+	withMaxLengths(UpdateComponentTool, UpdateComponentInput{}, map[string]int{"description": descriptionMax})
+}
+
+// toolSchema returns the tool's input schema for constraint editing: the one
+// already assigned by an earlier helper, or a freshly inferred schema for the
+// given zero-value input (the same way mcp-go's AddTool would) assigned to the
+// tool so AddTool uses it verbatim. Sharing one schema instance lets multiple
+// constraint helpers compose on the same tool.
+func toolSchema(tool *mcpsdk.Tool, in any) *jsonschema.Schema {
+	if tool.InputSchema != nil {
+		if s, ok := tool.InputSchema.(*jsonschema.Schema); ok {
+			return s
+		}
+		panic(fmt.Sprintf("toolSchema: %s has a non-*jsonschema.Schema InputSchema (%T)", tool.Name, tool.InputSchema))
+	}
 	schema, err := jsonschema.ForType(reflect.TypeOf(in), &jsonschema.ForOptions{})
 	if err != nil {
-		panic(fmt.Sprintf("withEnums: inferring schema for %T: %v", in, err))
+		panic(fmt.Sprintf("toolSchema: inferring schema for %T: %v", in, err))
 	}
+	tool.InputSchema = schema
+	return schema
+}
+
+// mustProp returns the named property from the schema, panicking on a
+// misconfigured field name since that is a programming error caught at startup.
+func mustProp(schema *jsonschema.Schema, in any, field string) *jsonschema.Schema {
+	prop, ok := schema.Properties[field]
+	if !ok {
+		panic(fmt.Sprintf("%T has no property %q", in, field))
+	}
+	return prop
+}
+
+// withEnums applies enum constraints to the named string properties of the
+// tool's input schema.
+func withEnums(tool *mcpsdk.Tool, in any, enums map[string][]string) {
+	schema := toolSchema(tool, in)
 	for field, values := range enums {
-		prop, ok := schema.Properties[field]
-		if !ok {
-			panic(fmt.Sprintf("withEnums: %T has no property %q", in, field))
-		}
 		anyVals := make([]any, len(values))
 		for i, v := range values {
 			anyVals[i] = v
 		}
-		prop.Enum = anyVals
+		mustProp(schema, in, field).Enum = anyVals
 	}
-	tool.InputSchema = schema
+}
+
+// withMaxLengths applies maxLength constraints to the named string properties
+// of the tool's input schema.
+func withMaxLengths(tool *mcpsdk.Tool, in any, limits map[string]int) {
+	schema := toolSchema(tool, in)
+	for field, limit := range limits {
+		l := limit
+		mustProp(schema, in, field).MaxLength = &l
+	}
 }
