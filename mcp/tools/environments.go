@@ -80,7 +80,7 @@ type CreateEnvironmentInput struct {
 	ProjectID   string         `json:"project_id"   jsonschema:"The ID of the project to create the environment in."`
 	ID          string         `json:"id"           jsonschema:"Unique identifier for the environment within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
 	Name        string         `json:"name"                  jsonschema:"Human-readable name shown in the UI."`
-	Description string         `json:"description,omitempty" jsonschema:"Optional description of the environment."`
+	Description string         `json:"description,omitempty" jsonschema:"Optional description of the environment. Max 255 characters."`
 	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Custom attribute tags at the environment scope (e.g., {\"env\":\"prod\"}). Must conform to the organization's custom-attribute schema; some may be required."`
 }
 
@@ -125,7 +125,7 @@ var UpdateEnvironmentTool = &mcpsdk.Tool{
 type UpdateEnvironmentInput struct {
 	ID                     string         `json:"id"                      jsonschema:"The environment identifier (e.g., 'myproj-staging')."`
 	Name                   *string        `json:"name,omitempty"          jsonschema:"Optional. New human-readable name. Omit to leave unchanged; cannot be set to an empty string."`
-	Description            *string        `json:"description,omitempty"   jsonschema:"Optional. New description. Omit to leave unchanged; pass an empty string to clear it."`
+	Description            *string        `json:"description,omitempty"   jsonschema:"Optional. New description, max 255 characters. Omit to leave unchanged; pass an empty string to clear it."`
 	Attributes             map[string]any `json:"attributes,omitempty"    jsonschema:"Optional. Replacement custom attribute tags at the environment scope. Omit to leave unchanged; when provided, replaces the full attribute set. Must conform to the organization's custom-attribute schema."`
 	DecommissionProtection *bool          `json:"decommission_protection,omitempty" jsonschema:"Optional. Toggles the guard that blocks decommission_environment and per-instance DECOMMISSION deployments. Omit to leave unchanged."`
 }
@@ -300,7 +300,7 @@ type ForkEnvironmentInput struct {
 	ParentID                string         `json:"parent_id"                          jsonschema:"The ID of the parent environment to fork from."`
 	ID                      string         `json:"id"                                 jsonschema:"Unique identifier for the new environment within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
 	Name                    string         `json:"name"                               jsonschema:"Human-readable name shown in the UI."`
-	Description             string         `json:"description,omitempty"              jsonschema:"Optional description of the fork's purpose."`
+	Description             string         `json:"description,omitempty"              jsonschema:"Optional description of the fork's purpose. Max 255 characters."`
 	Attributes              map[string]any `json:"attributes,omitempty"               jsonschema:"Optional. Custom attribute tags at the environment scope. Must conform to the organization's custom-attribute schema; some may be required."`
 	CopySecrets             bool           `json:"copy_secrets,omitempty"             jsonschema:"Optional. When true, copies every component's secret values from the parent into the fork. Default false."`
 	CopyRemoteReferences    bool           `json:"copy_remote_references,omitempty"   jsonschema:"Optional. When true, copies every component's remote resource references from the parent into the fork. Default false."`

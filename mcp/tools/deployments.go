@@ -81,14 +81,18 @@ func HandleGetDeployment(c *Client) func(context.Context, *mcpsdk.CallToolReques
 var GetDeploymentLogsTool = &mcpsdk.Tool{
 	Name: "get_deployment_logs",
 	Description: "Gets the logs for a specific deployment. By default returns a snapshot of the logs so far. " +
-		"Set follow=true to block until the deployment reaches a terminal status (COMPLETED, FAILED, ABORTED, or REJECTED), then return the final status plus the complete logs — " +
-		"use this after create_deployment or approve_deployment to deploy and see the result in a single call.",
+		"Output is capped to the most recent 40KB — a leading note reports when older content was elided; use `tail_lines` to adjust (-1 for everything). " +
+		"Set follow=true to block until the deployment reaches a terminal status (COMPLETED, FAILED, ABORTED, or REJECTED), then return the final status plus the logs — " +
+		"use this after create_deployment or approve_deployment to deploy and see the result in a single call. " +
+		"If follow times out before the deployment finishes, the response says so; call again with follow=true to keep waiting — " +
+		"combine with a small tail_lines on those repeat calls to avoid re-reading output you already have.",
 }
 
 type GetDeploymentLogsInput struct {
 	ID             string `json:"id"                        jsonschema:"The deployment ID to fetch logs for."`
-	Follow         bool   `json:"follow,omitempty"          jsonschema:"Optional. If true, wait until the deployment finishes and return the final status plus complete logs. Default false (snapshot of logs so far)."`
+	Follow         bool   `json:"follow,omitempty"          jsonschema:"Optional. If true, wait until the deployment finishes and return the final status plus logs. Default false (snapshot of logs so far)."`
 	TimeoutSeconds int    `json:"timeout_seconds,omitempty" jsonschema:"Optional. When follow is true, maximum seconds to wait (default 300, max 600)."`
+	TailLines      int    `json:"tail_lines,omitempty"      jsonschema:"Optional. Return only the last N log lines. Omit for the default cap (last 40KB); pass -1 for the complete log."`
 }
 
 func HandleGetDeploymentLogs(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetDeploymentLogsInput) (*mcpsdk.CallToolResult, any, error) {
@@ -106,7 +110,7 @@ func HandleGetDeploymentLogs(c *Client) func(context.Context, *mcpsdk.CallToolRe
 			if logs == "" {
 				return textResult("no logs available"), nil, nil
 			}
-			return textResult(logs), nil, nil
+			return textResult(tailLogs(logs, args.TailLines)), nil, nil
 		}
 
 		// Follow mode: tail until the deployment terminates (or we time out),
@@ -151,9 +155,10 @@ func HandleGetDeploymentLogs(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		if isTerminalDeploymentStatus(status) {
 			header = fmt.Sprintf("deployment %s finished with status: %s\n\n", args.ID, status)
 		} else {
-			header = fmt.Sprintf("deployment %s did not finish within %ds (current status: %s)\n\n", args.ID, timeout, status)
+			header = fmt.Sprintf("deployment %s did not finish within %ds (current status: %s). "+
+				"Call get_deployment_logs again with follow=true to continue waiting.\n\n", args.ID, timeout, status)
 		}
-		logs := buf.String()
+		logs := tailLogs(buf.String(), args.TailLines)
 		if logs == "" {
 			logs = "(no logs)"
 		}
@@ -164,16 +169,18 @@ func HandleGetDeploymentLogs(c *Client) func(context.Context, *mcpsdk.CallToolRe
 var CreateDeploymentTool = &mcpsdk.Tool{
 	Name: "create_deployment",
 	Description: "Creates and starts a deployment for an instance. Use action PROVISION to deploy, DECOMMISSION to tear down, or PLAN to preview changes. " +
-		"`params` is REQUIRED for every action (including DECOMMISSION) and is the full parameter set, validated against the instance's params schema (see get_instance.paramsSchema) — it is not a partial override, and there is no 'use saved params' mode. " +
-		"To redeploy an instance's current configuration, read get_instance.params and pass it back here. To tear down a whole environment without assembling params, use decommission_environment instead. " +
+		"Every action (including DECOMMISSION) needs the full parameter set, validated against the instance's params schema (see get_instance.paramsSchema) — `params` is not a partial override. " +
+		"Either pass `params` explicitly, or set `use_latest_params` to true to reuse the instance's current saved configuration (the common case for DECOMMISSION, PLAN of the current config, or redeploy-as-is). " +
+		"To tear down a whole environment, use decommission_environment instead. To PLAN an existing deployment's params, plan_deployment is more direct. " +
 		"Use get_deployment_logs with follow=true to block until it finishes and see the result.",
 }
 
 type CreateDeploymentInput struct {
-	InstanceID string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
-	Action     string         `json:"action"            jsonschema:"Deployment action: PROVISION, DECOMMISSION, or PLAN."`
-	Params     map[string]any `json:"params,omitempty"  jsonschema:"The full bundle parameter set for this deployment, validated against the instance params schema (get_instance.paramsSchema). Required for every action; omitting it sends an empty map and fails schema validation. Read get_instance.params to reuse current config."`
-	Message    string         `json:"message,omitempty" jsonschema:"Optional. Deployment message or reason."`
+	InstanceID      string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
+	Action          string         `json:"action"            jsonschema:"Deployment action: PROVISION, DECOMMISSION, or PLAN."`
+	Params          map[string]any `json:"params,omitempty"  jsonschema:"The full bundle parameter set for this deployment, validated against the instance params schema (get_instance.paramsSchema). Required unless use_latest_params is true; omitting both sends an empty map and fails schema validation."`
+	UseLatestParams bool           `json:"use_latest_params,omitempty" jsonschema:"Optional. When true, reuse the instance's saved params — the values from its most recent deployment, even if that deployment failed — instead of passing params. Mutually exclusive with params. Fails if the instance has never been deployed."`
+	Message         string         `json:"message,omitempty" jsonschema:"Optional. Deployment message or reason."`
 }
 
 func HandleCreateDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -189,6 +196,12 @@ func HandleCreateDeployment(c *Client) func(context.Context, *mcpsdk.CallToolReq
 		// empty map so callers get a clear "required property" validation error
 		// rather than a cryptic GraphQL "Expected type Map!, found null".
 		params := args.Params
+		if args.UseLatestParams {
+			var err error
+			if params, err = latestInstanceParams(ctx, c, "create_deployment", args.InstanceID, args.Params); err != nil {
+				return nil, nil, err
+			}
+		}
 		if params == nil {
 			params = map[string]any{}
 		}
@@ -247,14 +260,16 @@ func HandleAbortDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 var ProposeDeploymentTool = &mcpsdk.Tool{
 	Name: "propose_deployment",
 	Description: "Proposes a deployment for approval. Only supports PROVISION and DECOMMISSION actions. The deployment enters PROPOSED status and must be approved or rejected. " +
-		"`params` is REQUIRED for both actions and is the full parameter set, validated against the instance's params schema (see get_instance.paramsSchema) — not a partial override. To reuse current configuration, read get_instance.params and pass it back.",
+		"Both actions need the full parameter set, validated against the instance's params schema (see get_instance.paramsSchema) — `params` is not a partial override. " +
+		"Either pass `params` explicitly, or set `use_latest_params` to true to reuse the instance's current saved configuration.",
 }
 
 type ProposeDeploymentInput struct {
-	InstanceID string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
-	Action     string         `json:"action"            jsonschema:"Deployment action: PROVISION or DECOMMISSION."`
-	Params     map[string]any `json:"params,omitempty"  jsonschema:"The full bundle parameter set for this deployment, validated against the instance params schema (get_instance.paramsSchema). Required for every action; omitting it sends an empty map and fails schema validation. Read get_instance.params to reuse current config."`
-	Message    string         `json:"message,omitempty" jsonschema:"Optional. Deployment message or reason."`
+	InstanceID      string         `json:"instance_id" jsonschema:"The instance ID to deploy."`
+	Action          string         `json:"action"            jsonschema:"Deployment action: PROVISION or DECOMMISSION."`
+	Params          map[string]any `json:"params,omitempty"  jsonschema:"The full bundle parameter set for this deployment, validated against the instance params schema (get_instance.paramsSchema). Required unless use_latest_params is true; omitting both sends an empty map and fails schema validation."`
+	UseLatestParams bool           `json:"use_latest_params,omitempty" jsonschema:"Optional. When true, reuse the instance's saved params — the values from its most recent deployment, even if that deployment failed — instead of passing params. Mutually exclusive with params. Fails if the instance has never been deployed."`
+	Message         string         `json:"message,omitempty" jsonschema:"Optional. Deployment message or reason."`
 }
 
 func HandleProposeDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ProposeDeploymentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -268,6 +283,12 @@ func HandleProposeDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 
 		// See HandleCreateDeployment: the API requires a non-null params map.
 		params := args.Params
+		if args.UseLatestParams {
+			var err error
+			if params, err = latestInstanceParams(ctx, c, "propose_deployment", args.InstanceID, args.Params); err != nil {
+				return nil, nil, err
+			}
+		}
 		if params == nil {
 			params = map[string]any{}
 		}
@@ -459,6 +480,25 @@ func HandleCompareDeployments(c *Client) func(context.Context, *mcpsdk.CallToolR
 		}
 		return result, comparison, nil
 	}
+}
+
+// latestInstanceParams resolves use_latest_params for create_deployment and
+// propose_deployment: it fetches the instance and returns its saved params
+// (the values from its most recent deployment). Reuse must be explicit and
+// unambiguous, so passing params alongside the flag is an error, as is an
+// instance with nothing saved to reuse.
+func latestInstanceParams(ctx context.Context, c *Client, toolName, instanceID string, explicit map[string]any) (map[string]any, error) {
+	if explicit != nil {
+		return nil, fmt.Errorf("%s: params and use_latest_params are mutually exclusive — pass one or the other", toolName)
+	}
+	instance, err := c.Instances.Get(ctx, instanceID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: fetching instance for use_latest_params: %w", toolName, err)
+	}
+	if len(instance.Params) == 0 {
+		return nil, fmt.Errorf("%s: use_latest_params requires an instance that has been deployed before, but instance %s has no saved params — pass params explicitly", toolName, instanceID)
+	}
+	return instance.Params, nil
 }
 
 // isTerminalDeploymentStatus reports whether a deployment is done and its

@@ -33,12 +33,13 @@ func HandleGetOrganization(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 var CreateCustomAttributeTool = &mcpsdk.Tool{
 	Name: "create_custom_attribute",
 	Description: "Creates a custom attribute definition for the organization. " +
+		"Attribute keys are unique across the ENTIRE organization and ALL scopes (case-insensitively) — the same key cannot be declared at two different scopes, so pick per-scope key names up front (e.g. `team` at PROJECT scope blocks `team` at ENVIRONMENT scope). " +
 		"When `required` is true, the attribute becomes MANDATORY org-wide for every resource at its scope — set it deliberately. " +
 		"This tool defaults `required` to false when you omit it.",
 }
 
 type CreateCustomAttributeInput struct {
-	Key      string   `json:"key"      jsonschema:"Attribute key name."`
+	Key      string   `json:"key"      jsonschema:"Attribute key name: 1-64 characters, identifier-like (starts with a letter or underscore; letters, digits, and underscores only). Case-insensitive (TEAM and team are the same key); the md- prefix is reserved. Keys are unique org-wide across ALL scopes."`
 	Scope    string   `json:"scope"    jsonschema:"Attribute scope: PROJECT, ENVIRONMENT, COMPONENT, or REPO."`
 	Required *bool    `json:"required,omitempty" jsonschema:"Optional. Whether the attribute is mandatory org-wide at its scope. Defaults to false when omitted. Set true only when you intend to require it on every resource at that scope."`
 	Values   []string `json:"values,omitempty"   jsonschema:"Optional. Allowed values for the attribute."`

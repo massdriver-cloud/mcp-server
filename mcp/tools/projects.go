@@ -82,9 +82,9 @@ var CreateProjectTool = &mcpsdk.Tool{
 }
 
 type CreateProjectInput struct {
-	ID          string         `json:"id"                    jsonschema:"Unique identifier for the project, max 12 lowercase alphanumeric characters. Cannot be changed after creation."`
+	ID          string         `json:"id"                    jsonschema:"Unique identifier for the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
 	Name        string         `json:"name"                  jsonschema:"Human-readable name shown in the UI."`
-	Description string         `json:"description,omitempty" jsonschema:"Optional description of the project."`
+	Description string         `json:"description,omitempty" jsonschema:"Optional description of the project. Max 255 characters."`
 	Attributes  map[string]any `json:"attributes,omitempty"  jsonschema:"Optional. Custom attribute tags at the project scope (e.g., {\"team\":\"eng\"}). Must conform to the organization's custom-attribute schema; some may be required. Use get_organization to discover defined attributes."`
 }
 
@@ -126,9 +126,9 @@ var CloneProjectTool = &mcpsdk.Tool{
 
 type CloneProjectInput struct {
 	SourceProjectID string         `json:"source_project_id"     jsonschema:"The ID of the project to clone from."`
-	ID              string         `json:"id"                    jsonschema:"Unique identifier for the new project, max 12 lowercase alphanumeric characters. Cannot be changed after creation."`
+	ID              string         `json:"id"                    jsonschema:"Unique identifier for the new project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
 	Name            string         `json:"name"                  jsonschema:"Human-readable name for the new project shown in the UI."`
-	Description     string         `json:"description,omitempty" jsonschema:"Optional description of the new project."`
+	Description     string         `json:"description,omitempty" jsonschema:"Optional description of the new project. Max 255 characters."`
 	Attributes      map[string]any `json:"attributes,omitempty"  jsonschema:"Optional. Custom attribute tags at the project scope (e.g., {\"team\":\"eng\"}). Must conform to the organization's custom-attribute schema. Use get_organization to discover defined attributes."`
 }
 
@@ -173,7 +173,7 @@ var UpdateProjectTool = &mcpsdk.Tool{
 type UpdateProjectInput struct {
 	ID          string         `json:"id"                    jsonschema:"The project ID to update."`
 	Name        *string        `json:"name,omitempty"        jsonschema:"Optional. New human-readable name. Omit to leave unchanged; cannot be set to an empty string."`
-	Description *string        `json:"description,omitempty" jsonschema:"Optional. New description. Omit to leave unchanged; pass an empty string to clear it."`
+	Description *string        `json:"description,omitempty" jsonschema:"Optional. New description, max 255 characters. Omit to leave unchanged; pass an empty string to clear it."`
 	Attributes  map[string]any `json:"attributes,omitempty"  jsonschema:"Optional. Replacement custom attribute tags at the project scope. Omit to leave unchanged; when provided, replaces the full attribute set. Must conform to the organization's custom-attribute schema."`
 }
 
