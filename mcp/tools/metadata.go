@@ -67,14 +67,15 @@ func annotate(tools []*mcpsdk.Tool, annotations func() *mcpsdk.ToolAnnotations) 
 func applyAnnotations() {
 	readers := []*mcpsdk.Tool{
 		GetProjectTool, ListProjectsTool,
-		GetEnvironmentTool, ListEnvironmentsTool,
+		GetEnvironmentTool, ListEnvironmentsTool, ListUnfulfilledDependenciesTool, ListEnvironmentLinksTool,
 		GetInstanceTool, ListInstancesTool, ListAlarmsTool,
 		GetDeploymentTool, ListDeploymentsTool, GetDeploymentLogsTool, CompareDeploymentsTool,
 		CompareEnvironmentsTool,
 		GetComponentTool, ListComponentsTool,
 		GetBundleTool,
 		GetResourceTool, ListResourcesTool, ExportResourceTool, ListResourceGrantsTool,
-		GetOrganizationTool,
+		GetResourceTypeTool, ListResourceTypeDependentsTool,
+		GetOrganizationTool, GetOrganizationSettingsTool,
 		GetViewerTool,
 		GetAuditLogTool, ListAuditLogsTool, ListAuditLogEventTypesTool,
 		GetGroupTool, ListGroupsTool,
@@ -94,7 +95,7 @@ func applyAnnotations() {
 	additive := []*mcpsdk.Tool{
 		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, ForkEnvironmentTool, AddComponentTool, LinkComponentsTool,
 		CreateResourceTool, CreateResourceGrantTool, CreateOciRepoGrantTool, CreateCustomAttributeTool,
-		CreateGroupTool, CreateServiceAccountTool, CreateOciRepoTool, CreatePolicyTool,
+		CreateGroupTool, CreateOciRepoTool, CreatePolicyTool,
 		ProposeDeploymentTool, RejectDeploymentTool, PlanDeploymentTool, RollbackDeploymentTool,
 	}
 	annotate(additive, func() *mcpsdk.ToolAnnotations { return writeHints(false, false) })
@@ -107,6 +108,7 @@ func applyAnnotations() {
 		UpdateComponentTool, SetComponentPositionTool, UpdateResourceTool, UpdateCustomAttributeTool,
 		UpdateGroupTool, AddGroupUserTool, AddGroupServiceAccountTool,
 		UpdateServiceAccountTool, UpdateOciRepoTool, UpdatePolicyTool,
+		UpdateOrganizationSettingsTool,
 	}
 	annotate(updates, func() *mcpsdk.ToolAnnotations { return writeHints(false, true) })
 
@@ -151,6 +153,7 @@ func applyEnums() {
 	withEnums(ListResourcesTool, ListResourcesInput{}, map[string][]string{"origin": {"IMPORTED", "PROVISIONED"}})
 	withEnums(CreateResourceGrantTool, CreateResourceGrantInput{}, map[string][]string{"action": {"resource:export"}})
 	withEnums(CreateCustomAttributeTool, CreateCustomAttributeInput{}, map[string][]string{"scope": scopes})
+	withEnums(UpdateOrganizationSettingsTool, UpdateOrganizationSettingsInput{}, map[string][]string{"default_bundle_access": {"NONE", "ALL_PROJECTS"}})
 	withEnums(ListPolicyAttributeValuesTool, ListPolicyAttributeValuesInput{}, map[string][]string{"scope": scopes})
 	withEnums(CreatePolicyTool, CreatePolicyInput{}, map[string][]string{"effect": effects})
 	withEnums(UpdatePolicyTool, UpdatePolicyInput{}, map[string][]string{"effect": effects})
@@ -165,11 +168,12 @@ func applyEnums() {
 // are stored in 255-character columns; creation-time identifier slugs are
 // capped at 20 characters. Only slugs chosen at creation are constrained — the
 // `id` on get/update tools is a lookup reference (e.g. 'myproj-staging') that
-// can exceed the slug limit.
+// can exceed the slug limit. OCI repository names have their own, longer limit.
 func applyMaxLengths() {
 	const (
 		descriptionMax = 255
 		identifierMax  = 20
+		ociRepoNameMax = 100
 	)
 	withMaxLengths(CreateProjectTool, CreateProjectInput{}, map[string]int{"description": descriptionMax, "id": identifierMax})
 	withMaxLengths(CloneProjectTool, CloneProjectInput{}, map[string]int{"description": descriptionMax, "id": identifierMax})
@@ -179,6 +183,7 @@ func applyMaxLengths() {
 	withMaxLengths(UpdateEnvironmentTool, UpdateEnvironmentInput{}, map[string]int{"description": descriptionMax})
 	withMaxLengths(AddComponentTool, AddComponentInput{}, map[string]int{"description": descriptionMax, "id": identifierMax})
 	withMaxLengths(UpdateComponentTool, UpdateComponentInput{}, map[string]int{"description": descriptionMax})
+	withMaxLengths(CreateOciRepoTool, CreateOciRepoInput{}, map[string]int{"id": ociRepoNameMax})
 }
 
 // toolSchema returns the tool's input schema for constraint editing: the one

@@ -19,21 +19,34 @@ var ListProjectsTool = &mcpsdk.Tool{
 }
 
 type ListProjectsInput struct {
-	Cursor   string   `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
-	PageSize int      `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
-	Search   string   `json:"search,omitempty"    jsonschema:"Optional. Free-text search across each project's name and description. Matches whole words anywhere in the text and is forgiving of partial or out-of-order terms. When set, results are ranked by relevance."`
-	Name     string   `json:"name,omitempty"      jsonschema:"Optional. Filters to projects whose display name exactly equals this value. Use search for partial matching. Mutually exclusive with name_in."`
-	NameIn   []string `json:"name_in,omitempty"   jsonschema:"Optional. Filters to projects whose display name is any of these exact values. Mutually exclusive with name."`
+	Cursor        string   `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int      `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
+	Search        string   `json:"search,omitempty"         jsonschema:"Optional. Free-text search across each project's name and description. Matches whole words anywhere in the text and is forgiving of partial or out-of-order terms. When set, results are ranked by relevance."`
+	Name          string   `json:"name,omitempty"           jsonschema:"Optional. Filters to projects whose display name exactly equals this value. Use search for partial matching. Mutually exclusive with name_in."`
+	NameIn        []string `json:"name_in,omitempty"        jsonschema:"Optional. Filters to projects whose display name is any of these exact values. Mutually exclusive with name."`
+	CreatedAfter  string   `json:"created_after,omitempty"  jsonschema:"Optional. Only projects created at or after this instant, as an RFC 3339 timestamp (e.g. '2026-01-15T00:00:00Z'). Bounds are inclusive; omit to leave this side open."`
+	CreatedBefore string   `json:"created_before,omitempty" jsonschema:"Optional. Only projects created at or before this instant, as an RFC 3339 timestamp (e.g. '2026-01-15T00:00:00Z'). Bounds are inclusive; omit to leave this side open."`
 }
 
 func HandleListProjects(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
+		createdAfter, err := parseTimestamp("list_projects", "created_after", args.CreatedAfter)
+		if err != nil {
+			return nil, nil, err
+		}
+		createdBefore, err := parseTimestamp("list_projects", "created_before", args.CreatedBefore)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		page, err := c.Projects.ListPage(ctx, projects.ListInput{
-			PageSize: clampPageSize(args.PageSize),
-			After:    args.Cursor,
-			Search:   args.Search,
-			Name:     args.Name,
-			NameIn:   args.NameIn,
+			PageSize:      clampPageSize(args.PageSize),
+			After:         args.Cursor,
+			Search:        args.Search,
+			Name:          args.Name,
+			NameIn:        args.NameIn,
+			CreatedAfter:  createdAfter,
+			CreatedBefore: createdBefore,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_projects: %w", err)

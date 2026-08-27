@@ -433,3 +433,31 @@ func TestHandleListOciRepoGrants(t *testing.T) {
 		})
 	}
 }
+
+// TestListOciReposForwardsFilters verifies the newer filter arguments reach the SDK.
+func TestListOciReposForwardsFilters(t *testing.T) {
+	var got ocirepos.ListInput
+	c := &Client{OciRepos: &stubOciRepos{
+		listPageFn: func(_ context.Context, input ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error) {
+			got = input
+			return types.Page[ocirepos.OciRepo]{}, nil
+		},
+	}}
+
+	_, _, err := HandleListOciRepos(c)(context.Background(), nil, ListOciReposInput{
+		Attributes:   []AttributeFilterInput{{Key: "team", In: []string{"platform", "data"}}},
+		CreatedAfter: "2026-01-15T00:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got.Attributes) != 1 || len(got.Attributes[0].In) != 2 {
+		t.Errorf("Attributes = %+v, want one entry with 2 values", got.Attributes)
+	}
+	if got.CreatedAfter.IsZero() {
+		t.Error("CreatedAfter should be set")
+	}
+	if !got.CreatedBefore.IsZero() {
+		t.Error("CreatedBefore should stay zero so that bound stays open")
+	}
+}

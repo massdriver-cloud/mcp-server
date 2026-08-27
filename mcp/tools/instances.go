@@ -11,18 +11,19 @@ import (
 var ListInstancesTool = &mcpsdk.Tool{
 	Name: "list_instances",
 	Description: "Lists instances in the organization, one page at a time. " +
-		"STRONGLY PREFER filtering by `project_id`, `environment_id`, or `status` — unfiltered lists can span thousands of instances. " +
+		"STRONGLY PREFER filtering by `project_id`, `environment_id`, `status`, or `attributes` — unfiltered lists can span thousands of instances. " +
 		"Returns up to `page_size` instances (default 25, max 100) plus a `next_cursor` for the following page. " +
 		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
 		"Do NOT paginate to exhaustion unless the user explicitly asked for every instance.",
 }
 
 type ListInstancesInput struct {
-	ProjectID     string `json:"project_id,omitempty"     jsonschema:"Optional. Filter to instances belonging to this project ID."`
-	EnvironmentID string `json:"environment_id,omitempty" jsonschema:"Optional. Filter to instances belonging to this environment ID."`
-	Status        string `json:"status,omitempty"         jsonschema:"Optional. Filter by status: INITIALIZED, PROVISIONED, DECOMMISSIONED, or FAILED."`
-	Cursor        string `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
-	PageSize      int    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
+	ProjectID     string                 `json:"project_id,omitempty"     jsonschema:"Optional. Filter to instances belonging to this project ID."`
+	EnvironmentID string                 `json:"environment_id,omitempty" jsonschema:"Optional. Filter to instances belonging to this environment ID."`
+	Status        string                 `json:"status,omitempty"         jsonschema:"Optional. Filter by status: INITIALIZED, PROVISIONED, DECOMMISSIONED, or FAILED."`
+	Attributes    []AttributeFilterInput `json:"attributes,omitempty"     jsonschema:"Optional. Filter by custom attributes. An instance matches attributes set anywhere on its chain (project, environment, component, instance). Multiple entries are AND'd together."`
+	Cursor        string                 `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int                    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListInstances(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListInstancesInput) (*mcpsdk.CallToolResult, any, error) {
@@ -31,6 +32,7 @@ func HandleListInstances(c *Client) func(context.Context, *mcpsdk.CallToolReques
 			ProjectID:     args.ProjectID,
 			EnvironmentID: args.EnvironmentID,
 			Status:        instances.Status(args.Status),
+			Attributes:    toAttributeFilters(args.Attributes),
 			PageSize:      clampPageSize(args.PageSize),
 			After:         args.Cursor,
 		})

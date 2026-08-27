@@ -71,43 +71,6 @@ func HandleGetServiceAccount(c *Client) func(context.Context, *mcpsdk.CallToolRe
 	}
 }
 
-var CreateServiceAccountTool = &mcpsdk.Tool{
-	Name:        "create_service_account",
-	Description: "Creates a new service account in the organization. The response includes the bearer token which is only shown once.",
-}
-
-type CreateServiceAccountInput struct {
-	Name                                  string `json:"name"                                                 jsonschema:"The name of the service account."`
-	Description                           string `json:"description,omitempty"                                jsonschema:"Optional. A description of the service account."`
-	DefaultAccessTokenExpirationInMinutes int    `json:"default_access_token_expiration_in_minutes,omitempty" jsonschema:"Optional. Default expiration time for access tokens in minutes."`
-}
-
-func HandleCreateServiceAccount(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateServiceAccountInput) (*mcpsdk.CallToolResult, any, error) {
-	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args CreateServiceAccountInput) (*mcpsdk.CallToolResult, any, error) {
-		if args.Name == "" {
-			return nil, nil, fmt.Errorf("create_service_account: name is required")
-		}
-
-		created, err := c.ServiceAccounts.Create(ctx, serviceaccounts.CreateInput{
-			Name:                                  args.Name,
-			Description:                           args.Description,
-			DefaultAccessTokenExpirationInMinutes: args.DefaultAccessTokenExpirationInMinutes,
-		})
-		if err != nil {
-			if isMutationFailed(err) {
-				return errorResult(fmt.Sprintf("create_service_account failed: %s", mutationErr(err))), nil, nil
-			}
-			return nil, nil, fmt.Errorf("create_service_account: %w", err)
-		}
-
-		result, err := jsonResult(created)
-		if err != nil {
-			return nil, nil, err
-		}
-		return result, created, nil
-	}
-}
-
 var UpdateServiceAccountTool = &mcpsdk.Tool{
 	Name:        "update_service_account",
 	Description: "Updates a service account's name or description.",

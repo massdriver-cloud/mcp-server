@@ -71,6 +71,72 @@ func HandleGetEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolReque
 	}
 }
 
+var ListUnfulfilledDependenciesTool = &mcpsdk.Tool{
+	Name: "list_unfulfilled_dependencies",
+	Description: "Lists the required dependency inputs across an environment's instances that nothing fills — no blueprint link, " +
+		"no per-instance remote reference, and no environment default of the matching resource type. " +
+		"Each entry is one input a deploy would block on, naming the instance, the input field, and the resource type it needs; " +
+		"optional inputs are never included, so an empty list means nothing is blocking on connections. " +
+		"Use this first when deploy_environment or a deployment fails to start. " +
+		"Fix each entry by wiring the slot with link_components (a blueprint link), set_remote_reference (a resource wired into one instance), " +
+		"or set_environment_default (a resource shared to every instance in the environment). " +
+		"Results are sorted by instance identifier, then input name. The instance and resource type are slim references (id and name only).",
+}
+
+type ListUnfulfilledDependenciesInput struct {
+	EnvironmentID string `json:"environment_id" jsonschema:"The environment identifier to check (e.g., 'myproj-staging')."`
+}
+
+func HandleListUnfulfilledDependencies(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListUnfulfilledDependenciesInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListUnfulfilledDependenciesInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.EnvironmentID == "" {
+			return nil, nil, fmt.Errorf("list_unfulfilled_dependencies: environment_id is required")
+		}
+
+		deps, err := c.Environments.UnfulfilledDependencies(ctx, args.EnvironmentID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_unfulfilled_dependencies: %w", err)
+		}
+
+		out := listResult(deps)
+		return jsonResultStripping(out, "icon")
+	}
+}
+
+var ListEnvironmentLinksTool = &mcpsdk.Tool{
+	Name: "list_environment_links",
+	Description: "Lists the blueprint links actually in effect in an environment, given the bundle versions its instances run. " +
+		"A project's blueprint lists every link in the architecture; this is the subset that applies here, because a component can run " +
+		"different versions in different environments and a link applies only where the versions at both ends fall inside its version range " +
+		"(`fromVersionConstraint` / `toVersionConstraint`, tilde constraints where `~1` covers 1.x and `~0.4` covers 0.4.x). " +
+		"A link whose source or destination has no instance in this environment does not appear. " +
+		"Use list_components for the project-wide blueprint instead.",
+}
+
+type ListEnvironmentLinksInput struct {
+	EnvironmentID string `json:"environment_id" jsonschema:"The environment identifier whose effective links to list (e.g., 'myproj-staging')."`
+}
+
+func HandleListEnvironmentLinks(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListEnvironmentLinksInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListEnvironmentLinksInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.EnvironmentID == "" {
+			return nil, nil, fmt.Errorf("list_environment_links: environment_id is required")
+		}
+
+		links, err := c.Environments.Links(ctx, args.EnvironmentID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_environment_links: %w", err)
+		}
+
+		out := listResult(links)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
 var CreateEnvironmentTool = &mcpsdk.Tool{
 	Name:        "create_environment",
 	Description: "Creates a new environment within a project.",

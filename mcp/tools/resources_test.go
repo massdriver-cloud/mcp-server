@@ -573,3 +573,48 @@ func TestHandleDeleteResourceGrant(t *testing.T) {
 		})
 	}
 }
+
+// TestListResourcesForwardsFilters verifies the newer filter arguments reach the
+// SDK: a dropped filter would silently return a wider result set than asked for.
+func TestListResourcesForwardsFilters(t *testing.T) {
+	var got resources.ListInput
+	c := &Client{Resources: &stubResources{
+		listPageFn: func(_ context.Context, input resources.ListInput) (types.Page[resources.Resource], error) {
+			got = input
+			return types.Page[resources.Resource]{}, nil
+		},
+	}}
+
+	_, _, err := HandleListResources(c)(context.Background(), nil, ListResourcesInput{
+		ResourceType:  "aws-iam-role@1.2.3",
+		Attributes:    []AttributeFilterInput{{Key: "team", Eq: "platform"}},
+		CreatedAfter:  "2026-01-15T00:00:00Z",
+		CreatedBefore: "2026-02-15T00:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ResourceType != "aws-iam-role@1.2.3" {
+		t.Errorf("ResourceType = %q, want the version suffix preserved", got.ResourceType)
+	}
+	if len(got.Attributes) != 1 || got.Attributes[0].Key != "team" {
+		t.Errorf("Attributes = %+v, want one entry keyed team", got.Attributes)
+	}
+	if got.CreatedAfter.IsZero() || got.CreatedBefore.IsZero() {
+		t.Errorf("created window = [%v, %v], want both bounds set", got.CreatedAfter, got.CreatedBefore)
+	}
+}
+
+func TestListResourcesRejectsMalformedTimestamp(t *testing.T) {
+	c := &Client{Resources: &stubResources{
+		listPageFn: func(context.Context, resources.ListInput) (types.Page[resources.Resource], error) {
+			t.Fatal("SDK should not be called when a timestamp fails to parse")
+			return types.Page[resources.Resource]{}, nil
+		},
+	}}
+
+	_, _, err := HandleListResources(c)(context.Background(), nil, ListResourcesInput{CreatedAfter: "last tuesday"})
+	if err == nil || !strings.Contains(err.Error(), "created_after") {
+		t.Fatalf("expected a created_after parse error, got: %v", err)
+	}
+}

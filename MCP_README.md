@@ -36,6 +36,8 @@ This document describes all 106 tools available in the Massdriver MCP server.
 | `fork_environment` | Forks a new environment from a parent environment in the same project. Requires `parent_id`, `id`, `name`; optional toggles `copy_secrets`, `copy_remote_references`, and `copy_environment_defaults` (all default false) control what carries over. |
 | `deploy_environment` | Schedules a deployment of every instance in the environment in dependency order. Cancels any in-flight environment deployment and enqueues a fresh provision wave; changes happen asynchronously. |
 | `decommission_environment` | Schedules a teardown of every instance in the environment in reverse dependency order (the environment shell stays; use `delete_environment` to remove it afterwards). Blocked when decommission protection is enabled. |
+| `list_unfulfilled_dependencies` | Lists required dependency inputs across the environment's instances that nothing fills — no link, no remote reference, no environment default. Each entry is one input a deploy would block on. |
+| `list_environment_links` | Lists the blueprint links in effect in the environment, given the bundle versions its instances actually run. |
 
 ## Instances
 
@@ -91,9 +93,9 @@ This document describes all 106 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `list_resources` | Lists resources. Optionally filter by `origin`, `resource_type`, `environment_id`, or `search`. |
+| `list_resources` | Lists resources. Optionally filter by `origin`, `resource_type` (accepts an `@version` pin), `environment_id`, `search`, `attributes`, or a `created_after`/`created_before` window. |
 | `get_resource` | Gets a resource by ID (payload values are masked). |
-| `create_resource` | Imports a resource. Requires `resource_type_id` and `name`. |
+| `create_resource` | Imports a resource. Requires `resource_type_id` and `name`. Use `get_resource_type` first to learn the payload schema. |
 | `update_resource` | Updates a resource's name or payload. |
 | `delete_resource` | Deletes an imported resource. |
 | `export_resource` | Exports a resource with unmasked payload (audit-logged). |
@@ -101,11 +103,20 @@ This document describes all 106 tools available in the Massdriver MCP server.
 | `delete_resource_grant` | Deletes a sharing grant. |
 | `list_resource_grants` | Lists sharing grants on a resource. |
 
+## Resource Types
+
+| Tool | Description |
+|------|-------------|
+| `get_resource_type` | Gets a resource type, including the JSON `schema` a `create_resource` payload must satisfy, import `instructions`, and its `connectionOrientation`. Accepts a bare identifier or an `@version` pin (`aws-iam-role@1.2.3`, `@~1`, `@latest`). |
+| `list_resource_type_dependents` | Lists what depends on a resource type within one environment, one entry per (instance, dependency field) pair. |
+
 ## Organization
 
 | Tool | Description |
 |------|-------------|
 | `get_organization` | Gets the current organization's details (id, name, subscription status, timestamps). Custom attributes and members are not included here — use `list_custom_attributes` and `list_organization_members` for those. |
+| `get_organization_settings` | Gets organization-wide behavior settings (`defaultBundleAccess`). Requires `organization:manageSettings`. |
+| `update_organization_settings` | Updates organization-wide behavior settings. `default_bundle_access` is `NONE` or `ALL_PROJECTS` and applies only to repositories created afterwards. Requires `organization:manageSettings`. |
 | `create_custom_attribute` | Creates a custom attribute definition. Requires `key` and `scope`. `required` defaults to false here; setting it true makes the attribute mandatory org-wide at its scope. |
 | `update_custom_attribute` | Updates a custom attribute's required flag or allowed values. |
 | `delete_custom_attribute` | Deletes a custom attribute definition. |
@@ -151,7 +162,6 @@ This document describes all 106 tools available in the Massdriver MCP server.
 |------|-------------|
 | `list_service_accounts` | Lists all service accounts. Optionally filter by `search`. |
 | `get_service_account` | Gets a service account by ID. |
-| `create_service_account` | Creates a service account. Response includes the bearer token (shown once). |
 | `update_service_account` | Updates a service account's name or description. |
 | `delete_service_account` | Deletes a service account. |
 

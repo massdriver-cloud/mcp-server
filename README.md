@@ -126,15 +126,15 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (106)
+## Available Tools (111)
 
 See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
 ### Projects (6)
 `list_projects` `get_project` `create_project` `clone_project` `update_project` `delete_project`
 
-### Environments (11)
-`list_environments` `get_environment` `create_environment` `update_environment` `delete_environment` `set_environment_default` `remove_environment_default` `compare_environments` `fork_environment` `deploy_environment` `decommission_environment`
+### Environments (13)
+`list_environments` `get_environment` `create_environment` `update_environment` `delete_environment` `set_environment_default` `remove_environment_default` `compare_environments` `fork_environment` `deploy_environment` `decommission_environment` `list_unfulfilled_dependencies` `list_environment_links`
 
 ### Instances (10)
 `list_instances` `get_instance` `update_instance` `set_instance_secret` `remove_instance_secret` `set_remote_reference` `remove_remote_reference` `copy_instance` `orphan_instance` `list_alarms`
@@ -151,8 +151,11 @@ See [MCP_README.md](MCP_README.md) for the full tool reference, including per-to
 ### Resources (9)
 `list_resources` `get_resource` `create_resource` `update_resource` `delete_resource` `export_resource` `create_resource_grant` `delete_resource_grant` `list_resource_grants`
 
-### Organization (6)
-`get_organization` `create_custom_attribute` `update_custom_attribute` `delete_custom_attribute` `list_organization_members` `list_custom_attributes`
+### Resource Types (2)
+`get_resource_type` `list_resource_type_dependents`
+
+### Organization (8)
+`get_organization` `get_organization_settings` `update_organization_settings` `create_custom_attribute` `update_custom_attribute` `delete_custom_attribute` `list_organization_members` `list_custom_attributes`
 
 ### Viewer (1)
 `get_viewer`
@@ -163,8 +166,8 @@ See [MCP_README.md](MCP_README.md) for the full tool reference, including per-to
 ### Groups (14)
 `list_groups` `get_group` `create_group` `update_group` `delete_group` `add_group_user` `remove_group_user` `revoke_group_invitation` `add_group_service_account` `remove_group_service_account` `list_group_members` `list_group_service_accounts` `list_group_invitations` `list_group_policies`
 
-### Service Accounts (5)
-`list_service_accounts` `get_service_account` `create_service_account` `update_service_account` `delete_service_account`
+### Service Accounts (4)
+`list_service_accounts` `get_service_account` `update_service_account` `delete_service_account`
 
 ### OCI Repos (8)
 `list_oci_repos` `get_oci_repo` `create_oci_repo` `update_oci_repo` `delete_oci_repo` `create_oci_repo_grant` `delete_oci_repo_grant` `list_oci_repo_grants`

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/gql"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
@@ -63,6 +64,43 @@ func listResult[T any](items []T) ListResult[T] {
 		items = []T{}
 	}
 	return ListResult[T]{Items: items}
+}
+
+// AttributeFilterInput is the tool-facing shape of a single custom-attribute
+// filter. One entry targets one attribute key; when a List tool takes several,
+// they are AND'd together. Eq and In are alternatives — set one of them.
+type AttributeFilterInput struct {
+	Key string   `json:"key"          jsonschema:"The custom attribute key to match (e.g. 'team'). Use list_custom_attributes to discover the keys defined for the organization."`
+	Eq  string   `json:"eq,omitempty" jsonschema:"Optional. Matches when the value for key equals this string exactly. Use either eq or in, not both."`
+	In  []string `json:"in,omitempty" jsonschema:"Optional. Matches when the value for key is any of these strings. Use either eq or in, not both."`
+}
+
+// toAttributeFilters maps the tool-facing attribute filters onto the SDK shape,
+// returning nil for an empty input so callers can pass it through unconditionally.
+func toAttributeFilters(in []AttributeFilterInput) []types.AttributeFilter {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]types.AttributeFilter, 0, len(in))
+	for _, a := range in {
+		out = append(out, types.AttributeFilter{Key: a.Key, Eq: a.Eq, In: a.In})
+	}
+	return out
+}
+
+// parseTimestamp parses an optional RFC 3339 timestamp argument, returning the
+// zero time when the argument is empty so the SDK leaves that bound open. The
+// error names the tool and field so a malformed value is actionable rather than
+// silently dropping the filter.
+func parseTimestamp(tool, field, value string) (time.Time, error) {
+	if value == "" {
+		return time.Time{}, nil
+	}
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%s: %s must be an RFC 3339 timestamp (e.g. 2026-01-15T00:00:00Z): %w", tool, field, err)
+	}
+	return t, nil
 }
 
 // textResult builds a CallToolResult with a single text content item.

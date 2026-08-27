@@ -60,6 +60,7 @@ func TestMCPServerTools(t *testing.T) {
 		"list_environments", "get_environment", "create_environment", "update_environment", "delete_environment",
 		"set_environment_default", "remove_environment_default", "compare_environments", "fork_environment",
 		"deploy_environment", "decommission_environment",
+		"list_unfulfilled_dependencies", "list_environment_links",
 		// Instances
 		"list_instances", "get_instance", "update_instance", "set_instance_secret", "remove_instance_secret",
 		"set_remote_reference", "remove_remote_reference", "copy_instance", "orphan_instance", "list_alarms",
@@ -74,8 +75,11 @@ func TestMCPServerTools(t *testing.T) {
 		// Resources
 		"list_resources", "get_resource", "create_resource", "update_resource", "delete_resource", "export_resource",
 		"create_resource_grant", "delete_resource_grant", "list_resource_grants",
+		// Resource Types
+		"get_resource_type", "list_resource_type_dependents",
 		// Organization
-		"get_organization", "create_custom_attribute", "update_custom_attribute", "delete_custom_attribute",
+		"get_organization", "get_organization_settings", "update_organization_settings",
+		"create_custom_attribute", "update_custom_attribute", "delete_custom_attribute",
 		"list_organization_members", "list_custom_attributes",
 		// Viewer
 		"get_viewer",
@@ -87,7 +91,7 @@ func TestMCPServerTools(t *testing.T) {
 		"add_group_service_account", "remove_group_service_account",
 		"list_group_members", "list_group_service_accounts", "list_group_invitations", "list_group_policies",
 		// Service Accounts
-		"list_service_accounts", "get_service_account", "create_service_account", "update_service_account", "delete_service_account",
+		"list_service_accounts", "get_service_account", "update_service_account", "delete_service_account",
 		// OCI Repos
 		"list_oci_repos", "get_oci_repo", "create_oci_repo", "update_oci_repo", "delete_oci_repo",
 		"create_oci_repo_grant", "delete_oci_repo_grant", "list_oci_repo_grants",

@@ -411,3 +411,25 @@ func TestHandleCloneProject(t *testing.T) {
 		})
 	}
 }
+
+// TestListProjectsForwardsCreatedWindow verifies the created-at bounds reach the SDK.
+func TestListProjectsForwardsCreatedWindow(t *testing.T) {
+	var got projects.ListInput
+	c := &Client{Projects: &stubProjects{
+		listPageFn: func(_ context.Context, input projects.ListInput) (types.Page[projects.Project], error) {
+			got = input
+			return types.Page[projects.Project]{}, nil
+		},
+	}}
+
+	_, _, err := HandleListProjects(c)(context.Background(), nil, ListProjectsInput{
+		CreatedAfter:  "2026-01-15T00:00:00Z",
+		CreatedBefore: "2026-02-15T00:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.CreatedAfter.IsZero() || got.CreatedBefore.IsZero() {
+		t.Errorf("created window = [%v, %v], want both bounds set", got.CreatedAfter, got.CreatedBefore)
+	}
+}

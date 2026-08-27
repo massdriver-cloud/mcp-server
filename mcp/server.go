@@ -59,6 +59,7 @@ func clientFromSDK(client *massdriver.Client) *tools.Client {
 		Components:      client.Components,
 		Bundles:         client.Bundles,
 		Resources:       client.Resources,
+		ResourceTypes:   client.ResourceTypes,
 		Organizations:   client.Organizations,
 		Viewer:          client.Viewer,
 		AuditLogs:       client.AuditLogs,
@@ -85,6 +86,8 @@ func (s *Server) registerTools() {
 	// Environments
 	mcpsdk.AddTool(s.mcpServer, tools.ListEnvironmentsTool, tools.HandleListEnvironments(c))
 	mcpsdk.AddTool(s.mcpServer, tools.GetEnvironmentTool, tools.HandleGetEnvironment(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListUnfulfilledDependenciesTool, tools.HandleListUnfulfilledDependencies(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListEnvironmentLinksTool, tools.HandleListEnvironmentLinks(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CreateEnvironmentTool, tools.HandleCreateEnvironment(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateEnvironmentTool, tools.HandleUpdateEnvironment(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteEnvironmentTool, tools.HandleDeleteEnvironment(c))
@@ -144,8 +147,14 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteResourceGrantTool, tools.HandleDeleteResourceGrant(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListResourceGrantsTool, tools.HandleListResourceGrants(c))
 
+	// Resource Types
+	mcpsdk.AddTool(s.mcpServer, tools.GetResourceTypeTool, tools.HandleGetResourceType(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListResourceTypeDependentsTool, tools.HandleListResourceTypeDependents(c))
+
 	// Organization
 	mcpsdk.AddTool(s.mcpServer, tools.GetOrganizationTool, tools.HandleGetOrganization(c))
+	mcpsdk.AddTool(s.mcpServer, tools.GetOrganizationSettingsTool, tools.HandleGetOrganizationSettings(c))
+	mcpsdk.AddTool(s.mcpServer, tools.UpdateOrganizationSettingsTool, tools.HandleUpdateOrganizationSettings(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CreateCustomAttributeTool, tools.HandleCreateCustomAttribute(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateCustomAttributeTool, tools.HandleUpdateCustomAttribute(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteCustomAttributeTool, tools.HandleDeleteCustomAttribute(c))
@@ -179,7 +188,6 @@ func (s *Server) registerTools() {
 	// Service Accounts
 	mcpsdk.AddTool(s.mcpServer, tools.ListServiceAccountsTool, tools.HandleListServiceAccounts(c))
 	mcpsdk.AddTool(s.mcpServer, tools.GetServiceAccountTool, tools.HandleGetServiceAccount(c))
-	mcpsdk.AddTool(s.mcpServer, tools.CreateServiceAccountTool, tools.HandleCreateServiceAccount(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateServiceAccountTool, tools.HandleUpdateServiceAccount(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteServiceAccountTool, tools.HandleDeleteServiceAccount(c))
 

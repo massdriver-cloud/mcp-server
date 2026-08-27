@@ -17,6 +17,7 @@ import (
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/policies"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/projects"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resources"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resourcetypes"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/server"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/serviceaccounts"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
@@ -35,6 +36,7 @@ type Client struct {
 	Components      ComponentsService
 	Bundles         BundlesService
 	Resources       ResourcesService
+	ResourceTypes   ResourceTypesService
 	Organizations   OrganizationsService
 	Viewer          ViewerService
 	AuditLogs       AuditLogsService
@@ -60,6 +62,8 @@ type ProjectsService interface {
 type EnvironmentsService interface {
 	ListPage(ctx context.Context, input environments.ListInput) (types.Page[environments.Environment], error)
 	Get(ctx context.Context, id string) (*environments.Environment, error)
+	Links(ctx context.Context, id string) ([]types.Link, error)
+	UnfulfilledDependencies(ctx context.Context, id string) ([]environments.UnfulfilledDependency, error)
 	Create(ctx context.Context, projectID string, input environments.CreateInput) (*environments.Environment, error)
 	Update(ctx context.Context, id string, input environments.UpdateInput) (*environments.Environment, error)
 	Delete(ctx context.Context, id string) (*environments.Environment, error)
@@ -131,9 +135,17 @@ type ResourcesService interface {
 	ListGrantsPage(ctx context.Context, resourceID string, input resources.ListGrantsInput) (types.Page[resources.Grant], error)
 }
 
+// ResourceTypesService defines the resource type operations used by tool handlers.
+type ResourceTypesService interface {
+	Get(ctx context.Context, id string) (*resourcetypes.ResourceType, error)
+	Dependents(ctx context.Context, environmentID, resourceTypeID string) ([]resourcetypes.Dependent, error)
+}
+
 // OrganizationsService defines the organization operations used by tool handlers.
 type OrganizationsService interface {
 	Get(ctx context.Context) (*organizations.Organization, error)
+	GetSettings(ctx context.Context) (*organizations.Settings, error)
+	UpdateSettings(ctx context.Context, input organizations.UpdateSettingsInput) (*organizations.Settings, error)
 	CreateCustomAttribute(ctx context.Context, input organizations.CreateCustomAttributeInput) (*organizations.CustomAttribute, error)
 	UpdateCustomAttribute(ctx context.Context, id string, input organizations.UpdateCustomAttributeInput) (*organizations.CustomAttribute, error)
 	DeleteCustomAttribute(ctx context.Context, id string) (*organizations.CustomAttribute, error)
@@ -175,7 +187,6 @@ type GroupsService interface {
 type ServiceAccountsService interface {
 	ListPage(ctx context.Context, input serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error)
 	Get(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error)
-	Create(ctx context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.Created, error)
 	Update(ctx context.Context, id string, input serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error)
 	Delete(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error)
 }

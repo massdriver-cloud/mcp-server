@@ -12,27 +12,42 @@ import (
 var ListOciReposTool = &mcpsdk.Tool{
 	Name: "list_oci_repos",
 	Description: "Lists OCI repositories in the organization, one page at a time. " +
-		"Filter by `artifact_type` to list repositories of a given type (e.g. 'BUNDLE'). " +
-		"PREFER filtering by `search` or `artifact_type` to focus the catalog. " +
+		"Filter by `artifact_type` to list repositories of a given type (e.g. 'BUNDLE'); leaving it empty returns both bundles and resource types. " +
+		"PREFER filtering by `search`, `artifact_type`, or `attributes` to focus the catalog. " +
 		"Returns up to `page_size` repositories (default 25, max 100) plus a `next_cursor` for the following page. " +
 		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
 		"Do NOT paginate to exhaustion unless the user explicitly asked for every repository.",
 }
 
 type ListOciReposInput struct {
-	Search       string `json:"search,omitempty"        jsonschema:"Optional. Search term to filter repositories."`
-	ArtifactType string `json:"artifact_type,omitempty" jsonschema:"Optional. Filter by artifact type (e.g., 'BUNDLE')."`
-	Cursor       string `json:"cursor,omitempty"        jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
-	PageSize     int    `json:"page_size,omitempty"     jsonschema:"Optional. Page size (1-100, default 25)."`
+	Search        string                 `json:"search,omitempty"         jsonschema:"Optional. Search term to filter repositories."`
+	ArtifactType  string                 `json:"artifact_type,omitempty"  jsonschema:"Optional. Filter by artifact type (e.g., 'BUNDLE'). Omit to list both bundles and resource types."`
+	Attributes    []AttributeFilterInput `json:"attributes,omitempty"     jsonschema:"Optional. Filter by repository attributes. Repositories are organization-level, so there is no inheritance — only attributes set on the repository itself match, plus md-repo and md-id, which both resolve to the repository name. Multiple entries are AND'd together."`
+	CreatedAfter  string                 `json:"created_after,omitempty"  jsonschema:"Optional. Only repositories created at or after this instant, as an RFC 3339 timestamp (e.g. '2026-01-15T00:00:00Z'). Bounds are inclusive; omit to leave this side open."`
+	CreatedBefore string                 `json:"created_before,omitempty" jsonschema:"Optional. Only repositories created at or before this instant, as an RFC 3339 timestamp (e.g. '2026-01-15T00:00:00Z'). Bounds are inclusive; omit to leave this side open."`
+	Cursor        string                 `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int                    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListOciRepos(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListOciReposInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListOciReposInput) (*mcpsdk.CallToolResult, any, error) {
+		createdAfter, err := parseTimestamp("list_oci_repos", "created_after", args.CreatedAfter)
+		if err != nil {
+			return nil, nil, err
+		}
+		createdBefore, err := parseTimestamp("list_oci_repos", "created_before", args.CreatedBefore)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		page, err := c.OciRepos.ListPage(ctx, ocirepos.ListInput{
-			Search:       args.Search,
-			ArtifactType: ocirepos.ArtifactType(args.ArtifactType),
-			PageSize:     clampPageSize(args.PageSize),
-			After:        args.Cursor,
+			Search:        args.Search,
+			ArtifactType:  ocirepos.ArtifactType(args.ArtifactType),
+			Attributes:    toAttributeFilters(args.Attributes),
+			CreatedAfter:  createdAfter,
+			CreatedBefore: createdBefore,
+			PageSize:      clampPageSize(args.PageSize),
+			After:         args.Cursor,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_oci_repos: %w", err)
@@ -73,7 +88,7 @@ var CreateOciRepoTool = &mcpsdk.Tool{
 }
 
 type CreateOciRepoInput struct {
-	ID           string         `json:"id"            jsonschema:"Repository name (immutable after creation)."`
+	ID           string         `json:"id"            jsonschema:"Repository name (immutable after creation). Lowercase letters, numbers, dashes, and underscores; max 100 characters."`
 	ArtifactType string         `json:"artifact_type"        jsonschema:"Artifact type (e.g., 'BUNDLE')."`
 	Attributes   map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Custom attributes for the repository."`
 }

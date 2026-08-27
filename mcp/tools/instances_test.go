@@ -698,3 +698,24 @@ func TestHandleOrphanInstance(t *testing.T) {
 		})
 	}
 }
+
+// TestListInstancesForwardsAttributes verifies the attribute filter reaches the SDK.
+func TestListInstancesForwardsAttributes(t *testing.T) {
+	var got instances.ListInput
+	c := &Client{Instances: &stubInstances{
+		listPageFn: func(_ context.Context, input instances.ListInput) (types.Page[instances.Instance], error) {
+			got = input
+			return types.Page[instances.Instance]{}, nil
+		},
+	}}
+
+	_, _, err := HandleListInstances(c)(context.Background(), nil, ListInstancesInput{
+		Attributes: []AttributeFilterInput{{Key: "team", Eq: "platform"}},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got.Attributes) != 1 || got.Attributes[0].Eq != "platform" {
+		t.Errorf("Attributes = %+v, want one entry with eq=platform", got.Attributes)
+	}
+}

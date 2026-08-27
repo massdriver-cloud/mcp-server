@@ -7,12 +7,15 @@ import (
 	"testing"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/environments"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/instances"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
 )
 
 type stubEnvironments struct {
 	listPageFn      func(context.Context, environments.ListInput) (types.Page[environments.Environment], error)
 	getFn           func(context.Context, string) (*environments.Environment, error)
+	linksFn         func(context.Context, string) ([]types.Link, error)
+	unfulfilledFn   func(context.Context, string) ([]environments.UnfulfilledDependency, error)
 	createFn        func(context.Context, string, environments.CreateInput) (*environments.Environment, error)
 	updateFn        func(context.Context, string, environments.UpdateInput) (*environments.Environment, error)
 	deleteFn        func(context.Context, string) (*environments.Environment, error)
@@ -29,6 +32,12 @@ func (s *stubEnvironments) ListPage(ctx context.Context, input environments.List
 }
 func (s *stubEnvironments) Get(ctx context.Context, id string) (*environments.Environment, error) {
 	return s.getFn(ctx, id)
+}
+func (s *stubEnvironments) Links(ctx context.Context, id string) ([]types.Link, error) {
+	return s.linksFn(ctx, id)
+}
+func (s *stubEnvironments) UnfulfilledDependencies(ctx context.Context, id string) ([]environments.UnfulfilledDependency, error) {
+	return s.unfulfilledFn(ctx, id)
 }
 func (s *stubEnvironments) Create(ctx context.Context, projectID string, input environments.CreateInput) (*environments.Environment, error) {
 	return s.createFn(ctx, projectID, input)
@@ -714,6 +723,136 @@ func TestHandleDecommissionEnvironment(t *testing.T) {
 			}
 			if !strings.Contains(resultText(t, result), tt.wantText) {
 				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleListUnfulfilledDependencies(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ListUnfulfilledDependenciesInput
+		stub     *stubEnvironments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing environment_id",
+			input:   ListUnfulfilledDependenciesInput{},
+			stub:    &stubEnvironments{},
+			wantErr: "environment_id is required",
+		},
+		{
+			name:  "reports the instance, field, and resource type needed",
+			input: ListUnfulfilledDependenciesInput{EnvironmentID: "myproj-staging"},
+			stub: &stubEnvironments{
+				unfulfilledFn: func(context.Context, string) ([]environments.UnfulfilledDependency, error) {
+					return []environments.UnfulfilledDependency{{
+						Instance:     instances.Instance{ID: "myproj-staging-api"},
+						Field:        "database",
+						ResourceType: types.ResourceType{ID: "aws-rds-instance"},
+					}}, nil
+				},
+			},
+			wantText: "aws-rds-instance",
+		},
+		{
+			name:  "nothing blocking yields an empty array, not null",
+			input: ListUnfulfilledDependenciesInput{EnvironmentID: "myproj-staging"},
+			stub: &stubEnvironments{
+				unfulfilledFn: func(context.Context, string) ([]environments.UnfulfilledDependency, error) {
+					return nil, nil
+				},
+			},
+			wantText: "\"items\": []",
+		},
+		{
+			name:  "propagates lookup failure",
+			input: ListUnfulfilledDependenciesInput{EnvironmentID: "nope"},
+			stub: &stubEnvironments{
+				unfulfilledFn: func(context.Context, string) ([]environments.UnfulfilledDependency, error) {
+					return nil, errors.New("not found")
+				},
+			},
+			wantErr: "list_unfulfilled_dependencies",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Environments: tt.stub}
+			result, _, err := HandleListUnfulfilledDependencies(c)(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got := resultText(t, result); !strings.Contains(got, tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, got)
+			}
+		})
+	}
+}
+
+func TestHandleListEnvironmentLinks(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ListEnvironmentLinksInput
+		stub     *stubEnvironments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing environment_id",
+			input:   ListEnvironmentLinksInput{},
+			stub:    &stubEnvironments{},
+			wantErr: "environment_id is required",
+		},
+		{
+			name:  "surfaces the version constraints that scope each link",
+			input: ListEnvironmentLinksInput{EnvironmentID: "myproj-staging"},
+			stub: &stubEnvironments{
+				linksFn: func(context.Context, string) ([]types.Link, error) {
+					return []types.Link{{
+						ID:                    "link1",
+						FromField:             "network",
+						ToField:               "vpc",
+						FromVersionConstraint: "~1",
+						ToVersionConstraint:   "~0.4",
+					}}, nil
+				},
+			},
+			wantText: "fromVersionConstraint",
+		},
+		{
+			name:  "no applicable links yields an empty array, not null",
+			input: ListEnvironmentLinksInput{EnvironmentID: "myproj-staging"},
+			stub: &stubEnvironments{
+				linksFn: func(context.Context, string) ([]types.Link, error) { return nil, nil },
+			},
+			wantText: "\"items\": []",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Environments: tt.stub}
+			result, _, err := HandleListEnvironmentLinks(c)(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got := resultText(t, result); !strings.Contains(got, tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, got)
 			}
 		})
 	}
