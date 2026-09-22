@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 112 tools available in the Massdriver MCP server.
+This document describes all 111 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -43,7 +43,7 @@ This document describes all 112 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `list_instances` | Lists instances. Optionally filter by `project_id`, `environment_id`, or `status`. |
+| `list_instances` | Lists instances. Optionally filter by `project_id`, `environment_id`, `status`, or `attributes` (matched anywhere on the instance's chain, AND'd). |
 | `get_instance` | Gets an instance by ID, including environment, project, and release info. |
 | `update_instance` | Updates an instance's version pin. |
 | `set_instance_secret` | Sets or updates a secret on an instance. |
@@ -75,7 +75,7 @@ This document describes all 112 tools available in the Massdriver MCP server.
 | Tool | Description |
 |------|-------------|
 | `list_components` | Lists all components in a project's blueprint. Requires `project_id`. |
-| `get_component` | Gets a component by ID. |
+| `get_component` | Gets a component by ID. Each link carries `fromVersionConstraint`/`toVersionConstraint` (tilde version ranges) that decide the environments the link applies in — see `list_environment_links`. |
 | `add_component` | Adds a component to a project blueprint. Requires `project_id`, `bundle_name`, `id`, `name`; accepts optional `description` and custom `attributes`. |
 | `update_component` | Updates a component's name, description, or custom `attributes`. |
 | `set_component_position` | Sets a component's pixel position (`x`, `y`) on the project's visual canvas. Purely cosmetic — does not affect configuration or deployments. |
@@ -162,9 +162,10 @@ This document describes all 112 tools available in the Massdriver MCP server.
 |------|-------------|
 | `list_service_accounts` | Lists all service accounts. Optionally filter by `search`. |
 | `get_service_account` | Gets a service account by ID. |
-| `create_service_account` | Creates a service account. Response includes the bearer token (shown once). |
 | `update_service_account` | Updates a service account's name or description. |
 | `delete_service_account` | Deletes a service account. |
+
+Service account creation is deliberately not exposed: creating one returns a live bearer token, and the MCP server must never be able to mint new credentials. Create service accounts through the Massdriver UI or CLI.
 
 ## OCI Repos
 

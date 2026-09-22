@@ -126,7 +126,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (112)
+## Available Tools (111)
 
 See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
@@ -166,8 +166,10 @@ See [MCP_README.md](MCP_README.md) for the full tool reference, including per-to
 ### Groups (14)
 `list_groups` `get_group` `create_group` `update_group` `delete_group` `add_group_user` `remove_group_user` `revoke_group_invitation` `add_group_service_account` `remove_group_service_account` `list_group_members` `list_group_service_accounts` `list_group_invitations` `list_group_policies`
 
-### Service Accounts (5)
-`list_service_accounts` `get_service_account` `create_service_account` `update_service_account` `delete_service_account`
+### Service Accounts (4)
+`list_service_accounts` `get_service_account` `update_service_account` `delete_service_account`
+
+> Service account creation is deliberately not exposed — the MCP server can never mint new credentials.
 
 ### OCI Repos (8)
 `list_oci_repos` `get_oci_repo` `create_oci_repo` `update_oci_repo` `delete_oci_repo` `create_oci_repo_grant` `delete_oci_repo_grant` `list_oci_repo_grants`

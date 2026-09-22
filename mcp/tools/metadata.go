@@ -95,7 +95,7 @@ func applyAnnotations() {
 	additive := []*mcpsdk.Tool{
 		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, ForkEnvironmentTool, AddComponentTool, LinkComponentsTool,
 		CreateResourceTool, CreateResourceGrantTool, CreateOciRepoGrantTool, CreateCustomAttributeTool,
-		CreateGroupTool, CreateServiceAccountTool, CreateOciRepoTool, CreatePolicyTool,
+		CreateGroupTool, CreateOciRepoTool, CreatePolicyTool,
 		ProposeDeploymentTool, RejectDeploymentTool, PlanDeploymentTool, RollbackDeploymentTool,
 	}
 	annotate(additive, func() *mcpsdk.ToolAnnotations { return writeHints(false, false) })

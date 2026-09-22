@@ -183,11 +183,12 @@ type GroupsService interface {
 	ListPoliciesPage(ctx context.Context, groupID string, input groups.ListPoliciesInput) (types.Page[groups.Policy], error)
 }
 
-// ServiceAccountsService defines the service account operations used by tool handlers.
+// ServiceAccountsService defines the service account operations used by tool
+// handlers. Create is deliberately absent — the MCP server must never mint
+// new credentials (creation returns a live bearer token).
 type ServiceAccountsService interface {
 	ListPage(ctx context.Context, input serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error)
 	Get(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error)
-	Create(ctx context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error)
 	Update(ctx context.Context, id string, input serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error)
 	Delete(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error)
 }

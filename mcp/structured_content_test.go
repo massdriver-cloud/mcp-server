@@ -456,9 +456,6 @@ func (scServiceAccounts) ListPage(context.Context, serviceaccounts.ListInput) (t
 func (scServiceAccounts) Get(context.Context, string) (*serviceaccounts.ServiceAccount, error) {
 	return &serviceaccounts.ServiceAccount{}, nil
 }
-func (scServiceAccounts) Create(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error) {
-	return &serviceaccounts.ServiceAccountWithToken{}, nil
-}
 func (scServiceAccounts) Update(context.Context, string, serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error) {
 	return &serviceaccounts.ServiceAccount{}, nil
 }

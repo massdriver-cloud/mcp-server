@@ -186,9 +186,10 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.ListGroupPoliciesTool, tools.HandleListGroupPolicies(c))
 
 	// Service Accounts
+	// create_service_account is intentionally not registered: the MCP server
+	// must never be able to mint new credentials.
 	mcpsdk.AddTool(s.mcpServer, tools.ListServiceAccountsTool, tools.HandleListServiceAccounts(c))
 	mcpsdk.AddTool(s.mcpServer, tools.GetServiceAccountTool, tools.HandleGetServiceAccount(c))
-	mcpsdk.AddTool(s.mcpServer, tools.CreateServiceAccountTool, tools.HandleCreateServiceAccount(c))
 	mcpsdk.AddTool(s.mcpServer, tools.UpdateServiceAccountTool, tools.HandleUpdateServiceAccount(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteServiceAccountTool, tools.HandleDeleteServiceAccount(c))
 

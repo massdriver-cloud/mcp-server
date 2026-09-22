@@ -12,7 +12,6 @@ import (
 type stubServiceAccounts struct {
 	listPageFn func(context.Context, serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error)
 	getFn      func(context.Context, string) (*serviceaccounts.ServiceAccount, error)
-	createFn   func(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error)
 	updateFn   func(context.Context, string, serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error)
 	deleteFn   func(context.Context, string) (*serviceaccounts.ServiceAccount, error)
 }
@@ -22,9 +21,6 @@ func (s *stubServiceAccounts) ListPage(ctx context.Context, input serviceaccount
 }
 func (s *stubServiceAccounts) Get(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error) {
 	return s.getFn(ctx, id)
-}
-func (s *stubServiceAccounts) Create(ctx context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error) {
-	return s.createFn(ctx, input)
 }
 func (s *stubServiceAccounts) Update(ctx context.Context, id string, input serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error) {
 	return s.updateFn(ctx, id, input)
@@ -116,66 +112,6 @@ func TestHandleGetServiceAccount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{ServiceAccounts: tt.stub}
 			handler := HandleGetServiceAccount(c)
-			result, _, err := handler(context.Background(), nil, tt.input)
-			if tt.wantErr != "" {
-				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if !strings.Contains(resultText(t, result), tt.wantText) {
-				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
-			}
-		})
-	}
-}
-
-func TestHandleCreateServiceAccount(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    CreateServiceAccountInput
-		stub     *stubServiceAccounts
-		wantErr  string
-		wantText string
-	}{
-		{
-			name:    "missing name",
-			input:   CreateServiceAccountInput{},
-			stub:    &stubServiceAccounts{},
-			wantErr: "name is required",
-		},
-		{
-			name:  "success returns created JSON",
-			input: CreateServiceAccountInput{Name: "CI Bot"},
-			stub: &stubServiceAccounts{
-				createFn: func(_ context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error) {
-					return &serviceaccounts.ServiceAccountWithToken{
-						ServiceAccount: serviceaccounts.ServiceAccount{ID: "sa1", Name: input.Name},
-						DefaultToken:   "tok_secret",
-					}, nil
-				},
-			},
-			wantText: "sa1",
-		},
-		{
-			name:  "mutation failure returns error message",
-			input: CreateServiceAccountInput{Name: "CI Bot"},
-			stub: &stubServiceAccounts{
-				createFn: func(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error) {
-					return nil, mutationFailedErr("create service account", "name", "already exists")
-				},
-			},
-			wantText: "create_service_account failed",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{ServiceAccounts: tt.stub}
-			handler := HandleCreateServiceAccount(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
