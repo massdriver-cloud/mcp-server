@@ -22,6 +22,8 @@ type stubEnvironments struct {
 	forkFn          func(context.Context, string, environments.ForkInput) (*environments.Environment, error)
 	deployFn        func(context.Context, string) (*environments.Environment, error)
 	decommissionFn  func(context.Context, string) (*environments.Environment, error)
+	linksFn         func(context.Context, string) ([]types.Link, error)
+	unfulfilledFn   func(context.Context, string) ([]environments.UnfulfilledDependency, error)
 }
 
 func (s *stubEnvironments) ListPage(ctx context.Context, input environments.ListInput) (types.Page[environments.Environment], error) {
@@ -56,6 +58,12 @@ func (s *stubEnvironments) Deploy(ctx context.Context, id string) (*environments
 }
 func (s *stubEnvironments) Decommission(ctx context.Context, id string) (*environments.Environment, error) {
 	return s.decommissionFn(ctx, id)
+}
+func (s *stubEnvironments) Links(ctx context.Context, id string) ([]types.Link, error) {
+	return s.linksFn(ctx, id)
+}
+func (s *stubEnvironments) UnfulfilledDependencies(ctx context.Context, id string) ([]environments.UnfulfilledDependency, error) {
+	return s.unfulfilledFn(ctx, id)
 }
 
 func TestHandleListEnvironments(t *testing.T) {
@@ -195,6 +203,22 @@ func TestHandleCreateEnvironment(t *testing.T) {
 			wantText: "myproj-staging",
 		},
 		{
+			name: "protection toggles are passed through",
+			input: CreateEnvironmentInput{
+				ProjectID: "myproj", ID: "prod", Name: "Production",
+				DecommissionProtection: true, SeparationOfDuty: true,
+			},
+			stub: &stubEnvironments{
+				createFn: func(_ context.Context, projectID string, input environments.CreateInput) (*environments.Environment, error) {
+					if !input.DecommissionProtection || !input.SeparationOfDuty {
+						t.Errorf("protection toggles not passed through: %+v", input)
+					}
+					return &environments.Environment{ID: projectID + "-" + input.ID, Name: input.Name}, nil
+				},
+			},
+			wantText: "myproj-prod",
+		},
+		{
 			name:  "mutation failure returns error message",
 			input: CreateEnvironmentInput{ProjectID: "myproj", ID: "staging", Name: "Staging"},
 			stub: &stubEnvironments{
@@ -250,6 +274,19 @@ func TestHandleUpdateEnvironment(t *testing.T) {
 				},
 			},
 			wantText: "Production",
+		},
+		{
+			name:  "separation_of_duty toggle is passed through",
+			input: UpdateEnvironmentInput{ID: "myproj-prod", SeparationOfDuty: ptr(true)},
+			stub: &stubEnvironments{
+				updateFn: func(_ context.Context, id string, input environments.UpdateInput) (*environments.Environment, error) {
+					if input.SeparationOfDuty == nil || !*input.SeparationOfDuty {
+						t.Errorf("separation_of_duty not passed through: %+v", input)
+					}
+					return &environments.Environment{ID: id, SeparationOfDuty: true}, nil
+				},
+			},
+			wantText: "myproj-prod",
 		},
 		{
 			name:  "mutation failure returns error message",
@@ -558,6 +595,7 @@ func TestHandleForkEnvironment(t *testing.T) {
 			input: ForkEnvironmentInput{
 				ParentID: "myproj-prod", ID: "staging", Name: "Staging",
 				CopySecrets: true, CopyEnvironmentDefaults: true,
+				DecommissionProtection: true, SeparationOfDuty: true,
 			},
 			stub: &stubEnvironments{
 				forkFn: func(_ context.Context, parentID string, input environments.ForkInput) (*environments.Environment, error) {
@@ -566,6 +604,9 @@ func TestHandleForkEnvironment(t *testing.T) {
 					}
 					if !input.CopySecrets || !input.CopyEnvironmentDefaults || input.CopyRemoteReferences {
 						t.Errorf("copy toggles not passed through: %+v", input)
+					}
+					if !input.DecommissionProtection || !input.SeparationOfDuty {
+						t.Errorf("protection toggles not passed through: %+v", input)
 					}
 					return &environments.Environment{ID: "myproj-" + input.ID, Name: input.Name}, nil
 				},
@@ -702,6 +743,150 @@ func TestHandleDecommissionEnvironment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{Environments: tt.stub}
 			handler := HandleDecommissionEnvironment(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleListEnvironmentLinks(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ListEnvironmentLinksInput
+		stub     *stubEnvironments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing id",
+			input:   ListEnvironmentLinksInput{},
+			stub:    &stubEnvironments{},
+			wantErr: "id is required",
+		},
+		{
+			name:  "returns links list",
+			input: ListEnvironmentLinksInput{ID: "myproj-staging"},
+			stub: &stubEnvironments{
+				linksFn: func(_ context.Context, id string) ([]types.Link, error) {
+					if id != "myproj-staging" {
+						t.Errorf("expected id %q, got %q", "myproj-staging", id)
+					}
+					return []types.Link{{ID: "link1", FromField: "network", ToField: "vpc", FromVersionConstraint: "~1"}}, nil
+				},
+			},
+			wantText: "link1",
+		},
+		{
+			name:  "empty list returns items array",
+			input: ListEnvironmentLinksInput{ID: "myproj-staging"},
+			stub: &stubEnvironments{
+				linksFn: func(context.Context, string) ([]types.Link, error) {
+					return nil, nil
+				},
+			},
+			wantText: "\"items\": []",
+		},
+		{
+			name:  "error is surfaced",
+			input: ListEnvironmentLinksInput{ID: "myproj-staging"},
+			stub: &stubEnvironments{
+				linksFn: func(context.Context, string) ([]types.Link, error) {
+					return nil, errors.New("not found")
+				},
+			},
+			wantErr: "list_environment_links",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Environments: tt.stub}
+			handler := HandleListEnvironmentLinks(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleListEnvironmentUnfulfilledDependencies(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ListEnvironmentUnfulfilledDependenciesInput
+		stub     *stubEnvironments
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing id",
+			input:   ListEnvironmentUnfulfilledDependenciesInput{},
+			stub:    &stubEnvironments{},
+			wantErr: "id is required",
+		},
+		{
+			name:  "returns unfulfilled dependencies list",
+			input: ListEnvironmentUnfulfilledDependenciesInput{ID: "myproj-staging"},
+			stub: &stubEnvironments{
+				unfulfilledFn: func(_ context.Context, id string) ([]environments.UnfulfilledDependency, error) {
+					if id != "myproj-staging" {
+						t.Errorf("expected id %q, got %q", "myproj-staging", id)
+					}
+					return []environments.UnfulfilledDependency{{
+						Instance:     types.Instance{ID: "myproj-staging-api"},
+						Field:        "network",
+						ResourceType: types.ResourceType{ID: "aws-vpc@1.0.0", Name: "AWS VPC"},
+					}}, nil
+				},
+			},
+			wantText: "myproj-staging-api",
+		},
+		{
+			name:  "empty list returns items array",
+			input: ListEnvironmentUnfulfilledDependenciesInput{ID: "myproj-staging"},
+			stub: &stubEnvironments{
+				unfulfilledFn: func(context.Context, string) ([]environments.UnfulfilledDependency, error) {
+					return nil, nil
+				},
+			},
+			wantText: "\"items\": []",
+		},
+		{
+			name:  "error is surfaced",
+			input: ListEnvironmentUnfulfilledDependenciesInput{ID: "myproj-staging"},
+			stub: &stubEnvironments{
+				unfulfilledFn: func(context.Context, string) ([]environments.UnfulfilledDependency, error) {
+					return nil, errors.New("not found")
+				},
+			},
+			wantErr: "list_environment_unfulfilled_dependencies",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Environments: tt.stub}
+			handler := HandleListEnvironmentUnfulfilledDependencies(c)
 			result, _, err := handler(context.Background(), nil, tt.input)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {

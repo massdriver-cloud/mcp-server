@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/gql"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
@@ -27,6 +28,39 @@ func clampPageSize(n int) int {
 		return maxPageSize
 	}
 	return n
+}
+
+// parseTimeFilter parses an optional RFC 3339 timestamp filter argument. An
+// empty value returns the zero time, which the SDK treats as "unbounded".
+func parseTimeFilter(tool, field, value string) (time.Time, error) {
+	if value == "" {
+		return time.Time{}, nil
+	}
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%s: %s must be an RFC 3339 timestamp (e.g. 2026-01-02T15:04:05Z): %w", tool, field, err)
+	}
+	return t, nil
+}
+
+// AttributeFilterInput is the tool-facing shape of one attribute filter
+// entry. Multiple entries are AND'd together by the API.
+type AttributeFilterInput struct {
+	Key string   `json:"key"          jsonschema:"The attribute key to match (e.g., 'team')."`
+	Eq  string   `json:"eq,omitempty" jsonschema:"Optional. Matches when the attribute value exactly equals this string. Provide eq or in, not both."`
+	In  []string `json:"in,omitempty" jsonschema:"Optional. Matches when the attribute value is any of these strings. Provide eq or in, not both."`
+}
+
+// toAttributeFilters maps tool-facing attribute filters onto the SDK type.
+func toAttributeFilters(in []AttributeFilterInput) []types.AttributeFilter {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]types.AttributeFilter, 0, len(in))
+	for _, f := range in {
+		out = append(out, types.AttributeFilter{Key: f.Key, Eq: f.Eq, In: f.In})
+	}
+	return out
 }
 
 // PageResult is the JSON shape every paginated List tool returns. Keeping the

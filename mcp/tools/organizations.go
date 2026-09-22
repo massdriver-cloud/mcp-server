@@ -179,6 +179,75 @@ func HandleListOrganizationMembers(c *Client) func(context.Context, *mcpsdk.Call
 	}
 }
 
+// organizationSettings is the tool-facing JSON shape for organization
+// settings (the SDK struct has no JSON tags).
+type organizationSettings struct {
+	DefaultBundleAccess string `json:"default_bundle_access"`
+}
+
+var GetOrganizationSettingsTool = &mcpsdk.Tool{
+	Name: "get_organization_settings",
+	Description: "Gets the organization's behavior settings. `default_bundle_access` is the access new bundle repositories " +
+		"receive at creation: NONE keeps each new repository restricted until a grant is authored; ALL_PROJECTS auto-creates " +
+		"an org-wide repo:pull grant on each new repository. " +
+		"Requires the organization:manageSettings permission — non-admin tokens will get a forbidden error.",
+}
+
+type GetOrganizationSettingsInput struct{}
+
+func HandleGetOrganizationSettings(c *Client) func(context.Context, *mcpsdk.CallToolRequest, GetOrganizationSettingsInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, _ GetOrganizationSettingsInput) (*mcpsdk.CallToolResult, any, error) {
+		settings, err := c.Organizations.GetSettings(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get_organization_settings: %w", err)
+		}
+
+		out := organizationSettings{DefaultBundleAccess: string(settings.DefaultBundleAccess)}
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
+var UpdateOrganizationSettingsTool = &mcpsdk.Tool{
+	Name: "update_organization_settings",
+	Description: "Updates the organization's behavior settings. Setting `default_bundle_access` to ALL_PROJECTS auto-creates an " +
+		"org-wide repo:pull grant on each bundle repository created AFTERWARDS (a normal, revocable grant row); NONE keeps " +
+		"each new repository restricted until a grant is authored. Changing it never affects access to existing repositories. " +
+		"Requires the organization:manageSettings permission — non-admin tokens will get a forbidden error.",
+}
+
+type UpdateOrganizationSettingsInput struct {
+	DefaultBundleAccess string `json:"default_bundle_access" jsonschema:"The access new bundle repositories receive at creation: NONE or ALL_PROJECTS."`
+}
+
+func HandleUpdateOrganizationSettings(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateOrganizationSettingsInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args UpdateOrganizationSettingsInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.DefaultBundleAccess == "" {
+			return nil, nil, fmt.Errorf("update_organization_settings: default_bundle_access is required")
+		}
+
+		settings, err := c.Organizations.UpdateSettings(ctx, organizations.UpdateSettingsInput{
+			DefaultBundleAccess: organizations.DefaultBundleAccess(args.DefaultBundleAccess),
+		})
+		if err != nil {
+			if isMutationFailed(err) {
+				return errorResult(fmt.Sprintf("update_organization_settings failed: %s", mutationErr(err))), nil, nil
+			}
+			return nil, nil, fmt.Errorf("update_organization_settings: %w", err)
+		}
+
+		out := organizationSettings{DefaultBundleAccess: string(settings.DefaultBundleAccess)}
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
 var ListCustomAttributesTool = &mcpsdk.Tool{
 	Name: "list_custom_attributes",
 	Description: "Lists the organization's custom attribute definitions, one page at a time. " +

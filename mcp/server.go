@@ -59,6 +59,7 @@ func clientFromSDK(client *massdriver.Client) *tools.Client {
 		Components:      client.Components,
 		Bundles:         client.Bundles,
 		Resources:       client.Resources,
+		ResourceTypes:   client.ResourceTypes,
 		Organizations:   client.Organizations,
 		Viewer:          client.Viewer,
 		AuditLogs:       client.AuditLogs,
@@ -94,6 +95,8 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.ForkEnvironmentTool, tools.HandleForkEnvironment(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DeployEnvironmentTool, tools.HandleDeployEnvironment(c))
 	mcpsdk.AddTool(s.mcpServer, tools.DecommissionEnvironmentTool, tools.HandleDecommissionEnvironment(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListEnvironmentLinksTool, tools.HandleListEnvironmentLinks(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListEnvironmentUnfulfilledDependenciesTool, tools.HandleListEnvironmentUnfulfilledDependencies(c))
 
 	// Instances
 	mcpsdk.AddTool(s.mcpServer, tools.ListInstancesTool, tools.HandleListInstances(c))
@@ -144,6 +147,10 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteResourceGrantTool, tools.HandleDeleteResourceGrant(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListResourceGrantsTool, tools.HandleListResourceGrants(c))
 
+	// Resource Types
+	mcpsdk.AddTool(s.mcpServer, tools.GetResourceTypeTool, tools.HandleGetResourceType(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListResourceTypeDependentsTool, tools.HandleListResourceTypeDependents(c))
+
 	// Organization
 	mcpsdk.AddTool(s.mcpServer, tools.GetOrganizationTool, tools.HandleGetOrganization(c))
 	mcpsdk.AddTool(s.mcpServer, tools.CreateCustomAttributeTool, tools.HandleCreateCustomAttribute(c))
@@ -151,6 +158,8 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.DeleteCustomAttributeTool, tools.HandleDeleteCustomAttribute(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListOrganizationMembersTool, tools.HandleListOrganizationMembers(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListCustomAttributesTool, tools.HandleListCustomAttributes(c))
+	mcpsdk.AddTool(s.mcpServer, tools.GetOrganizationSettingsTool, tools.HandleGetOrganizationSettings(c))
+	mcpsdk.AddTool(s.mcpServer, tools.UpdateOrganizationSettingsTool, tools.HandleUpdateOrganizationSettings(c))
 
 	// Viewer
 	mcpsdk.AddTool(s.mcpServer, tools.GetViewerTool, tools.HandleGetViewer(c))

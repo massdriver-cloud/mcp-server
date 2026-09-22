@@ -1,6 +1,6 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 106 tools available in the Massdriver MCP server.
+This document describes all 112 tools available in the Massdriver MCP server.
 
 ## Conventions
 
@@ -14,7 +14,7 @@ This document describes all 106 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `list_projects` | Lists all projects in the organization, including their environments. Optionally filter by `search` (free-text over name and description), `name` (exact match), or `name_in` (any of several exact names). |
+| `list_projects` | Lists all projects in the organization, including their environments. Optionally filter by `search` (free-text over name and description), `name` (exact match), `name_in` (any of several exact names), or `created_after`/`created_before` (RFC 3339 creation window). |
 | `get_project` | Gets a specific project by ID, including its environments. |
 | `create_project` | Creates a new project. Requires `id` and `name`; accepts optional `description` and custom `attributes` (required by orgs that define required project attributes). |
 | `clone_project` | Clones an existing project into a new project, duplicating its blueprint structure (components and wiring) without copying any environments. Requires `source_project_id`, `id`, and `name`. |
@@ -27,15 +27,17 @@ This document describes all 106 tools available in the Massdriver MCP server.
 |------|-------------|
 | `list_environments` | Lists all environments. Optionally filter by `project_id`. |
 | `get_environment` | Gets an environment by its identifier (e.g., `myproj-staging`). |
-| `create_environment` | Creates an environment within a project. Requires `project_id`, `id`, `name`; accepts optional `description` and custom `attributes`. |
-| `update_environment` | Updates an environment's name, description, custom `attributes`, or `decommission_protection`. Only the fields you provide change; omitted fields are left unchanged. |
+| `create_environment` | Creates an environment within a project. Requires `project_id`, `id`, `name`; accepts optional `description`, custom `attributes`, `decommission_protection`, and `separation_of_duty`. |
+| `update_environment` | Updates an environment's name, description, custom `attributes`, `decommission_protection`, or `separation_of_duty`. Only the fields you provide change; omitted fields are left unchanged. |
 | `delete_environment` | Deletes an environment. All instances must be decommissioned first. |
 | `set_environment_default` | Sets a resource as the default of its type for an environment. The resource must first be shared to the environment via `create_resource_grant`. |
 | `remove_environment_default` | Removes a default resource binding. |
 | `compare_environments` | Compares two environments in the same project instance-by-instance (paired by component), reporting the resolved bundle version on each side and a leaf-level diff of configured params. |
-| `fork_environment` | Forks a new environment from a parent environment in the same project. Requires `parent_id`, `id`, `name`; optional toggles `copy_secrets`, `copy_remote_references`, and `copy_environment_defaults` (all default false) control what carries over. |
+| `fork_environment` | Forks a new environment from a parent environment in the same project. Requires `parent_id`, `id`, `name`; optional toggles `copy_secrets`, `copy_remote_references`, and `copy_environment_defaults` (all default false) control what carries over; optional `decommission_protection` and `separation_of_duty` set the fork's guards. |
 | `deploy_environment` | Schedules a deployment of every instance in the environment in dependency order. Cancels any in-flight environment deployment and enqueues a fresh provision wave; changes happen asynchronously. |
 | `decommission_environment` | Schedules a teardown of every instance in the environment in reverse dependency order (the environment shell stays; use `delete_environment` to remove it afterwards). Blocked when decommission protection is enabled. |
+| `list_environment_links` | Lists the blueprint links in effect in an environment given the component versions its instances actually run — the subset of the project's links whose version constraints match both ends. |
+| `list_environment_unfulfilled_dependencies` | Lists required dependency inputs across the environment's instances that nothing fills (no link, no remote reference, no matching environment default) — each entry is one input a deploy would block on. |
 
 ## Instances
 
@@ -61,7 +63,7 @@ This document describes all 106 tools available in the Massdriver MCP server.
 | `get_deployment_logs` | Gets a deployment's logs. With `follow: true`, blocks until the deployment reaches a terminal status and returns the final status plus complete logs (optional `timeout_seconds`, default 300, max 600). |
 | `create_deployment` | Creates and starts a deployment. Actions: `PROVISION`, `DECOMMISSION`, `PLAN`. `params` is required for every action (full set, validated against the instance's params schema) — read `get_instance.params` to reuse current config. |
 | `propose_deployment` | Proposes a deployment for approval (enters `PROPOSED` status). Actions: `PROVISION`, `DECOMMISSION`. `params` is required (full set, validated against the instance's params schema). |
-| `approve_deployment` | Approves a proposed deployment. |
+| `approve_deployment` | Approves a proposed deployment. In environments with separation of duty enabled, the proposer's own approval is rejected — a second reviewer must approve. |
 | `reject_deployment` | Rejects a proposed deployment. |
 | `abort_deployment` | Aborts a running deployment. |
 | `plan_deployment` | Runs a fresh PLAN (dry-run preview) against an existing deployment's params. Mutates nothing on the source; returns a new PLAN deployment. |
@@ -91,15 +93,22 @@ This document describes all 106 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `list_resources` | Lists resources. Optionally filter by `origin`, `resource_type`, `environment_id`, or `search`. |
+| `list_resources` | Lists resources. Optionally filter by `origin`, `resource_type` (optionally version-pinned, e.g. `aws-iam-role@1.2.3`), `environment_id`, `search`, `created_after`/`created_before` (RFC 3339 creation window), or `attributes` (effective-attribute filters, AND'd). |
 | `get_resource` | Gets a resource by ID (payload values are masked). |
-| `create_resource` | Imports a resource. Requires `resource_type_id` and `name`. |
+| `create_resource` | Imports a resource. Requires `resource_type_id` (optionally pinned to an exact version, e.g. `aws-iam-role@1.2.3`) and `name`; the payload must conform to the resource type's schema (see `get_resource_type`). |
 | `update_resource` | Updates a resource's name or payload. |
 | `delete_resource` | Deletes an imported resource. |
 | `export_resource` | Exports a resource with unmasked payload (audit-logged). |
 | `create_resource_grant` | Creates a sharing grant on a resource. `action` must be `resource:export` (the only grantable action). |
 | `delete_resource_grant` | Deletes a sharing grant. |
 | `list_resource_grants` | Lists sharing grants on a resource. |
+
+## Resource Types
+
+| Tool | Description |
+|------|-------------|
+| `get_resource_type` | Gets a resource type — the contract behind the connection system — including its full JSON schema, import instructions, and connection orientation. The ID's version portion may be exact (`@1.2.3`), a range (`@~1`), a channel (`@latest`), or omitted; the response carries the fully resolved version. |
+| `list_resource_type_dependents` | Lists the instances in an environment that depend on a resource type, one entry per (instance, dependency field) pair. Use before changing or removing a resource of that type. |
 
 ## Organization
 
@@ -111,6 +120,8 @@ This document describes all 106 tools available in the Massdriver MCP server.
 | `delete_custom_attribute` | Deletes a custom attribute definition. |
 | `list_organization_members` | Lists the organization's members (user accounts), paginated. Requires the `organization:manageProfile` permission (non-admin tokens get a forbidden error). |
 | `list_custom_attributes` | Lists the organization's custom attribute definitions (keys, scopes, allowed values), paginated. Use to discover declared attribute keys before setting attributes or writing policy conditions. |
+| `get_organization_settings` | Gets the organization's behavior settings (`default_bundle_access`: the access new bundle repositories receive at creation). Requires the `organization:manageSettings` permission. |
+| `update_organization_settings` | Updates the organization's behavior settings. `default_bundle_access` = `NONE` (new repos restricted until granted) or `ALL_PROJECTS` (auto-creates an org-wide `repo:pull` grant on each new repo); only affects repositories created afterwards. Requires the `organization:manageSettings` permission. |
 
 ## Viewer
 
@@ -159,7 +170,7 @@ This document describes all 106 tools available in the Massdriver MCP server.
 
 | Tool | Description |
 |------|-------------|
-| `list_oci_repos` | Lists OCI repositories. Optionally filter by `search` or `artifact_type`. |
+| `list_oci_repos` | Lists OCI repositories. Optionally filter by `search`, `artifact_type`, `created_after`/`created_before` (RFC 3339 creation window), or `attributes` (repository-attribute filters, AND'd). |
 | `get_oci_repo` | Gets an OCI repository by ID, including its published version tags. |
 | `create_oci_repo` | Creates an OCI repository. Requires `id` and `artifact_type`. |
 | `update_oci_repo` | Updates an OCI repository's attributes. |

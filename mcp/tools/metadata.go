@@ -67,14 +67,15 @@ func annotate(tools []*mcpsdk.Tool, annotations func() *mcpsdk.ToolAnnotations) 
 func applyAnnotations() {
 	readers := []*mcpsdk.Tool{
 		GetProjectTool, ListProjectsTool,
-		GetEnvironmentTool, ListEnvironmentsTool,
+		GetEnvironmentTool, ListEnvironmentsTool, ListEnvironmentLinksTool, ListEnvironmentUnfulfilledDependenciesTool,
 		GetInstanceTool, ListInstancesTool, ListAlarmsTool,
 		GetDeploymentTool, ListDeploymentsTool, GetDeploymentLogsTool, CompareDeploymentsTool,
 		CompareEnvironmentsTool,
 		GetComponentTool, ListComponentsTool,
 		GetBundleTool,
 		GetResourceTool, ListResourcesTool, ExportResourceTool, ListResourceGrantsTool,
-		GetOrganizationTool,
+		GetResourceTypeTool, ListResourceTypeDependentsTool,
+		GetOrganizationTool, GetOrganizationSettingsTool,
 		GetViewerTool,
 		GetAuditLogTool, ListAuditLogsTool, ListAuditLogEventTypesTool,
 		GetGroupTool, ListGroupsTool,
@@ -107,6 +108,7 @@ func applyAnnotations() {
 		UpdateComponentTool, SetComponentPositionTool, UpdateResourceTool, UpdateCustomAttributeTool,
 		UpdateGroupTool, AddGroupUserTool, AddGroupServiceAccountTool,
 		UpdateServiceAccountTool, UpdateOciRepoTool, UpdatePolicyTool,
+		UpdateOrganizationSettingsTool,
 	}
 	annotate(updates, func() *mcpsdk.ToolAnnotations { return writeHints(false, true) })
 
@@ -151,6 +153,7 @@ func applyEnums() {
 	withEnums(ListResourcesTool, ListResourcesInput{}, map[string][]string{"origin": {"IMPORTED", "PROVISIONED"}})
 	withEnums(CreateResourceGrantTool, CreateResourceGrantInput{}, map[string][]string{"action": {"resource:export"}})
 	withEnums(CreateCustomAttributeTool, CreateCustomAttributeInput{}, map[string][]string{"scope": scopes})
+	withEnums(UpdateOrganizationSettingsTool, UpdateOrganizationSettingsInput{}, map[string][]string{"default_bundle_access": {"NONE", "ALL_PROJECTS"}})
 	withEnums(ListPolicyAttributeValuesTool, ListPolicyAttributeValuesInput{}, map[string][]string{"scope": scopes})
 	withEnums(CreatePolicyTool, CreatePolicyInput{}, map[string][]string{"effect": effects})
 	withEnums(UpdatePolicyTool, UpdatePolicyInput{}, map[string][]string{"effect": effects})

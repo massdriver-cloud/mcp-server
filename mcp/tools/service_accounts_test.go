@@ -12,7 +12,7 @@ import (
 type stubServiceAccounts struct {
 	listPageFn func(context.Context, serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error)
 	getFn      func(context.Context, string) (*serviceaccounts.ServiceAccount, error)
-	createFn   func(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.Created, error)
+	createFn   func(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error)
 	updateFn   func(context.Context, string, serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error)
 	deleteFn   func(context.Context, string) (*serviceaccounts.ServiceAccount, error)
 }
@@ -23,7 +23,7 @@ func (s *stubServiceAccounts) ListPage(ctx context.Context, input serviceaccount
 func (s *stubServiceAccounts) Get(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error) {
 	return s.getFn(ctx, id)
 }
-func (s *stubServiceAccounts) Create(ctx context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.Created, error) {
+func (s *stubServiceAccounts) Create(ctx context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error) {
 	return s.createFn(ctx, input)
 }
 func (s *stubServiceAccounts) Update(ctx context.Context, id string, input serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error) {
@@ -151,8 +151,8 @@ func TestHandleCreateServiceAccount(t *testing.T) {
 			name:  "success returns created JSON",
 			input: CreateServiceAccountInput{Name: "CI Bot"},
 			stub: &stubServiceAccounts{
-				createFn: func(_ context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.Created, error) {
-					return &serviceaccounts.Created{
+				createFn: func(_ context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error) {
+					return &serviceaccounts.ServiceAccountWithToken{
 						ServiceAccount: serviceaccounts.ServiceAccount{ID: "sa1", Name: input.Name},
 						DefaultToken:   "tok_secret",
 					}, nil
@@ -164,7 +164,7 @@ func TestHandleCreateServiceAccount(t *testing.T) {
 			name:  "mutation failure returns error message",
 			input: CreateServiceAccountInput{Name: "CI Bot"},
 			stub: &stubServiceAccounts{
-				createFn: func(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.Created, error) {
+				createFn: func(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.ServiceAccountWithToken, error) {
 					return nil, mutationFailedErr("create service account", "name", "already exists")
 				},
 			},

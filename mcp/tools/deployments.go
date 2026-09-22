@@ -315,8 +315,10 @@ func HandleProposeDeployment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 }
 
 var ApproveDeploymentTool = &mcpsdk.Tool{
-	Name:        "approve_deployment",
-	Description: "Approves a proposed deployment, allowing it to proceed.",
+	Name: "approve_deployment",
+	Description: "Approves a proposed deployment, allowing it to proceed. When the instance's environment has separation of " +
+		"duty enabled, the proposer's own approval is rejected — a second reviewer must approve (the proposer can still " +
+		"withdraw with reject_deployment).",
 }
 
 type ApproveDeploymentInput struct {

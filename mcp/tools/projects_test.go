@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/projects"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
@@ -337,6 +338,36 @@ func TestHandleListProjectsFilters(t *testing.T) {
 	}
 	if len(got.NameIn) != 2 || got.NameIn[0] != "Billing" {
 		t.Errorf("expected NameIn [Billing Payments], got %v", got.NameIn)
+	}
+}
+
+func TestHandleListProjectsCreatedFilters(t *testing.T) {
+	var got projects.ListInput
+	c := &Client{Projects: &stubProjects{
+		listPageFn: func(_ context.Context, input projects.ListInput) (types.Page[projects.Project], error) {
+			got = input
+			return types.Page[projects.Project]{}, nil
+		},
+	}}
+	handler := HandleListProjects(c)
+
+	_, _, err := handler(context.Background(), nil, ListProjectsInput{
+		CreatedAfter:  "2026-01-15T00:00:00Z",
+		CreatedBefore: "2026-02-01T00:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.CreatedAfter.IsZero() || got.CreatedAfter.Format(time.RFC3339) != "2026-01-15T00:00:00Z" {
+		t.Errorf("expected CreatedAfter 2026-01-15T00:00:00Z, got %v", got.CreatedAfter)
+	}
+	if got.CreatedBefore.IsZero() || got.CreatedBefore.Format(time.RFC3339) != "2026-02-01T00:00:00Z" {
+		t.Errorf("expected CreatedBefore 2026-02-01T00:00:00Z, got %v", got.CreatedBefore)
+	}
+
+	_, _, err = handler(context.Background(), nil, ListProjectsInput{CreatedAfter: "yesterday"})
+	if err == nil || !strings.Contains(err.Error(), "created_after must be an RFC 3339 timestamp") {
+		t.Fatalf("expected RFC 3339 parse error, got: %v", err)
 	}
 }
 

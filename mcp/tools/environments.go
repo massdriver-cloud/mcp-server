@@ -77,11 +77,13 @@ var CreateEnvironmentTool = &mcpsdk.Tool{
 }
 
 type CreateEnvironmentInput struct {
-	ProjectID   string         `json:"project_id"   jsonschema:"The ID of the project to create the environment in."`
-	ID          string         `json:"id"           jsonschema:"Unique identifier for the environment within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
-	Name        string         `json:"name"                  jsonschema:"Human-readable name shown in the UI."`
-	Description string         `json:"description,omitempty" jsonschema:"Optional description of the environment. Max 255 characters."`
-	Attributes  map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Custom attribute tags at the environment scope (e.g., {\"env\":\"prod\"}). Must conform to the organization's custom-attribute schema; some may be required."`
+	ProjectID              string         `json:"project_id"   jsonschema:"The ID of the project to create the environment in."`
+	ID                     string         `json:"id"           jsonschema:"Unique identifier for the environment within the project, max 20 lowercase alphanumeric characters. Cannot be changed after creation."`
+	Name                   string         `json:"name"                  jsonschema:"Human-readable name shown in the UI."`
+	Description            string         `json:"description,omitempty" jsonschema:"Optional description of the environment. Max 255 characters."`
+	Attributes             map[string]any `json:"attributes,omitempty" jsonschema:"Optional. Custom attribute tags at the environment scope (e.g., {\"env\":\"prod\"}). Must conform to the organization's custom-attribute schema; some may be required."`
+	DecommissionProtection bool           `json:"decommission_protection,omitempty" jsonschema:"Optional. When true, blocks decommission_environment and per-instance DECOMMISSION deployments until disabled via update_environment. Default false."`
+	SeparationOfDuty       bool           `json:"separation_of_duty,omitempty"      jsonschema:"Optional. When true, deployment proposals in this environment must be approved by someone other than the proposer. Default false."`
 }
 
 func HandleCreateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, CreateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -97,10 +99,12 @@ func HandleCreateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 		}
 
 		env, err := c.Environments.Create(ctx, args.ProjectID, environments.CreateInput{
-			ID:          args.ID,
-			Name:        args.Name,
-			Description: args.Description,
-			Attributes:  args.Attributes,
+			ID:                     args.ID,
+			Name:                   args.Name,
+			Description:            args.Description,
+			Attributes:             args.Attributes,
+			DecommissionProtection: args.DecommissionProtection,
+			SeparationOfDuty:       args.SeparationOfDuty,
 		})
 		if err != nil {
 			if isMutationFailed(err) {
@@ -119,7 +123,7 @@ func HandleCreateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 
 var UpdateEnvironmentTool = &mcpsdk.Tool{
 	Name:        "update_environment",
-	Description: "Updates an environment's name, description, custom attributes, or decommission protection. Only the fields you provide are changed.",
+	Description: "Updates an environment's name, description, custom attributes, decommission protection, or separation of duty. Only the fields you provide are changed.",
 }
 
 type UpdateEnvironmentInput struct {
@@ -128,6 +132,7 @@ type UpdateEnvironmentInput struct {
 	Description            *string        `json:"description,omitempty"   jsonschema:"Optional. New description, max 255 characters. Omit to leave unchanged; pass an empty string to clear it."`
 	Attributes             map[string]any `json:"attributes,omitempty"    jsonschema:"Optional. Replacement custom attribute tags at the environment scope. Omit to leave unchanged; when provided, replaces the full attribute set. Must conform to the organization's custom-attribute schema."`
 	DecommissionProtection *bool          `json:"decommission_protection,omitempty" jsonschema:"Optional. Toggles the guard that blocks decommission_environment and per-instance DECOMMISSION deployments. Omit to leave unchanged."`
+	SeparationOfDuty       *bool          `json:"separation_of_duty,omitempty"      jsonschema:"Optional. Toggles whether deployment proposals in this environment must be approved by someone other than the proposer. Omit to leave unchanged."`
 }
 
 func HandleUpdateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, UpdateEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -141,6 +146,7 @@ func HandleUpdateEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRe
 			Description:            args.Description,
 			Attributes:             args.Attributes,
 			DecommissionProtection: args.DecommissionProtection,
+			SeparationOfDuty:       args.SeparationOfDuty,
 		})
 		if err != nil {
 			if isMutationFailed(err) {
@@ -305,6 +311,8 @@ type ForkEnvironmentInput struct {
 	CopySecrets             bool           `json:"copy_secrets,omitempty"             jsonschema:"Optional. When true, copies every component's secret values from the parent into the fork. Default false."`
 	CopyRemoteReferences    bool           `json:"copy_remote_references,omitempty"   jsonschema:"Optional. When true, copies every component's remote resource references from the parent into the fork. Default false."`
 	CopyEnvironmentDefaults bool           `json:"copy_environment_defaults,omitempty" jsonschema:"Optional. When true, copies the parent's default resource connections into the fork. Default false."`
+	DecommissionProtection  bool           `json:"decommission_protection,omitempty"  jsonschema:"Optional. When true, blocks decommission_environment and per-instance DECOMMISSION deployments on the fork until disabled via update_environment. Default false."`
+	SeparationOfDuty        bool           `json:"separation_of_duty,omitempty"       jsonschema:"Optional. When true, deployment proposals in the fork must be approved by someone other than the proposer. Default false."`
 }
 
 func HandleForkEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ForkEnvironmentInput) (*mcpsdk.CallToolResult, any, error) {
@@ -327,6 +335,8 @@ func HandleForkEnvironment(c *Client) func(context.Context, *mcpsdk.CallToolRequ
 			CopySecrets:             args.CopySecrets,
 			CopyRemoteReferences:    args.CopyRemoteReferences,
 			CopyEnvironmentDefaults: args.CopyEnvironmentDefaults,
+			DecommissionProtection:  args.DecommissionProtection,
+			SeparationOfDuty:        args.SeparationOfDuty,
 		})
 		if err != nil {
 			if isMutationFailed(err) {
@@ -408,5 +418,72 @@ func HandleDecommissionEnvironment(c *Client) func(context.Context, *mcpsdk.Call
 			return nil, nil, err
 		}
 		return result, env, nil
+	}
+}
+
+var ListEnvironmentLinksTool = &mcpsdk.Tool{
+	Name: "list_environment_links",
+	Description: "Lists the blueprint links in effect in an environment given the component versions its instances actually run. " +
+		"Where a project's links list every link in the architecture, this is the subset applying to this environment: a link " +
+		"applies only where the versions at both ends fall inside its version range (from_version_constraint / " +
+		"to_version_constraint, as tilde constraints like '~1'). A link whose source or destination has no instance in this " +
+		"environment does not appear. Returns the whole list (not paginated).",
+}
+
+type ListEnvironmentLinksInput struct {
+	ID string `json:"id" jsonschema:"The environment identifier (e.g., 'myproj-staging')."`
+}
+
+func HandleListEnvironmentLinks(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListEnvironmentLinksInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListEnvironmentLinksInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("list_environment_links: id is required")
+		}
+
+		links, err := c.Environments.Links(ctx, args.ID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_environment_links: %w", err)
+		}
+
+		out := listResult(links)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
+	}
+}
+
+var ListEnvironmentUnfulfilledDependenciesTool = &mcpsdk.Tool{
+	Name: "list_environment_unfulfilled_dependencies",
+	Description: "Lists required dependency inputs across an environment's instances that nothing fills — no blueprint link, no " +
+		"per-instance remote reference, and no environment default of the matching resource type. Each entry is one input a " +
+		"deploy would block on (optional inputs are never included), so use this to answer \"why won't this environment " +
+		"deploy?\". To fix an entry: wire a resource into the slot (link_components or set_remote_reference) or bind an " +
+		"environment default of the listed resource type (set_environment_default). Returns the whole list (not paginated), " +
+		"sorted by instance identifier then input name.",
+}
+
+type ListEnvironmentUnfulfilledDependenciesInput struct {
+	ID string `json:"id" jsonschema:"The environment identifier (e.g., 'myproj-staging')."`
+}
+
+func HandleListEnvironmentUnfulfilledDependencies(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListEnvironmentUnfulfilledDependenciesInput) (*mcpsdk.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListEnvironmentUnfulfilledDependenciesInput) (*mcpsdk.CallToolResult, any, error) {
+		if args.ID == "" {
+			return nil, nil, fmt.Errorf("list_environment_unfulfilled_dependencies: id is required")
+		}
+
+		deps, err := c.Environments.UnfulfilledDependencies(ctx, args.ID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list_environment_unfulfilled_dependencies: %w", err)
+		}
+
+		out := listResult(deps)
+		result, err := jsonResult(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result, out, nil
 	}
 }
