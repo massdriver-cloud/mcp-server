@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resources"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
@@ -99,6 +100,44 @@ func TestHandleListResources(t *testing.T) {
 				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
 			}
 		})
+	}
+}
+
+func TestHandleListResourcesFilters(t *testing.T) {
+	var got resources.ListInput
+	c := &Client{Resources: &stubResources{
+		listPageFn: func(_ context.Context, input resources.ListInput) (types.Page[resources.Resource], error) {
+			got = input
+			return types.Page[resources.Resource]{}, nil
+		},
+	}}
+	handler := HandleListResources(c)
+
+	_, _, err := handler(context.Background(), nil, ListResourcesInput{
+		CreatedAfter:  "2026-01-15T00:00:00Z",
+		CreatedBefore: "2026-02-01T00:00:00Z",
+		Attributes: []AttributeFilterInput{
+			{Key: "team", Eq: "eng"},
+			{Key: "env", In: []string{"staging", "prod"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.CreatedAfter.Format(time.RFC3339) != "2026-01-15T00:00:00Z" {
+		t.Errorf("expected CreatedAfter 2026-01-15T00:00:00Z, got %v", got.CreatedAfter)
+	}
+	if got.CreatedBefore.Format(time.RFC3339) != "2026-02-01T00:00:00Z" {
+		t.Errorf("expected CreatedBefore 2026-02-01T00:00:00Z, got %v", got.CreatedBefore)
+	}
+	if len(got.Attributes) != 2 || got.Attributes[0].Key != "team" || got.Attributes[0].Eq != "eng" ||
+		len(got.Attributes[1].In) != 2 {
+		t.Errorf("attribute filters not passed through: %+v", got.Attributes)
+	}
+
+	_, _, err = handler(context.Background(), nil, ListResourcesInput{CreatedBefore: "not-a-time"})
+	if err == nil || !strings.Contains(err.Error(), "created_before must be an RFC 3339 timestamp") {
+		t.Fatalf("expected RFC 3339 parse error, got: %v", err)
 	}
 }
 

@@ -20,19 +20,34 @@ var ListOciReposTool = &mcpsdk.Tool{
 }
 
 type ListOciReposInput struct {
-	Search       string `json:"search,omitempty"        jsonschema:"Optional. Search term to filter repositories."`
-	ArtifactType string `json:"artifact_type,omitempty" jsonschema:"Optional. Filter by artifact type (e.g., 'BUNDLE')."`
-	Cursor       string `json:"cursor,omitempty"        jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
-	PageSize     int    `json:"page_size,omitempty"     jsonschema:"Optional. Page size (1-100, default 25)."`
+	Search        string                 `json:"search,omitempty"         jsonschema:"Optional. Search term to filter repositories."`
+	ArtifactType  string                 `json:"artifact_type,omitempty"  jsonschema:"Optional. Filter by artifact type (e.g., 'BUNDLE'). Empty matches any (bundles and resource types)."`
+	CreatedAfter  string                 `json:"created_after,omitempty"  jsonschema:"Optional. Only repositories created at or after this RFC 3339 timestamp (e.g., '2026-01-15T00:00:00Z'). Inclusive."`
+	CreatedBefore string                 `json:"created_before,omitempty" jsonschema:"Optional. Only repositories created at or before this RFC 3339 timestamp. Inclusive."`
+	Attributes    []AttributeFilterInput `json:"attributes,omitempty"     jsonschema:"Optional. Filter by repository attributes. Repositories are organization-level, so only attributes set on the repository itself match, plus 'md-repo' and 'md-id' (both resolve to the repository name). Entries are AND'd together."`
+	Cursor        string                 `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int                    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListOciRepos(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListOciReposInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListOciReposInput) (*mcpsdk.CallToolResult, any, error) {
+		createdAfter, err := parseTimeFilter("list_oci_repos", "created_after", args.CreatedAfter)
+		if err != nil {
+			return nil, nil, err
+		}
+		createdBefore, err := parseTimeFilter("list_oci_repos", "created_before", args.CreatedBefore)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		page, err := c.OciRepos.ListPage(ctx, ocirepos.ListInput{
-			Search:       args.Search,
-			ArtifactType: ocirepos.ArtifactType(args.ArtifactType),
-			PageSize:     clampPageSize(args.PageSize),
-			After:        args.Cursor,
+			Search:        args.Search,
+			ArtifactType:  ocirepos.ArtifactType(args.ArtifactType),
+			CreatedAfter:  createdAfter,
+			CreatedBefore: createdBefore,
+			Attributes:    toAttributeFilters(args.Attributes),
+			PageSize:      clampPageSize(args.PageSize),
+			After:         args.Cursor,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_oci_repos: %w", err)

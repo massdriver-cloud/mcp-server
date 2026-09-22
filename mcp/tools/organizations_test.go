@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -16,6 +17,8 @@ type stubOrganizations struct {
 	deleteCustomAttributeFn func(context.Context, string) (*organizations.CustomAttribute, error)
 	listMembersPageFn       func(context.Context, organizations.ListMembersInput) (types.Page[organizations.Account], error)
 	listCustomAttributesFn  func(context.Context, organizations.ListCustomAttributesInput) (types.Page[organizations.CustomAttribute], error)
+	getSettingsFn           func(context.Context) (*organizations.Settings, error)
+	updateSettingsFn        func(context.Context, organizations.UpdateSettingsInput) (*organizations.Settings, error)
 }
 
 func (s *stubOrganizations) Get(ctx context.Context) (*organizations.Organization, error) {
@@ -35,6 +38,120 @@ func (s *stubOrganizations) ListCustomAttributesPage(ctx context.Context, input 
 }
 func (s *stubOrganizations) DeleteCustomAttribute(ctx context.Context, id string) (*organizations.CustomAttribute, error) {
 	return s.deleteCustomAttributeFn(ctx, id)
+}
+func (s *stubOrganizations) GetSettings(ctx context.Context) (*organizations.Settings, error) {
+	return s.getSettingsFn(ctx)
+}
+func (s *stubOrganizations) UpdateSettings(ctx context.Context, input organizations.UpdateSettingsInput) (*organizations.Settings, error) {
+	return s.updateSettingsFn(ctx, input)
+}
+
+func TestHandleGetOrganizationSettings(t *testing.T) {
+	tests := []struct {
+		name     string
+		stub     *stubOrganizations
+		wantErr  string
+		wantText string
+	}{
+		{
+			name: "returns settings JSON",
+			stub: &stubOrganizations{
+				getSettingsFn: func(context.Context) (*organizations.Settings, error) {
+					return &organizations.Settings{DefaultBundleAccess: organizations.DefaultBundleAccessAllProjects}, nil
+				},
+			},
+			wantText: "\"default_bundle_access\": \"ALL_PROJECTS\"",
+		},
+		{
+			name: "error is surfaced",
+			stub: &stubOrganizations{
+				getSettingsFn: func(context.Context) (*organizations.Settings, error) {
+					return nil, errors.New("forbidden")
+				},
+			},
+			wantErr: "get_organization_settings",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Organizations: tt.stub}
+			handler := HandleGetOrganizationSettings(c)
+			result, _, err := handler(context.Background(), nil, GetOrganizationSettingsInput{})
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
+}
+
+func TestHandleUpdateOrganizationSettings(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    UpdateOrganizationSettingsInput
+		stub     *stubOrganizations
+		wantErr  string
+		wantText string
+	}{
+		{
+			name:    "missing default_bundle_access",
+			input:   UpdateOrganizationSettingsInput{},
+			stub:    &stubOrganizations{},
+			wantErr: "default_bundle_access is required",
+		},
+		{
+			name:  "success returns updated settings JSON",
+			input: UpdateOrganizationSettingsInput{DefaultBundleAccess: "ALL_PROJECTS"},
+			stub: &stubOrganizations{
+				updateSettingsFn: func(_ context.Context, input organizations.UpdateSettingsInput) (*organizations.Settings, error) {
+					if input.DefaultBundleAccess != organizations.DefaultBundleAccessAllProjects {
+						t.Errorf("expected ALL_PROJECTS, got %q", input.DefaultBundleAccess)
+					}
+					return &organizations.Settings{DefaultBundleAccess: input.DefaultBundleAccess}, nil
+				},
+			},
+			wantText: "ALL_PROJECTS",
+		},
+		{
+			name:  "mutation failure returns error message",
+			input: UpdateOrganizationSettingsInput{DefaultBundleAccess: "NONE"},
+			stub: &stubOrganizations{
+				updateSettingsFn: func(context.Context, organizations.UpdateSettingsInput) (*organizations.Settings, error) {
+					return nil, mutationFailedErr("update organization settings", "", "forbidden")
+				},
+			},
+			wantText: "update_organization_settings failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{Organizations: tt.stub}
+			handler := HandleUpdateOrganizationSettings(c)
+			result, _, err := handler(context.Background(), nil, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(resultText(t, result), tt.wantText) {
+				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
+			}
+		})
+	}
 }
 
 func TestHandleGetOrganization(t *testing.T) {

@@ -19,21 +19,36 @@ var ListResourcesTool = &mcpsdk.Tool{
 }
 
 type ListResourcesInput struct {
-	Origin        string `json:"origin,omitempty"         jsonschema:"Optional. Filter by origin: IMPORTED or PROVISIONED."`
-	ResourceType  string `json:"resource_type,omitempty"  jsonschema:"Optional. Filter by resource type."`
-	EnvironmentID string `json:"environment_id,omitempty" jsonschema:"Optional. Filter to resources in this environment."`
-	Search        string `json:"search,omitempty"         jsonschema:"Optional. Search term to filter resources."`
-	Cursor        string `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
-	PageSize      int    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
+	Origin        string                 `json:"origin,omitempty"         jsonschema:"Optional. Filter by origin: IMPORTED or PROVISIONED."`
+	ResourceType  string                 `json:"resource_type,omitempty"  jsonschema:"Optional. Filter by resource type (e.g., 'aws-iam-role'), optionally pinned to a specific published version with an '@<version>' suffix (e.g., 'aws-iam-role@1.2.3')."`
+	EnvironmentID string                 `json:"environment_id,omitempty" jsonschema:"Optional. Filter to resources in this environment."`
+	Search        string                 `json:"search,omitempty"         jsonschema:"Optional. Search term to filter resources."`
+	CreatedAfter  string                 `json:"created_after,omitempty"  jsonschema:"Optional. Only resources created at or after this RFC 3339 timestamp (e.g., '2026-01-15T00:00:00Z'). Inclusive."`
+	CreatedBefore string                 `json:"created_before,omitempty" jsonschema:"Optional. Only resources created at or before this RFC 3339 timestamp. Inclusive."`
+	Attributes    []AttributeFilterInput `json:"attributes,omitempty"     jsonschema:"Optional. Filter by effective attributes. A provisioned resource matches attributes set anywhere on its instance chain (project, environment, component, instance) plus 'md-resource-type' and 'md-id'; an imported resource matches only 'md-resource-type' and 'md-id'. Entries are AND'd together."`
+	Cursor        string                 `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int                    `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
 }
 
 func HandleListResources(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListResourcesInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListResourcesInput) (*mcpsdk.CallToolResult, any, error) {
+		createdAfter, err := parseTimeFilter("list_resources", "created_after", args.CreatedAfter)
+		if err != nil {
+			return nil, nil, err
+		}
+		createdBefore, err := parseTimeFilter("list_resources", "created_before", args.CreatedBefore)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		page, err := c.Resources.ListPage(ctx, resources.ListInput{
 			Origin:        resources.Origin(args.Origin),
 			ResourceType:  args.ResourceType,
 			EnvironmentID: args.EnvironmentID,
 			Search:        args.Search,
+			CreatedAfter:  createdAfter,
+			CreatedBefore: createdBefore,
+			Attributes:    toAttributeFilters(args.Attributes),
 			PageSize:      clampPageSize(args.PageSize),
 			After:         args.Cursor,
 		})
@@ -113,12 +128,13 @@ func HandleExportResource(c *Client) func(context.Context, *mcpsdk.CallToolReque
 }
 
 var CreateResourceTool = &mcpsdk.Tool{
-	Name:        "create_resource",
-	Description: "Imports (creates) a resource by providing its type and payload data.",
+	Name: "create_resource",
+	Description: "Imports (creates) a resource by providing its type and payload data. The payload must conform to the resource " +
+		"type's schema — use get_resource_type to inspect it and its import instructions first.",
 }
 
 type CreateResourceInput struct {
-	ResourceTypeID string         `json:"resource_type_id"  jsonschema:"The resource type ID."`
+	ResourceTypeID string         `json:"resource_type_id"  jsonschema:"The resource type ID (e.g., 'aws-iam-role'), optionally pinned to a specific published version with an '@<version>' suffix (e.g., 'aws-iam-role@1.2.3'). Only an exact version is accepted here — ranges and channels like '@~1' or '@latest' are rejected."`
 	Name           string         `json:"name"              jsonschema:"Display name for the resource."`
 	Payload        map[string]any `json:"payload,omitempty" jsonschema:"Optional. Resource payload data."`
 }

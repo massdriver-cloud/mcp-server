@@ -17,6 +17,7 @@ import (
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/policies"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/projects"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resources"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resourcetypes"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/server"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/serviceaccounts"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
@@ -35,6 +36,7 @@ type Client struct {
 	Components      ComponentsService
 	Bundles         BundlesService
 	Resources       ResourcesService
+	ResourceTypes   ResourceTypesService
 	Organizations   OrganizationsService
 	Viewer          ViewerService
 	AuditLogs       AuditLogsService
@@ -69,6 +71,8 @@ type EnvironmentsService interface {
 	Fork(ctx context.Context, parentID string, input environments.ForkInput) (*environments.Environment, error)
 	Deploy(ctx context.Context, id string) (*environments.Environment, error)
 	Decommission(ctx context.Context, id string) (*environments.Environment, error)
+	Links(ctx context.Context, id string) ([]types.Link, error)
+	UnfulfilledDependencies(ctx context.Context, id string) ([]environments.UnfulfilledDependency, error)
 }
 
 // InstancesService defines the instance operations used by tool handlers.
@@ -131,6 +135,12 @@ type ResourcesService interface {
 	ListGrantsPage(ctx context.Context, resourceID string, input resources.ListGrantsInput) (types.Page[resources.Grant], error)
 }
 
+// ResourceTypesService defines the resource type operations used by tool handlers.
+type ResourceTypesService interface {
+	Get(ctx context.Context, id string) (*resourcetypes.ResourceType, error)
+	Dependents(ctx context.Context, environmentID, resourceTypeID string) ([]resourcetypes.Dependent, error)
+}
+
 // OrganizationsService defines the organization operations used by tool handlers.
 type OrganizationsService interface {
 	Get(ctx context.Context) (*organizations.Organization, error)
@@ -139,6 +149,8 @@ type OrganizationsService interface {
 	DeleteCustomAttribute(ctx context.Context, id string) (*organizations.CustomAttribute, error)
 	ListMembersPage(ctx context.Context, input organizations.ListMembersInput) (types.Page[organizations.Account], error)
 	ListCustomAttributesPage(ctx context.Context, input organizations.ListCustomAttributesInput) (types.Page[organizations.CustomAttribute], error)
+	GetSettings(ctx context.Context) (*organizations.Settings, error)
+	UpdateSettings(ctx context.Context, input organizations.UpdateSettingsInput) (*organizations.Settings, error)
 }
 
 // ViewerService defines the viewer operations used by tool handlers.
@@ -171,11 +183,12 @@ type GroupsService interface {
 	ListPoliciesPage(ctx context.Context, groupID string, input groups.ListPoliciesInput) (types.Page[groups.Policy], error)
 }
 
-// ServiceAccountsService defines the service account operations used by tool handlers.
+// ServiceAccountsService defines the service account operations used by tool
+// handlers. Create is deliberately absent — the MCP server must never mint
+// new credentials (creation returns a live bearer token).
 type ServiceAccountsService interface {
 	ListPage(ctx context.Context, input serviceaccounts.ListInput) (types.Page[serviceaccounts.ServiceAccount], error)
 	Get(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error)
-	Create(ctx context.Context, input serviceaccounts.CreateInput) (*serviceaccounts.Created, error)
 	Update(ctx context.Context, id string, input serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error)
 	Delete(ctx context.Context, id string) (*serviceaccounts.ServiceAccount, error)
 }

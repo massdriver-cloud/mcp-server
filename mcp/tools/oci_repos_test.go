@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/ocirepos"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
@@ -85,6 +86,40 @@ func TestHandleListOciRepos(t *testing.T) {
 				t.Errorf("expected %q in result, got: %s", tt.wantText, resultText(t, result))
 			}
 		})
+	}
+}
+
+func TestHandleListOciReposFilters(t *testing.T) {
+	var got ocirepos.ListInput
+	c := &Client{OciRepos: &stubOciRepos{
+		listPageFn: func(_ context.Context, input ocirepos.ListInput) (types.Page[ocirepos.OciRepo], error) {
+			got = input
+			return types.Page[ocirepos.OciRepo]{}, nil
+		},
+	}}
+	handler := HandleListOciRepos(c)
+
+	_, _, err := handler(context.Background(), nil, ListOciReposInput{
+		CreatedAfter:  "2026-01-15T00:00:00Z",
+		CreatedBefore: "2026-02-01T00:00:00Z",
+		Attributes:    []AttributeFilterInput{{Key: "md-repo", Eq: "my-repo"}},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.CreatedAfter.Format(time.RFC3339) != "2026-01-15T00:00:00Z" {
+		t.Errorf("expected CreatedAfter 2026-01-15T00:00:00Z, got %v", got.CreatedAfter)
+	}
+	if got.CreatedBefore.Format(time.RFC3339) != "2026-02-01T00:00:00Z" {
+		t.Errorf("expected CreatedBefore 2026-02-01T00:00:00Z, got %v", got.CreatedBefore)
+	}
+	if len(got.Attributes) != 1 || got.Attributes[0].Key != "md-repo" || got.Attributes[0].Eq != "my-repo" {
+		t.Errorf("attribute filters not passed through: %+v", got.Attributes)
+	}
+
+	_, _, err = handler(context.Background(), nil, ListOciReposInput{CreatedAfter: "2026-13-99"})
+	if err == nil || !strings.Contains(err.Error(), "created_after must be an RFC 3339 timestamp") {
+		t.Fatalf("expected RFC 3339 parse error, got: %v", err)
 	}
 }
 

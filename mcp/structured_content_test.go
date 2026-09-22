@@ -19,6 +19,7 @@ import (
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/policies"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/projects"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resources"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/resourcetypes"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/server"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/serviceaccounts"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/types"
@@ -159,6 +160,7 @@ func stubToolsClient() *tools.Client {
 		Components:      scComponents{},
 		Bundles:         scBundles{},
 		Resources:       scResources{},
+		ResourceTypes:   scResourceTypes{},
 		Organizations:   scOrganizations{},
 		Viewer:          scViewer{},
 		AuditLogs:       scAuditLogs{},
@@ -226,6 +228,12 @@ func (scEnvironments) Deploy(context.Context, string) (*environments.Environment
 }
 func (scEnvironments) Decommission(context.Context, string) (*environments.Environment, error) {
 	return &environments.Environment{}, nil
+}
+func (scEnvironments) Links(context.Context, string) ([]types.Link, error) {
+	return []types.Link{{}}, nil
+}
+func (scEnvironments) UnfulfilledDependencies(context.Context, string) ([]environments.UnfulfilledDependency, error) {
+	return []environments.UnfulfilledDependency{{}}, nil
 }
 
 type scInstances struct{}
@@ -355,6 +363,15 @@ func (scResources) ListGrantsPage(context.Context, string, resources.ListGrantsI
 	return types.Page[resources.Grant]{Items: []resources.Grant{{}}}, nil
 }
 
+type scResourceTypes struct{}
+
+func (scResourceTypes) Get(context.Context, string) (*resourcetypes.ResourceType, error) {
+	return &resourcetypes.ResourceType{}, nil
+}
+func (scResourceTypes) Dependents(context.Context, string, string) ([]resourcetypes.Dependent, error) {
+	return []resourcetypes.Dependent{{}}, nil
+}
+
 type scOrganizations struct{}
 
 func (scOrganizations) Get(context.Context) (*organizations.Organization, error) {
@@ -374,6 +391,12 @@ func (scOrganizations) ListMembersPage(context.Context, organizations.ListMember
 }
 func (scOrganizations) ListCustomAttributesPage(context.Context, organizations.ListCustomAttributesInput) (types.Page[organizations.CustomAttribute], error) {
 	return types.Page[organizations.CustomAttribute]{Items: []organizations.CustomAttribute{{}}}, nil
+}
+func (scOrganizations) GetSettings(context.Context) (*organizations.Settings, error) {
+	return &organizations.Settings{}, nil
+}
+func (scOrganizations) UpdateSettings(context.Context, organizations.UpdateSettingsInput) (*organizations.Settings, error) {
+	return &organizations.Settings{}, nil
 }
 
 type scViewer struct{}
@@ -432,9 +455,6 @@ func (scServiceAccounts) ListPage(context.Context, serviceaccounts.ListInput) (t
 }
 func (scServiceAccounts) Get(context.Context, string) (*serviceaccounts.ServiceAccount, error) {
 	return &serviceaccounts.ServiceAccount{}, nil
-}
-func (scServiceAccounts) Create(context.Context, serviceaccounts.CreateInput) (*serviceaccounts.Created, error) {
-	return &serviceaccounts.Created{}, nil
 }
 func (scServiceAccounts) Update(context.Context, string, serviceaccounts.UpdateInput) (*serviceaccounts.ServiceAccount, error) {
 	return &serviceaccounts.ServiceAccount{}, nil

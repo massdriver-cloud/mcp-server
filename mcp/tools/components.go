@@ -38,8 +38,11 @@ func HandleListComponents(c *Client) func(context.Context, *mcpsdk.CallToolReque
 }
 
 var GetComponentTool = &mcpsdk.Tool{
-	Name:        "get_component",
-	Description: "Gets a specific component by ID, including its configuration and links.",
+	Name: "get_component",
+	Description: "Gets a specific component by ID, including its configuration and links. Each link carries " +
+		"`fromVersionConstraint` and `toVersionConstraint` — the tilde version ranges of the components it routes between " +
+		"(`~1` covers 1.x, `~0.4` covers 0.4.x) — which decide the environments the link actually applies in. " +
+		"Use list_environment_links to see which links are in effect for a given environment.",
 }
 
 type GetComponentInput struct {

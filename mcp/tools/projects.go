@@ -14,26 +14,39 @@ var ListProjectsTool = &mcpsdk.Tool{
 		"Returns up to `page_size` projects (default 25, max 100) plus a `next_cursor` for the following page. " +
 		"To continue, call again with `cursor` set to the previous `next_cursor`. " +
 		"Optionally filter with `search` (free-text over name and description), `name` (exact name match), " +
-		"or `name_in` (match any of several exact names). " +
+		"`name_in` (match any of several exact names), or `created_after`/`created_before` (creation time window). " +
 		"Stop once you have what you need — do NOT paginate to exhaustion unless the user explicitly asked for every project.",
 }
 
 type ListProjectsInput struct {
-	Cursor   string   `json:"cursor,omitempty"    jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
-	PageSize int      `json:"page_size,omitempty" jsonschema:"Optional. Page size (1-100, default 25)."`
-	Search   string   `json:"search,omitempty"    jsonschema:"Optional. Free-text search across each project's name and description. Matches whole words anywhere in the text and is forgiving of partial or out-of-order terms. When set, results are ranked by relevance."`
-	Name     string   `json:"name,omitempty"      jsonschema:"Optional. Filters to projects whose display name exactly equals this value. Use search for partial matching. Mutually exclusive with name_in."`
-	NameIn   []string `json:"name_in,omitempty"   jsonschema:"Optional. Filters to projects whose display name is any of these exact values. Mutually exclusive with name."`
+	Cursor        string   `json:"cursor,omitempty"         jsonschema:"Optional. Opaque cursor from a prior call's next_cursor. Omit for the first page."`
+	PageSize      int      `json:"page_size,omitempty"      jsonschema:"Optional. Page size (1-100, default 25)."`
+	Search        string   `json:"search,omitempty"         jsonschema:"Optional. Free-text search across each project's name and description. Matches whole words anywhere in the text and is forgiving of partial or out-of-order terms. When set, results are ranked by relevance."`
+	Name          string   `json:"name,omitempty"           jsonschema:"Optional. Filters to projects whose display name exactly equals this value. Use search for partial matching. Mutually exclusive with name_in."`
+	NameIn        []string `json:"name_in,omitempty"        jsonschema:"Optional. Filters to projects whose display name is any of these exact values. Mutually exclusive with name."`
+	CreatedAfter  string   `json:"created_after,omitempty"  jsonschema:"Optional. Only projects created at or after this RFC 3339 timestamp (e.g., '2026-01-15T00:00:00Z'). Inclusive."`
+	CreatedBefore string   `json:"created_before,omitempty" jsonschema:"Optional. Only projects created at or before this RFC 3339 timestamp. Inclusive."`
 }
 
 func HandleListProjects(c *Client) func(context.Context, *mcpsdk.CallToolRequest, ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcpsdk.CallToolRequest, args ListProjectsInput) (*mcpsdk.CallToolResult, any, error) {
+		createdAfter, err := parseTimeFilter("list_projects", "created_after", args.CreatedAfter)
+		if err != nil {
+			return nil, nil, err
+		}
+		createdBefore, err := parseTimeFilter("list_projects", "created_before", args.CreatedBefore)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		page, err := c.Projects.ListPage(ctx, projects.ListInput{
-			PageSize: clampPageSize(args.PageSize),
-			After:    args.Cursor,
-			Search:   args.Search,
-			Name:     args.Name,
-			NameIn:   args.NameIn,
+			PageSize:      clampPageSize(args.PageSize),
+			After:         args.Cursor,
+			Search:        args.Search,
+			Name:          args.Name,
+			NameIn:        args.NameIn,
+			CreatedAfter:  createdAfter,
+			CreatedBefore: createdBefore,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("list_projects: %w", err)
