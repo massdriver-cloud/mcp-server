@@ -78,6 +78,8 @@ func applyAnnotations() {
 		GetOrganizationTool, GetOrganizationSettingsTool,
 		GetViewerTool,
 		GetAuditLogTool, ListAuditLogsTool, ListAuditLogEventTypesTool,
+		GetEventDestinationTool, ListEventDestinationsTool, ListEventDestinationDeliveriesTool,
+		PreviewEventDestinationTool, ListEventDestinationAdaptersTool, ListEventDestinationEventTypesTool,
 		GetGroupTool, ListGroupsTool,
 		ListGroupMembersTool, ListGroupServiceAccountsTool, ListGroupInvitationsTool, ListGroupPoliciesTool,
 		ListOrganizationMembersTool, ListCustomAttributesTool,
@@ -95,7 +97,8 @@ func applyAnnotations() {
 	additive := []*mcpsdk.Tool{
 		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, ForkEnvironmentTool, AddComponentTool, LinkComponentsTool,
 		CreateResourceTool, CreateResourceGrantTool, CreateOciRepoGrantTool, CreateCustomAttributeTool,
-		CreateGroupTool, CreateOciRepoTool, CreatePolicyTool,
+		CreateGroupTool, CreateOciRepoTool, CreatePolicyTool, CreateEventDestinationTool,
+		RedeliverEventDestinationDeliveriesTool,
 		ProposeDeploymentTool, RejectDeploymentTool, PlanDeploymentTool, RollbackDeploymentTool,
 	}
 	annotate(additive, func() *mcpsdk.ToolAnnotations { return writeHints(false, false) })
@@ -109,6 +112,7 @@ func applyAnnotations() {
 		UpdateGroupTool, AddGroupUserTool, AddGroupServiceAccountTool,
 		UpdateServiceAccountTool, UpdateOciRepoTool, UpdatePolicyTool,
 		UpdateOrganizationSettingsTool,
+		UpdateEventDestinationTool, PauseEventDestinationTool, ResumeEventDestinationTool,
 	}
 	annotate(updates, func() *mcpsdk.ToolAnnotations { return writeHints(false, true) })
 
@@ -120,6 +124,7 @@ func applyAnnotations() {
 		DeleteGroupTool, RemoveGroupUserTool, RevokeGroupInvitationTool,
 		RemoveGroupServiceAccountTool, DeleteServiceAccountTool, DeletePolicyTool,
 		DeleteOciRepoTool, DeleteOciRepoGrantTool,
+		DeleteEventDestinationTool,
 	}
 	annotate(destructiveIdempotent, func() *mcpsdk.ToolAnnotations { return writeHints(true, true) })
 
@@ -158,6 +163,14 @@ func applyEnums() {
 	withEnums(CreatePolicyTool, CreatePolicyInput{}, map[string][]string{"effect": effects})
 	withEnums(UpdatePolicyTool, UpdatePolicyInput{}, map[string][]string{"effect": effects})
 	withEnums(ExplainPolicyTool, ExplainPolicyInput{}, map[string][]string{"effect": effects})
+	withEnums(ListEventDestinationsTool, ListEventDestinationsInput{}, map[string][]string{
+		"status":  {"ACTIVE", "PAUSED"},
+		"sort_by": {"NAME", "CREATED_AT"},
+		"order":   {"ASC", "DESC"},
+	})
+	withEnums(ListEventDestinationDeliveriesTool, ListEventDestinationDeliveriesInput{}, map[string][]string{
+		"statuses": {"DELIVERED", "SKIPPED", "FAILED", "PENDING"},
+	})
 	withEnums(GetURLTool, GetURLInput{}, map[string][]string{
 		"type": {"organization", "projects", "project", "environment", "instance", "bundle", "repo_instances"},
 	})
@@ -215,7 +228,8 @@ func mustProp(schema *jsonschema.Schema, in any, field string) *jsonschema.Schem
 }
 
 // withEnums applies enum constraints to the named string properties of the
-// tool's input schema.
+// tool's input schema. For a string array property the constraint applies to
+// each item.
 func withEnums(tool *mcpsdk.Tool, in any, enums map[string][]string) {
 	schema := toolSchema(tool, in)
 	for field, values := range enums {
@@ -223,7 +237,12 @@ func withEnums(tool *mcpsdk.Tool, in any, enums map[string][]string) {
 		for i, v := range values {
 			anyVals[i] = v
 		}
-		mustProp(schema, in, field).Enum = anyVals
+		prop := mustProp(schema, in, field)
+		if prop.Items != nil {
+			prop.Items.Enum = anyVals
+			continue
+		}
+		prop.Enum = anyVals
 	}
 }
 

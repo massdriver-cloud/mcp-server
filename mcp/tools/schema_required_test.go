@@ -48,6 +48,10 @@ var allToolInputs = []any{
 	GetResourceTypeInput{}, ListResourceTypeDependentsInput{},
 	ListEnvironmentLinksInput{}, ListEnvironmentUnfulfilledDependenciesInput{},
 	GetOrganizationSettingsInput{}, UpdateOrganizationSettingsInput{},
+	GetEventDestinationInput{}, ListEventDestinationsInput{}, ListEventDestinationDeliveriesInput{},
+	PreviewEventDestinationInput{}, ListEventDestinationAdaptersInput{}, ListEventDestinationEventTypesInput{},
+	CreateEventDestinationInput{}, UpdateEventDestinationInput{}, PauseEventDestinationInput{},
+	ResumeEventDestinationInput{}, DeleteEventDestinationInput{}, RedeliverEventDestinationDeliveriesInput{},
 }
 
 // TestOptionalFieldsAreNotRequired guards against a subtle schema bug: the
@@ -87,7 +91,7 @@ func TestOptionalFieldsAreNotRequired(t *testing.T) {
 // remove a tool, update wantTools to match. The dedup check catches copy/paste
 // mistakes in the list above.
 func TestInputCoverageMatchesRegisteredTools(t *testing.T) {
-	const wantTools = 111 // must equal the number of AddTool calls in mcp/server.go
+	const wantTools = 123 // must equal the number of AddTool calls in mcp/server.go
 
 	covered := make(map[string]bool, len(allToolInputs))
 	for _, in := range allToolInputs {

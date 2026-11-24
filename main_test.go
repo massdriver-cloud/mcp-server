@@ -85,6 +85,11 @@ func TestMCPServerTools(t *testing.T) {
 		"get_viewer",
 		// Audit Logs
 		"get_audit_log", "list_audit_logs", "list_audit_log_event_types",
+		// Event Destinations
+		"get_event_destination", "list_event_destinations", "list_event_destination_deliveries",
+		"preview_event_destination", "list_event_destination_adapters", "list_event_destination_event_types",
+		"create_event_destination", "update_event_destination", "pause_event_destination",
+		"resume_event_destination", "delete_event_destination", "redeliver_event_destination_deliveries",
 		// Groups
 		"list_groups", "get_group", "create_group", "update_group", "delete_group",
 		"add_group_user", "remove_group_user", "revoke_group_invitation",

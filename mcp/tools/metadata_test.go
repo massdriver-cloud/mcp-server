@@ -36,8 +36,8 @@ func TestMutationFailureSetsIsError(t *testing.T) {
 // registered tool. The list mirrors mcp/server.go's registration.
 func TestEveryToolHasAnnotations(t *testing.T) {
 	tools := registeredTools()
-	if len(tools) != 92 {
-		t.Fatalf("registeredTools lists %d tools, want 92 (keep in sync with registerTools)", len(tools))
+	if len(tools) != 104 {
+		t.Fatalf("registeredTools lists %d tools, want 104 (keep in sync with registerTools)", len(tools))
 	}
 	seen := make(map[string]bool, len(tools))
 	for _, tool := range tools {
@@ -83,6 +83,11 @@ func TestAnnotationClassification(t *testing.T) {
 		{DeleteProjectTool, false, true},
 		{AbortDeploymentTool, false, true},
 		{ApproveDeploymentTool, false, true},
+		{PreviewEventDestinationTool, true, false},
+		{CreateEventDestinationTool, false, false},
+		{PauseEventDestinationTool, false, false},
+		{RedeliverEventDestinationDeliveriesTool, false, false},
+		{DeleteEventDestinationTool, false, true},
 	}
 	for _, tc := range cases {
 		a := tc.tool.Annotations
@@ -113,6 +118,9 @@ func TestEnumConstraintsApplied(t *testing.T) {
 		{CreateDeploymentTool, "action", []string{"PROVISION", "DECOMMISSION", "PLAN"}},
 		{CreatePolicyTool, "effect", []string{"ALLOW", "DENY"}},
 		{CreateCustomAttributeTool, "scope", []string{"PROJECT", "ENVIRONMENT", "COMPONENT", "REPO"}},
+		{ListEventDestinationsTool, "status", []string{"ACTIVE", "PAUSED"}},
+		{ListEventDestinationsTool, "sort_by", []string{"NAME", "CREATED_AT"}},
+		{ListEventDestinationsTool, "order", []string{"ASC", "DESC"}},
 	}
 	for _, tc := range cases {
 		schema, ok := tc.tool.InputSchema.(*jsonschema.Schema)
@@ -132,6 +140,31 @@ func TestEnumConstraintsApplied(t *testing.T) {
 			if prop.Enum[i] != any(v) {
 				t.Errorf("%s.%s[%d] = %v, want %q", tc.tool.Name, tc.field, i, prop.Enum[i], v)
 			}
+		}
+	}
+}
+
+// TestArrayEnumConstraintsApplied verifies that string array fields carry the
+// enum on their items.
+func TestArrayEnumConstraintsApplied(t *testing.T) {
+	schema, ok := ListEventDestinationDeliveriesTool.InputSchema.(*jsonschema.Schema)
+	if !ok {
+		t.Fatalf("InputSchema is %T, want *jsonschema.Schema", ListEventDestinationDeliveriesTool.InputSchema)
+	}
+	prop := schema.Properties["statuses"]
+	if prop == nil || prop.Items == nil {
+		t.Fatalf("statuses is not an array property: %+v", prop)
+	}
+	if len(prop.Enum) != 0 {
+		t.Errorf("statuses array carries enum %v, want it on items only", prop.Enum)
+	}
+	want := []string{"DELIVERED", "SKIPPED", "FAILED", "PENDING"}
+	if len(prop.Items.Enum) != len(want) {
+		t.Fatalf("statuses items enum len %d, want %d", len(prop.Items.Enum), len(want))
+	}
+	for i, v := range want {
+		if prop.Items.Enum[i] != any(v) {
+			t.Errorf("statuses items enum[%d] = %v, want %q", i, prop.Items.Enum[i], v)
 		}
 	}
 }
@@ -214,6 +247,9 @@ func registeredTools() []*mcpsdk.Tool {
 		GetOrganizationTool, GetOrganizationSettingsTool, UpdateOrganizationSettingsTool, CreateCustomAttributeTool, UpdateCustomAttributeTool, DeleteCustomAttributeTool,
 		GetViewerTool,
 		GetAuditLogTool, ListAuditLogsTool, ListAuditLogEventTypesTool,
+		GetEventDestinationTool, ListEventDestinationsTool, ListEventDestinationDeliveriesTool, PreviewEventDestinationTool,
+		ListEventDestinationAdaptersTool, ListEventDestinationEventTypesTool, CreateEventDestinationTool, UpdateEventDestinationTool,
+		PauseEventDestinationTool, ResumeEventDestinationTool, DeleteEventDestinationTool, RedeliverEventDestinationDeliveriesTool,
 		ListGroupsTool, GetGroupTool, CreateGroupTool, UpdateGroupTool, DeleteGroupTool, AddGroupUserTool, RemoveGroupUserTool, RevokeGroupInvitationTool, AddGroupServiceAccountTool, RemoveGroupServiceAccountTool,
 		ListServiceAccountsTool, GetServiceAccountTool, UpdateServiceAccountTool, DeleteServiceAccountTool,
 		ListOciReposTool, GetOciRepoTool, CreateOciRepoTool, UpdateOciRepoTool, DeleteOciRepoTool, CreateOciRepoGrantTool, DeleteOciRepoGrantTool, ListOciRepoGrantsTool,

@@ -1,11 +1,11 @@
 # Massdriver MCP Server — Tool Reference
 
-This document describes all 111 tools available in the Massdriver MCP server.
+This document describes all 123 tools available in the Massdriver MCP server.
 
 ## Conventions
 
 - **Behavioral annotations.** Every tool advertises MCP hints: read-only tools set `readOnlyHint`; mutating tools set `destructiveHint`/`idempotentHint` so clients can gate or auto-approve calls appropriately.
-- **Enum validation.** Fields with a closed set of values (e.g. `effect`, `scope`, deployment `action`/`status`, resource `origin`, `get_url` `type`) are constrained with JSON Schema enums and rejected client-side if invalid.
+- **Enum validation.** Fields with a closed set of values (e.g. `effect`, `scope`, deployment `action`/`status`, resource `origin`, event destination `status`/`sort_by`/`order` and delivery `statuses`, `get_url` `type`) are constrained with JSON Schema enums and rejected client-side if invalid.
 - **Handled failures.** When the API rejects a mutation (e.g. a missing required attribute), the tool returns a result with `isError: true` and a human-readable message rather than appearing to succeed.
 - **Trimmed payloads.** Bundle and OCI-repo responses omit the inline SVG `icon` field to keep responses compact.
 - **Pagination.** List tools return `{ items, has_more, next_cursor }` and accept `cursor`/`page_size` (default 25, max 100). `list_components` is unpaginated (a project's blueprint is bounded).
@@ -136,6 +136,25 @@ This document describes all 111 tools available in the Massdriver MCP server.
 | `get_audit_log` | Gets a specific audit log entry by ID. |
 | `list_audit_logs` | Lists audit log entries. Optionally filter by `type`, `actor_id`, or `actor_search`. |
 | `list_audit_log_event_types` | Lists all available audit log event types. |
+
+## Event Destinations
+
+| Tool | Description |
+|------|-------------|
+| `get_event_destination` | Gets an event destination by ID: name, adapter, config, event types, attributes, condition, status, and last delivery state. |
+| `list_event_destinations` | Lists event destinations, paginated. Optionally filter by `status` (`ACTIVE`/`PAUSED`) and sort by `sort_by` (`NAME`/`CREATED_AT`) and `order`. |
+| `list_event_destination_deliveries` | Lists a destination's deliveries, newest first, paginated. Optionally filter by `statuses` (`DELIVERED`/`SKIPPED`/`FAILED`/`PENDING`) or `created_after`/`created_before` (RFC 3339). |
+| `preview_event_destination` | Lists the recent audit log events that `event_types`, `attributes`, and `condition` select, paginated. Use to check a selection before creating or updating a destination. |
+| `list_event_destination_adapters` | Lists the adapters, with the JSON schemas of each adapter's `config` and `auth`. |
+| `list_event_destination_event_types` | Lists the event types a destination can receive. Optionally filter by `entity`. |
+| `create_event_destination` | Creates a destination. Requires `name` and `config`; `adapter` defaults to `HTTP`. `event_types` accepts `<entity>.*`; omit it to receive every event. |
+| `update_event_destination` | Updates a destination. Omitted fields keep their values. `event_types: []` receives every event, `attributes: {}` matches any attributes, `condition: ""` removes the condition, and `auth: {}` removes the credentials. |
+| `pause_event_destination` | Pauses a destination. Events recorded while paused are sent after resume. |
+| `resume_event_destination` | Resumes a paused destination. |
+| `delete_event_destination` | Deletes a destination and its deliveries. |
+| `redeliver_event_destination_deliveries` | Sends FAILED deliveries again. Omit `delivery_ids` to send every FAILED delivery again. |
+
+Signing secrets and auth credentials are never returned. The user can see a destination's signing secret in the Massdriver UI or with `mass event destination get <id> -o json`.
 
 ## Groups
 
