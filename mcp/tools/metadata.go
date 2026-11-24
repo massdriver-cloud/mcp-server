@@ -98,6 +98,7 @@ func applyAnnotations() {
 		CreateProjectTool, CloneProjectTool, CreateEnvironmentTool, ForkEnvironmentTool, AddComponentTool, LinkComponentsTool,
 		CreateResourceTool, CreateResourceGrantTool, CreateOciRepoGrantTool, CreateCustomAttributeTool,
 		CreateGroupTool, CreateOciRepoTool, CreatePolicyTool, CreateEventDestinationTool,
+		RedeliverEventDestinationDeliveriesTool,
 		ProposeDeploymentTool, RejectDeploymentTool, PlanDeploymentTool, RollbackDeploymentTool,
 	}
 	annotate(additive, func() *mcpsdk.ToolAnnotations { return writeHints(false, false) })
@@ -111,7 +112,7 @@ func applyAnnotations() {
 		UpdateGroupTool, AddGroupUserTool, AddGroupServiceAccountTool,
 		UpdateServiceAccountTool, UpdateOciRepoTool, UpdatePolicyTool,
 		UpdateOrganizationSettingsTool,
-		UpdateEventDestinationTool, PauseEventDestinationTool, ResumeEventDestinationTool, RedeliverEventDestinationDeliveriesTool,
+		UpdateEventDestinationTool, PauseEventDestinationTool, ResumeEventDestinationTool,
 	}
 	annotate(updates, func() *mcpsdk.ToolAnnotations { return writeHints(false, true) })
 

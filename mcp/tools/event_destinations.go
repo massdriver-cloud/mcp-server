@@ -257,7 +257,7 @@ var CreateEventDestinationTool = &mcpsdk.Tool{
 type CreateEventDestinationInput struct {
 	Name       string            `json:"name"                  jsonschema:"The destination name. Unique in the organization."`
 	Adapter    string            `json:"adapter,omitempty"     jsonschema:"Optional. How the destination receives events. Default HTTP."`
-	Config     map[string]any    `json:"config"                jsonschema:"Where and how events are sent, in the shape of the adapter's config schema (for HTTP: {\"url\": \"https://...\", \"headers\": {...}}). The API returns the config, so put credentials in auth."`
+	Config     map[string]any    `json:"config"                jsonschema:"Where and how events are sent, in the shape of the adapter's config schema (for HTTP: {\"url\": \"https://...\", \"headers\": {...}}). The API returns the config, including config.headers, so put credentials such as an Authorization header in auth.headers."`
 	Auth       map[string]any    `json:"auth,omitempty"        jsonschema:"Optional. Credentials in the shape of the adapter's auth schema (for HTTP: {\"headers\": {\"Authorization\": \"...\"}}). Write-only: never returned. Omit to send none."`
 	EventTypes []string          `json:"event_types,omitempty" jsonschema:"Optional. Event type IDs (e.g., 'deployment.completed'), or '<entity>.*' for every event of an entity. Omit or pass an empty list to receive every event."`
 	Attributes map[string]string `json:"attributes,omitempty"  jsonschema:"Optional. Attribute values the event's entity must have had, e.g. {\"md-environment\":\"prod\"}. All must match. Omit to receive events of any attributes."`
@@ -308,7 +308,7 @@ var UpdateEventDestinationTool = &mcpsdk.Tool{
 type UpdateEventDestinationInput struct {
 	ID         string            `json:"id"                    jsonschema:"The event destination ID to update."`
 	Name       *string           `json:"name,omitempty"        jsonschema:"Optional. New name. Omit to leave unchanged."`
-	Config     map[string]any    `json:"config,omitempty"      jsonschema:"Optional. Replacement config in the shape of the adapter's config schema. Omit to leave unchanged; when provided, replaces the whole config."`
+	Config     map[string]any    `json:"config,omitempty"      jsonschema:"Optional. Replacement config in the shape of the adapter's config schema. Omit to leave unchanged; when provided, replaces the whole config. The API returns the config, including config.headers, so put credentials such as an Authorization header in auth.headers."`
 	Auth       map[string]any    `json:"auth,omitempty"        jsonschema:"Optional. Replacement credentials in the shape of the adapter's auth schema. Omit to leave unchanged; pass an empty object {} to remove the credentials."`
 	EventTypes *[]string         `json:"event_types,omitempty" jsonschema:"Optional. Replacement event type IDs, or '<entity>.*' for every event of an entity. Omit to leave unchanged; pass an empty list [] to receive every event."`
 	Attributes map[string]string `json:"attributes,omitempty"  jsonschema:"Optional. Replacement attribute values the event's entity must have had. Omit to leave unchanged; pass an empty object {} to receive events of any attributes."`
@@ -428,7 +428,9 @@ var RedeliverEventDestinationDeliveriesTool = &mcpsdk.Tool{
 	Name: "redeliver_event_destination_deliveries",
 	Description: "Sends an event destination's FAILED deliveries again, with a new set of retries. " +
 		"Pass `delivery_ids` to choose deliveries; omit it to send every FAILED delivery again. " +
-		"Deliveries that are not FAILED are left as they are. A paused destination sends them after it is resumed.",
+		"Deliveries that are not FAILED are left as they are. A paused destination sends them after it is resumed. " +
+		"Each call sends the events again to the external system. Before you omit `delivery_ids`, list the FAILED " +
+		"deliveries with list_event_destination_deliveries and confirm the count with the user.",
 }
 
 type RedeliverEventDestinationDeliveriesInput struct {
