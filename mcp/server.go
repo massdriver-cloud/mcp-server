@@ -52,23 +52,24 @@ func clientFromSDK(client *massdriver.Client) *tools.Client {
 		return &tools.Client{}
 	}
 	return &tools.Client{
-		Projects:        client.Projects,
-		Environments:    client.Environments,
-		Instances:       client.Instances,
-		Deployments:     client.Deployments,
-		Components:      client.Components,
-		Bundles:         client.Bundles,
-		Resources:       client.Resources,
-		ResourceTypes:   client.ResourceTypes,
-		Organizations:   client.Organizations,
-		Viewer:          client.Viewer,
-		AuditLogs:       client.AuditLogs,
-		Groups:          client.Groups,
-		ServiceAccounts: client.ServiceAccounts,
-		OciRepos:        client.OciRepos,
-		Policies:        client.Policies,
-		Server:          client.Server,
-		URLs:            client.URLs,
+		Projects:          client.Projects,
+		Environments:      client.Environments,
+		Instances:         client.Instances,
+		Deployments:       client.Deployments,
+		Components:        client.Components,
+		Bundles:           client.Bundles,
+		Resources:         client.Resources,
+		ResourceTypes:     client.ResourceTypes,
+		Organizations:     client.Organizations,
+		Viewer:            client.Viewer,
+		AuditLogs:         client.AuditLogs,
+		EventDestinations: client.EventDestinations,
+		Groups:            client.Groups,
+		ServiceAccounts:   client.ServiceAccounts,
+		OciRepos:          client.OciRepos,
+		Policies:          client.Policies,
+		Server:            client.Server,
+		URLs:              client.URLs,
 	}
 }
 
@@ -168,6 +169,20 @@ func (s *Server) registerTools() {
 	mcpsdk.AddTool(s.mcpServer, tools.GetAuditLogTool, tools.HandleGetAuditLog(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListAuditLogsTool, tools.HandleListAuditLogs(c))
 	mcpsdk.AddTool(s.mcpServer, tools.ListAuditLogEventTypesTool, tools.HandleListAuditLogEventTypes(c))
+
+	// Event Destinations
+	mcpsdk.AddTool(s.mcpServer, tools.GetEventDestinationTool, tools.HandleGetEventDestination(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListEventDestinationsTool, tools.HandleListEventDestinations(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListEventDestinationDeliveriesTool, tools.HandleListEventDestinationDeliveries(c))
+	mcpsdk.AddTool(s.mcpServer, tools.PreviewEventDestinationTool, tools.HandlePreviewEventDestination(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListEventDestinationAdaptersTool, tools.HandleListEventDestinationAdapters(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ListEventDestinationEventTypesTool, tools.HandleListEventDestinationEventTypes(c))
+	mcpsdk.AddTool(s.mcpServer, tools.CreateEventDestinationTool, tools.HandleCreateEventDestination(c))
+	mcpsdk.AddTool(s.mcpServer, tools.UpdateEventDestinationTool, tools.HandleUpdateEventDestination(c))
+	mcpsdk.AddTool(s.mcpServer, tools.PauseEventDestinationTool, tools.HandlePauseEventDestination(c))
+	mcpsdk.AddTool(s.mcpServer, tools.ResumeEventDestinationTool, tools.HandleResumeEventDestination(c))
+	mcpsdk.AddTool(s.mcpServer, tools.DeleteEventDestinationTool, tools.HandleDeleteEventDestination(c))
+	mcpsdk.AddTool(s.mcpServer, tools.RedeliverEventDestinationDeliveriesTool, tools.HandleRedeliverEventDestinationDeliveries(c))
 
 	// Groups
 	mcpsdk.AddTool(s.mcpServer, tools.ListGroupsTool, tools.HandleListGroups(c))

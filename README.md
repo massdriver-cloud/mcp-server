@@ -126,7 +126,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server uses stdio transport, compatible with any MCP client.
 
-## Available Tools (111)
+## Available Tools (123)
 
 See [MCP_README.md](MCP_README.md) for the full tool reference, including per-tool descriptions, input conventions, pagination, and behavioral annotations.
 
@@ -162,6 +162,11 @@ See [MCP_README.md](MCP_README.md) for the full tool reference, including per-to
 
 ### Audit Logs (3)
 `get_audit_log` `list_audit_logs` `list_audit_log_event_types`
+
+### Event Destinations (12)
+`get_event_destination` `list_event_destinations` `list_event_destination_deliveries` `preview_event_destination` `list_event_destination_adapters` `list_event_destination_event_types` `create_event_destination` `update_event_destination` `pause_event_destination` `resume_event_destination` `delete_event_destination` `redeliver_event_destination_deliveries`
+
+> Event destination signing secrets and auth credentials are never returned.
 
 ### Groups (14)
 `list_groups` `get_group` `create_group` `update_group` `delete_group` `add_group_user` `remove_group_user` `revoke_group_invitation` `add_group_service_account` `remove_group_service_account` `list_group_members` `list_group_service_accounts` `list_group_invitations` `list_group_policies`

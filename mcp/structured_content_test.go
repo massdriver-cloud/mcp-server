@@ -12,6 +12,7 @@ import (
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/components"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/deployments"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/environments"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/eventdestinations"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/groups"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/instances"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/ocirepos"
@@ -153,23 +154,24 @@ func synthValue(schema map[string]any) any {
 // structured content.
 func stubToolsClient() *tools.Client {
 	return &tools.Client{
-		Projects:        scProjects{},
-		Environments:    scEnvironments{},
-		Instances:       scInstances{},
-		Deployments:     scDeployments{},
-		Components:      scComponents{},
-		Bundles:         scBundles{},
-		Resources:       scResources{},
-		ResourceTypes:   scResourceTypes{},
-		Organizations:   scOrganizations{},
-		Viewer:          scViewer{},
-		AuditLogs:       scAuditLogs{},
-		Groups:          scGroups{},
-		ServiceAccounts: scServiceAccounts{},
-		OciRepos:        scOciRepos{},
-		Policies:        scPolicies{},
-		Server:          scServer{},
-		URLs:            scURLs{},
+		Projects:          scProjects{},
+		Environments:      scEnvironments{},
+		Instances:         scInstances{},
+		Deployments:       scDeployments{},
+		Components:        scComponents{},
+		Bundles:           scBundles{},
+		Resources:         scResources{},
+		ResourceTypes:     scResourceTypes{},
+		Organizations:     scOrganizations{},
+		Viewer:            scViewer{},
+		AuditLogs:         scAuditLogs{},
+		EventDestinations: scEventDestinations{},
+		Groups:            scGroups{},
+		ServiceAccounts:   scServiceAccounts{},
+		OciRepos:          scOciRepos{},
+		Policies:          scPolicies{},
+		Server:            scServer{},
+		URLs:              scURLs{},
 	}
 }
 
@@ -413,6 +415,45 @@ func (scAuditLogs) ListPage(context.Context, auditlogs.ListInput) (types.Page[au
 }
 func (scAuditLogs) ListEventTypes(context.Context) ([]string, error) {
 	return []string{"deployment.created"}, nil
+}
+
+type scEventDestinations struct{}
+
+func (scEventDestinations) Get(context.Context, string) (*eventdestinations.EventDestination, error) {
+	return &eventdestinations.EventDestination{}, nil
+}
+func (scEventDestinations) ListPage(context.Context, eventdestinations.ListInput) (types.Page[eventdestinations.EventDestination], error) {
+	return types.Page[eventdestinations.EventDestination]{Items: []eventdestinations.EventDestination{{}}}, nil
+}
+func (scEventDestinations) ListDeliveriesPage(context.Context, string, eventdestinations.ListDeliveriesInput) (types.Page[eventdestinations.Delivery], error) {
+	return types.Page[eventdestinations.Delivery]{Items: []eventdestinations.Delivery{{}}}, nil
+}
+func (scEventDestinations) PreviewPage(context.Context, eventdestinations.PreviewInput) (types.Page[eventdestinations.AuditLog], error) {
+	return types.Page[eventdestinations.AuditLog]{Items: []eventdestinations.AuditLog{{}}}, nil
+}
+func (scEventDestinations) ListAdapters(context.Context) ([]eventdestinations.Adapter, error) {
+	return []eventdestinations.Adapter{{}}, nil
+}
+func (scEventDestinations) ListEventTypes(context.Context, eventdestinations.ListEventTypesInput) ([]eventdestinations.EventType, error) {
+	return []eventdestinations.EventType{{}}, nil
+}
+func (scEventDestinations) Create(context.Context, eventdestinations.CreateInput) (*eventdestinations.EventDestination, error) {
+	return &eventdestinations.EventDestination{}, nil
+}
+func (scEventDestinations) Update(context.Context, string, eventdestinations.UpdateInput) (*eventdestinations.EventDestination, error) {
+	return &eventdestinations.EventDestination{}, nil
+}
+func (scEventDestinations) Pause(context.Context, string) (*eventdestinations.EventDestination, error) {
+	return &eventdestinations.EventDestination{}, nil
+}
+func (scEventDestinations) Resume(context.Context, string) (*eventdestinations.EventDestination, error) {
+	return &eventdestinations.EventDestination{}, nil
+}
+func (scEventDestinations) Delete(context.Context, string) (*eventdestinations.EventDestination, error) {
+	return &eventdestinations.EventDestination{}, nil
+}
+func (scEventDestinations) Redeliver(context.Context, string, []string) (*eventdestinations.EventDestination, error) {
+	return &eventdestinations.EventDestination{}, nil
 }
 
 type scGroups struct{}

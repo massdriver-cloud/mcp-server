@@ -10,6 +10,7 @@ import (
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/components"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/deployments"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/environments"
+	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/eventdestinations"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/groups"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/instances"
 	"github.com/massdriver-cloud/massdriver-sdk-go/massdriver/platform/ocirepos"
@@ -29,23 +30,24 @@ import (
 // fields are backed by the real SDK service types; in tests they can be
 // replaced with simple stubs.
 type Client struct {
-	Projects        ProjectsService
-	Environments    EnvironmentsService
-	Instances       InstancesService
-	Deployments     DeploymentsService
-	Components      ComponentsService
-	Bundles         BundlesService
-	Resources       ResourcesService
-	ResourceTypes   ResourceTypesService
-	Organizations   OrganizationsService
-	Viewer          ViewerService
-	AuditLogs       AuditLogsService
-	Groups          GroupsService
-	ServiceAccounts ServiceAccountsService
-	OciRepos        OciReposService
-	Policies        PoliciesService
-	Server          ServerService
-	URLs            URLsService
+	Projects          ProjectsService
+	Environments      EnvironmentsService
+	Instances         InstancesService
+	Deployments       DeploymentsService
+	Components        ComponentsService
+	Bundles           BundlesService
+	Resources         ResourcesService
+	ResourceTypes     ResourceTypesService
+	Organizations     OrganizationsService
+	Viewer            ViewerService
+	AuditLogs         AuditLogsService
+	EventDestinations EventDestinationsService
+	Groups            GroupsService
+	ServiceAccounts   ServiceAccountsService
+	OciRepos          OciReposService
+	Policies          PoliciesService
+	Server            ServerService
+	URLs              URLsService
 }
 
 // ProjectsService defines the project operations used by tool handlers.
@@ -163,6 +165,23 @@ type AuditLogsService interface {
 	Get(ctx context.Context, id string) (*auditlogs.AuditLog, error)
 	ListPage(ctx context.Context, input auditlogs.ListInput) (types.Page[auditlogs.AuditLog], error)
 	ListEventTypes(ctx context.Context) ([]string, error)
+}
+
+// EventDestinationsService defines the event destination operations used by
+// tool handlers.
+type EventDestinationsService interface {
+	Get(ctx context.Context, id string) (*eventdestinations.EventDestination, error)
+	ListPage(ctx context.Context, input eventdestinations.ListInput) (types.Page[eventdestinations.EventDestination], error)
+	ListDeliveriesPage(ctx context.Context, id string, input eventdestinations.ListDeliveriesInput) (types.Page[eventdestinations.Delivery], error)
+	PreviewPage(ctx context.Context, input eventdestinations.PreviewInput) (types.Page[eventdestinations.AuditLog], error)
+	ListAdapters(ctx context.Context) ([]eventdestinations.Adapter, error)
+	ListEventTypes(ctx context.Context, input eventdestinations.ListEventTypesInput) ([]eventdestinations.EventType, error)
+	Create(ctx context.Context, input eventdestinations.CreateInput) (*eventdestinations.EventDestination, error)
+	Update(ctx context.Context, id string, input eventdestinations.UpdateInput) (*eventdestinations.EventDestination, error)
+	Pause(ctx context.Context, id string) (*eventdestinations.EventDestination, error)
+	Resume(ctx context.Context, id string) (*eventdestinations.EventDestination, error)
+	Delete(ctx context.Context, id string) (*eventdestinations.EventDestination, error)
+	Redeliver(ctx context.Context, id string, deliveryIDs []string) (*eventdestinations.EventDestination, error)
 }
 
 // GroupsService defines the group operations used by tool handlers.
